@@ -89,7 +89,8 @@ export async function POST(req: Request) {
           .values({
             id: data.id,
             name: data.name,
-            slug: data.slug ?? data.id,
+            // Append last 8 chars of orgId — guarantees uniqueness even if name is same
+            slug: `${data.slug ?? data.id}-${data.id.slice(-8)}`,
             plan: "free",
             subscriptionStatus: "free",
             messagesUsed: 0,
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
             target: orgs.id,
             set: {
               name: data.name,
-              slug: data.slug ?? data.id,
+              slug: `${data.slug ?? data.id}-${data.id.slice(-8)}`,
             },
           });
       }
