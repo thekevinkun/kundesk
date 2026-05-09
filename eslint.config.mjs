@@ -1,24 +1,26 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js"
+import nextPlugin from "@next/eslint-plugin-next"
+import tseslint from "typescript-eslint"
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+export default tseslint.config(
+  // Base JS recommended rules
+  js.configs.recommended,
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+  // TypeScript recommended rules
+  ...tseslint.configs.recommended,
 
-const eslintConfig = [
-  // Next.js core rules + TypeScript support
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    // Apply Next.js plugin rules
+    plugins: {
+      "@next/next": nextPlugin,
+    },
     rules: {
-      // Zero `any` — this is a hard error, not a warning
-      "@typescript-eslint/no-explicit-any": "error",
+      // Next.js core web vitals rules
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
 
-      // Force explicit return types on functions (catches missing type annotations)
-      "@typescript-eslint/explicit-function-return-type": "off",
+      // Zero `any` — hard error not warning
+      "@typescript-eslint/no-explicit-any": "error",
 
       // No unused variables — prefix with _ to intentionally ignore
       "@typescript-eslint/no-unused-vars": [
@@ -26,16 +28,13 @@ const eslintConfig = [
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
       ],
 
-      // Enforce consistent imports
-      "import/no-duplicates": "error",
-
-      // Semantic HTML — divs must not have click handlers (use button)
-      "jsx-a11y/no-static-element-interactions": "off",
-
       // React 19 — no need to import React in scope
       "react/react-in-jsx-scope": "off",
     },
   },
-];
 
-export default eslintConfig;
+  {
+    // Ignore generated files
+    ignores: [".next/**", "node_modules/**"],
+  }
+)
