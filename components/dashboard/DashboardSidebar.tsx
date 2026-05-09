@@ -90,6 +90,7 @@ const NavItemRow = ({
   return (
     <Link
       href={item.href}
+      aria-current={isActive ? "page" : undefined}
       {...(onClick ? { onClick } : {})}
       className={cn(
         // Base nav item styles from design system
