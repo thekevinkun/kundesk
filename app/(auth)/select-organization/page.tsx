@@ -47,6 +47,7 @@ export default function SelectOrganizationPage() {
           className="flex justify-center"
         >
           <CreateOrganization
+            routing="hash"
             // After org is created, Clerk redirects here
             // Webhook fires in background, org syncs to DB
             afterCreateOrganizationUrl="/dashboard"
