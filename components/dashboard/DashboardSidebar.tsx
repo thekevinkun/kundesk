@@ -4,7 +4,6 @@
 
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OrganizationSwitcher } from "@clerk/nextjs";
@@ -86,7 +85,7 @@ const NavItemRow = ({
   const isActive =
     item.href === "/dashboard"
       ? pathname === "/dashboard"
-      : pathname.startsWith(item.href);
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
   return (
     <Link
@@ -260,7 +259,3 @@ const DashboardSidebar = () => {
 };
 
 export default DashboardSidebar;
-
-// ── Export mobile trigger so topbar can open the drawer ──
-// This avoids prop drilling — topbar imports this directly
-export { useState as useSidebarState };
