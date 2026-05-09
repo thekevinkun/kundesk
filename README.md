@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kundesk
 
-## Getting Started
+## 1. What is Kundesk
 
-First, run the development server:
+**Kundesk** is an AI-powered customer service SaaS platform built specifically for Indonesian SMEs (warung, klinik, salon, properti, retail, etc.).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### The Core Problem
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Indonesian SMEs are drowning in repetitive WhatsApp and website messages from customers asking the same questions — menu, harga, jam buka, ketersediaan, cara order. They can't afford enterprise CS solutions, and nothing is built for the Indonesian context.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### The Solution
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Business owners sign up, upload their business documents (menu PDF, FAQ, price list), and Kundesk generates an AI chatbot that answers their customers 24/7 — automatically, accurately, and in Bahasa Indonesia — based only on their own documents.
 
-## Learn More
+### How It Works (User Flow)
 
-To learn more about Next.js, take a look at the following resources:
+1. Business owner signs up → Clerk creates their Organization (tenant)
+2. They upload documents to their dashboard → files go to AWS S3 → background processing parses, chunks, and embeds them into pgvector
+3. They configure their chatbot (name, tone, language, accent color)
+4. They receive multiple delivery channels — QR code, shareable link, embed widget, and (Pro) WhatsApp integration
+5. Their customers interact via whichever channel the business shares → RAG pipeline retrieves relevant chunks → OpenAI streams the answer
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Important Product Reality
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The web widget alone is insufficient for the Indonesian SME market. Most Indonesian SMEs do not have websites. Customers contact businesses via WhatsApp — not by visiting a website. This shapes the delivery channel strategy. See Section 12 for the full channel breakdown.
 
-## Deploy on Vercel
+### Target Market
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Indonesian SMEs — warung makan, klinik, salon, properti, toko online, travel agent. Businesses with 1–50 employees who receive repetitive customer questions daily.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Business Model
+
+Subscription SaaS, billed monthly in Rupiah via Midtrans.
+
+|Plan|Price|Messages/month|Documents|Chatbots|
+|---|---|---|---|---|
+|Free|Rp 0|100|3|1|
+|Starter|Rp 149.000|1.000|20|1|
+|Pro|Rp 399.000|10.000|Unlimited|3|
