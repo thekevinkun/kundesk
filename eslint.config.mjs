@@ -28,7 +28,8 @@ export default tseslint.config(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
       ],
 
-      // React 19 — no need to import React in scope
+      // React 19 makes this rule unnecessary — removing instead of disabling
+      // to avoid needing to register the React plugin separately
       "react/react-in-jsx-scope": "off",
     },
   },

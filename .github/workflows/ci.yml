@@ -64,7 +64,7 @@ jobs:
 
       # Vitest — no tests yet but infrastructure is ready
       - name: Test
-        run: npm run test -- --run
+        run: npm run test -- --run --passWithNoTests
         env:
           DATABASE_URL: postgresql://placeholder
           CLERK_SECRET_KEY: placeholder
