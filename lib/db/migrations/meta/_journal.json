@@ -15,6 +15,13 @@
       "when": 1778321092648,
       "tag": "0001_nosy_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778321852873,
+      "tag": "0002_busy_pepper_potts",
+      "breakpoints": true
     }
   ]
 }
