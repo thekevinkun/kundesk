@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
-import { orgs, processedWebhooks } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { env } from "@/lib/env";
+import { orgs, processedWebhooks } from "@/lib/db/schema";
 
 // Clerk webhook event types we care about — typed, not free text
 type ClerkOrgEvent =
@@ -60,22 +60,21 @@ export async function POST(req: Request) {
 
   const { type, data } = payload;
 
-  // ── 3. Idempotency check ──
-  // Clerk retries webhooks on failure — never process the same event twice
-  // svixId is the unique event ID Clerk sends with every delivery attempt
-  const alreadyProcessed = await db
-    .select()
-    .from(processedWebhooks)
-    .where(
-      and(
-        eq(processedWebhooks.source, "clerk"),
-        eq(processedWebhooks.externalId, svixId),
-      ),
-    )
-    .limit(1);
+  // ── 3. Atomic idempotency claim ──
+  // INSERT first to claim the event atomically — if conflict, already processed
+  // This is race-safe: unique constraint on (source, externalId) means only
+  // one request wins, even if Clerk fires the same event simultaneously
+  const inserted = await db
+    .insert(processedWebhooks)
+    .values({
+      externalId: svixId,
+      source: "clerk",
+    })
+    .onConflictDoNothing()
+    .returning({ id: processedWebhooks.id });
 
-  if (alreadyProcessed.length > 0) {
-    // Already handled — return 200 so Clerk stops retrying
+  if (inserted.length === 0) {
+    // Another request already claimed this event — return 200 so Clerk stops retrying
     return new Response("Already processed", { status: 200 });
   }
 
@@ -117,12 +116,6 @@ export async function POST(req: Request) {
 
     // organizationMembership.created — no DB action needed yet
     // Clerk handles member access. We'll use this in Phase 7 for welcome emails.
-
-    // ── 5. Mark as processed ──
-    await db.insert(processedWebhooks).values({
-      externalId: svixId,
-      source: "clerk",
-    });
 
     return new Response("OK", { status: 200 });
   } catch (err) {
