@@ -60,66 +60,68 @@ export async function POST(req: Request) {
 
   const { type, data } = payload;
 
-  // ── 3. Atomic idempotency claim ──
-  // INSERT first to claim the event atomically — if conflict, already processed
-  // This is race-safe: unique constraint on (source, externalId) means only
-  // one request wins, even if Clerk fires the same event simultaneously
-  const inserted = await db
-    .insert(processedWebhooks)
-    .values({
-      externalId: svixId,
-      source: "clerk",
-    })
-    .onConflictDoNothing()
-    .returning({ id: processedWebhooks.id });
-
-  if (inserted.length === 0) {
-    // Another request already claimed this event — return 200 so Clerk stops retrying
-    return new Response("Already processed", { status: 200 });
-  }
-
-  // ── 4. Handle each event type ──
+  // ── 3. Handle event + claim atomically in one transaction ──
+  // Both the processedWebhooks insert and org mutation must succeed together
+  // If org upsert fails → processedWebhooks rolls back → Clerk can retry safely
   try {
-    if (type === "organization.created" || type === "organization.updated") {
-      // Upsert — insert if new, update if already exists
-      // This handles both creation and any name/slug changes
-      await db
-        .insert(orgs)
+    await db.transaction(async (tx) => {
+      // Claim the event inside the transaction — rolls back if org sync fails
+      const inserted = await tx
+        .insert(processedWebhooks)
         .values({
-          id: data.id,
-          name: data.name,
-          // Clerk slug can be null if user didn't set one — fall back to org ID
-          slug: data.slug ?? data.id,
-          plan: "free",
-          subscriptionStatus: "free",
-          messagesUsed: 0,
-          messagesLimit: 100,
+          externalId: svixId,
+          source: "clerk",
         })
-        .onConflictDoUpdate({
-          target: orgs.id,
-          set: {
+        .onConflictDoNothing()
+        .returning({ id: processedWebhooks.id });
+
+      if (inserted.length === 0) {
+        // Already successfully processed — return early
+        // Throwing a known string exits the transaction cleanly
+        throw "already_processed";
+      }
+
+      // Handle org sync based on event type
+      if (type === "organization.created" || type === "organization.updated") {
+        // Upsert — insert if new, update name/slug if already exists
+        await tx
+          .insert(orgs)
+          .values({
+            id: data.id,
             name: data.name,
-            // Keep slug in sync if owner changes it in Clerk
             slug: data.slug ?? data.id,
-          },
-        });
-    }
+            plan: "free",
+            subscriptionStatus: "free",
+            messagesUsed: 0,
+            messagesLimit: 100,
+          })
+          .onConflictDoUpdate({
+            target: orgs.id,
+            set: {
+              name: data.name,
+              slug: data.slug ?? data.id,
+            },
+          });
+      }
 
-    if (type === "organization.deleted") {
-      // Soft approach — we don't delete data, just mark subscription as cancelled
-      // Hard delete would orphan all their documents and conversations
-      await db
-        .update(orgs)
-        .set({ subscriptionStatus: "cancelled" })
-        .where(eq(orgs.id, data.id));
-    }
+      if (type === "organization.deleted") {
+        // Soft cancel — never hard delete, preserves all tenant data
+        await tx
+          .update(orgs)
+          .set({ subscriptionStatus: "cancelled" })
+          .where(eq(orgs.id, data.id));
+      }
+    });
 
-    // organizationMembership.created — no DB action needed yet
-    // Clerk handles member access. We'll use this in Phase 7 for welcome emails.
-
+    // Transaction committed — both claim and org sync succeeded
     return new Response("OK", { status: 200 });
   } catch (err) {
-    // Log the error but don't expose internals — Clerk will retry
+    // Known early-exit: event already processed successfully before
+    if (err === "already_processed") {
+      return new Response("Already processed", { status: 200 });
+    }
+
+    // Unexpected error — transaction rolled back, Clerk will retry
     console.error("[clerk-webhook] Processing error:", err);
     return new Response("Internal error", { status: 500 });
   }
