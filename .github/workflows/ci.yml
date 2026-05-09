@@ -1,0 +1,78 @@
+# CI pipeline — runs on every push and PR to master
+# Checks: TypeScript, ESLint, Vitest
+# CodeRabbit runs separately as a GitHub App on every PR
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  check:
+    name: Typecheck + Lint + Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repo
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Set up Node.js — matches our local version
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # TypeScript check — zero errors required
+      - name: Typecheck
+        run: npm run typecheck
+        env:
+          # Placeholder env vars so lib/env.ts doesn't throw during CI
+          DATABASE_URL: postgresql://placeholder
+          CLERK_SECRET_KEY: placeholder
+          CLERK_WEBHOOK_SECRET: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          KUNDESK_AI_MODE: mock
+          KUNDESK_EMBEDDING_MODE: mock
+          KUNDESK_STORAGE_MODE: mock
+          KUNDESK_PAYMENT_MODE: mock
+          KUNDESK_REALTIME_MODE: mock
+          KUNDESK_EMAIL_MODE: mock
+
+      # ESLint — zero errors required
+      - name: Lint
+        run: npm run lint
+        env:
+          DATABASE_URL: postgresql://placeholder
+          CLERK_SECRET_KEY: placeholder
+          CLERK_WEBHOOK_SECRET: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          KUNDESK_AI_MODE: mock
+          KUNDESK_EMBEDDING_MODE: mock
+          KUNDESK_STORAGE_MODE: mock
+          KUNDESK_PAYMENT_MODE: mock
+          KUNDESK_REALTIME_MODE: mock
+          KUNDESK_EMAIL_MODE: mock
+
+      # Vitest — no tests yet but infrastructure is ready
+      - name: Test
+        run: npm run test -- --run
+        env:
+          DATABASE_URL: postgresql://placeholder
+          CLERK_SECRET_KEY: placeholder
+          CLERK_WEBHOOK_SECRET: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          KUNDESK_AI_MODE: mock
+          KUNDESK_EMBEDDING_MODE: mock
+          KUNDESK_STORAGE_MODE: mock
+          KUNDESK_PAYMENT_MODE: mock
+          KUNDESK_REALTIME_MODE: mock
+          KUNDESK_EMAIL_MODE: mock

@@ -1,49 +1,390 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─── TAILWIND V4 ─── */
+/* Single import replaces all @tailwind directives from v3 */
+@import "tailwindcss";
+
+/* ─── DESIGN TOKENS ─── */
+/* Replaces tailwind.config.js theme.extend in v4 */
+/* All CSS variables are available as Tailwind utilities automatically */
+@theme {
+  /* Brand colors — deep teal #069494 */
+  --color-brand: #069494;
+  --color-brand-light: #e6f7f7;
+  --color-brand-mid: #b3e5e5;
+  --color-brand-dark: #045f5f;
+  --color-brand-glow: rgba(6, 148, 148, 0.12);
+
+  /* Background surfaces — light mode defaults */
+  --color-bg-page: #f4f5f7;
+  --color-bg-card: #ffffff;
+  --color-bg-input: #f8f9fa;
+  --color-bg-sidebar: #ffffff;
+
+  /* Border */
+  --color-border: #e8ecf0;
+  --color-border-sm: #f0f2f4;
+
+  /* Text scale */
+  --color-text-900: #0f1117;
+  --color-text-700: #2d3748;
+  --color-text-500: #718096;
+  --color-text-400: #a0aec0;
+
+  /* Semantic status colors */
+  --color-success: #059669;
+  --color-success-bg: #d1fae5;
+  --color-warning: #d97706;
+  --color-warning-bg: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-bg: #fee2e2;
+  --color-info: #3b82f6;
+  --color-info-bg: #dbeafe;
+
+  /* Chart palette */
+  --color-chart-1: #069494;
+  --color-chart-2: #f87171;
+  --color-chart-3: #fbbf24;
+  --color-chart-4: #60a5fa;
+  --color-chart-5: #a78bfa;
+
+  /* Typography — loaded via next/font, referenced as CSS vars */
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
+  --font-serif: "Instrument Serif", serif;
+
+  /* Border radius scale */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Shadow scale */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 24px 80px rgba(0, 0, 0, 0.16);
+
+  /* Animation easing */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Layout */
+  --sidebar-w: 230px;
+  --header-h: 68px;
 }
 
-@media (prefers-color-scheme: dark) {
+/* ─── DARK MODE TOKEN OVERRIDES ─── */
+/* .dark class on <html> swaps all surface/text tokens — brand stays the same  */
+.dark {
+  --color-bg-page: #0f1117;
+  --color-bg-card: #161b27;
+  --color-bg-input: #1a2030;
+  --color-bg-sidebar: #161b27;
+
+  --color-border: #2a3044;
+  --color-border-sm: #222840;
+
+  --color-text-900: #f0f4ff;
+  --color-text-700: #c8d0e0;
+  --color-text-500: #7888a0;
+  --color-text-400: #4a5568;
+}
+
+/* ─── BASE STYLES ─── */
+@layer base {
+  /* Apply font and background to every page */
+  html {
+    font-size: 14px;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-bg-page);
+    color: var(--color-text-900);
+    overflow-x: hidden;
+  }
+
+  /* Consistent focus ring — uses brand color */
+  *:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* Custom scrollbar — subtle, branded */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-brand-mid);
+  }
+
+  /* shadcn/ui CSS variables — must live in @layer base for compatibility */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: var(--color-bg-page);
+    --foreground: var(--color-text-900);
+    --card: var(--color-bg-card);
+    --card-foreground: var(--color-text-900);
+    --popover: var(--color-bg-card);
+    --popover-foreground: var(--color-text-900);
+    --primary: var(--color-brand);
+    --primary-foreground: #ffffff;
+    --secondary: var(--color-bg-input);
+    --secondary-foreground: var(--color-text-700);
+    --muted: var(--color-bg-input);
+    --muted-foreground: var(--color-text-500);
+    --accent: var(--color-brand-light);
+    --accent-foreground: var(--color-brand-dark);
+    --destructive: var(--color-danger);
+    --destructive-foreground: #ffffff;
+    --border: var(--color-border);
+    --input: var(--color-border);
+    --ring: var(--color-brand);
+    --radius: var(--radius-md);
   }
 }
 
-html {
-  height: 100%;
-}
+/* ─── REUSABLE COMPONENT CLASSES ─── */
+/* Always reach for these before writing ad-hoc Tailwind */
+@layer components {
+  /* ── Cards ── */
+  .card-base {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
+  .card-hover {
+    transition:
+      box-shadow 0.2s var(--ease-smooth),
+      transform 0.2s var(--ease-smooth);
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
 
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  /* ── Inputs ── */
+  .input-base {
+    background-color: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-700);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 9px 14px;
+    outline: none;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+    width: 100%;
+  }
+  .input-base:focus {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 3px var(--color-brand-light);
+  }
+  .input-base::placeholder {
+    color: var(--color-text-400);
+  }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
+  /* ── Badges ── */
+  .badge-base {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  .badge-brand {
+    background-color: var(--color-brand-light);
+    color: var(--color-brand-dark);
+  }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+  .badge-success {
+    background-color: var(--color-success-bg);
+    color: var(--color-success);
+  }
+
+  .badge-warning {
+    background-color: var(--color-warning-bg);
+    color: var(--color-warning);
+  }
+
+  .badge-danger {
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger);
+  }
+
+  .badge-info {
+    background-color: var(--color-info-bg);
+    color: var(--color-info);
+  }
+
+  /* ── Navigation items (sidebar) ── */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--color-text-500);
+    cursor: pointer;
+    transition:
+      background-color 0.18s,
+      color 0.18s;
+    text-decoration: none;
+    position: relative;
+  }
+  .nav-item:hover {
+    background-color: var(--color-bg-page);
+    color: var(--color-text-900);
+  }
+
+  .nav-item-active {
+    background-color: var(--color-brand-light);
+    color: var(--color-brand);
+    font-weight: 600;
+  }
+  /* Left accent bar on active nav item */
+  .nav-item-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    background-color: var(--color-brand);
+    border-radius: 0 3px 3px 0;
+    margin-left: -12px;
+  }
+
+  /* ── Page section wrapper ── */
+  .page-section {
+    padding: 28px;
+  }
+
+  /* ── Skeleton loading animation ── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-border) 25%,
+      var(--color-border-sm) 50%,
+      var(--color-border) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes skeleton-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* ── Buttons (base, before shadcn overrides) ── */
+  .btn-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--color-brand);
+    color: #ffffff;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: var(--radius-full);
+    border: none;
+    cursor: pointer;
+    transition:
+      background-color 0.22s,
+      transform 0.22s,
+      box-shadow 0.22s;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+  .btn-brand:hover {
+    background-color: var(--color-brand-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(6, 148, 148, 0.35);
+  }
+
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: transparent;
+    color: var(--color-brand);
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--color-brand);
+    cursor: pointer;
+    transition:
+      background-color 0.22s,
+      color 0.22s,
+      box-shadow 0.22s;
+    text-decoration: none;
+  }
+  .btn-outline:hover {
+    background-color: var(--color-brand);
+    color: #ffffff;
+    box-shadow: 0 6px 20px rgba(6, 148, 148, 0.3);
+  }
+
+  /* ── Live indicator pulse ── */
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-success);
+    animation: live-pulse 2s infinite;
+  }
+  @keyframes live-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(0.7);
+    }
+  }
+
+  /* ── Reveal animation (landing page scroll) ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition:
+      opacity 0.7s var(--ease-smooth),
+      transform 0.7s var(--ease-smooth);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
