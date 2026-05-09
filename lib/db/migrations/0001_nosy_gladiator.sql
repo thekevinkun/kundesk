@@ -1,0 +1,2 @@
+ALTER TABLE "processed_webhooks" DROP CONSTRAINT "processed_webhooks_external_id_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "processed_webhooks_source_external_id_idx" ON "processed_webhooks" USING btree ("source","external_id");

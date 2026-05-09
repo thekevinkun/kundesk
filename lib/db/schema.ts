@@ -10,6 +10,7 @@ import {
   boolean,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ─── CUSTOM TYPES ───
@@ -225,14 +226,25 @@ export const messages = pgTable("messages", {
 // Idempotency table — prevents double-processing on webhook retries
 // Midtrans retries notifications multiple times — we check this before processing
 
-export const processedWebhooks = pgTable("processed_webhooks", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+export const processedWebhooks = pgTable(
+  "processed_webhooks",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
-  // Midtrans order_id or Clerk event_id — unique per webhook event
-  externalId: text("external_id").notNull().unique(),
+    // Midtrans order_id or Clerk event_id
+    // unique per provider — not globally, since providers can reuse IDs
+    externalId: text("external_id").notNull(),
 
-  // "midtrans" | "clerk" — typed, not free text
-  source: text("source").notNull(),
+    // "midtrans" | "clerk" — typed, not free text
+    source: text("source").notNull(),
 
-  processedAt: timestamp("processed_at").notNull().defaultNow(),
-});
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Composite unique — same externalId can exist for different sources
+    uniqueIndex("processed_webhooks_source_external_id_idx").on(
+      table.source,
+      table.externalId,
+    ),
+  ],
+);

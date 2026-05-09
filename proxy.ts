@@ -22,10 +22,22 @@ export default clerkMiddleware(async (auth, request) => {
 
   // Dashboard routes require authentication + an active organization
   if (isDashboardRoute(request)) {
-    // protect() redirects to sign-in if userId is missing
-    // redirectToSignIn() handles the redirect automatically
-    await auth.protect();
+    const { userId, orgId } = await auth();
+
+    // Not signed in — redirect to sign-in
+    if (!userId) {
+      await auth.protect();
+      return;
+    }
+
+    // Signed in but no active org — redirect to org selection
+    if (!orgId) {
+      return Response.redirect(new URL("/select-organization", request.url));
+    }
   }
+
+  // All other routes — no special handling needed
+  return;
 });
 
 export const config = {
