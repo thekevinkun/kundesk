@@ -4,8 +4,17 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { saveMockUpload } from "@/lib/aws/s3";
+import { requireOrg } from "@/lib/auth";
+import { env } from "@/lib/env";
 
 export async function PUT(request: NextRequest): Promise<NextResponse> {
+  // Add a mock-mode gate
+  if (env.storageMode !== "mock") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const { orgId } = await requireOrg();
+
   // Extract the S3 key from query params — set by generatePresignedUploadUrl()
   const { searchParams } = new URL(request.url);
   const s3Key = searchParams.get("key");
@@ -15,6 +24,11 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       { error: "Missing key parameter" },
       { status: 400 },
     );
+  }
+
+  // Ensure the key belongs to the authenticated org before saving.
+  if (!s3Key.startsWith(`orgs/${orgId}/documents/`)) {
+    return NextResponse.json({ error: "Forbidden key scope" }, { status: 403 });
   }
 
   // Read the raw file bytes from the request body

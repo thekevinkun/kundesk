@@ -271,6 +271,7 @@ const DocumentsPage = () => {
   useEffect(() => {
     // Channel ref — typed correctly with pusher-js Channel type
     let channel: Channel | null = null;
+    let pusher: import("pusher-js").default | null = null;
 
     const setup = async () => {
       // Get orgId from Clerk's active session
@@ -283,7 +284,7 @@ const DocumentsPage = () => {
       // Dynamic import — pusher-js only loaded on client when needed
       const PusherClient = (await import("pusher-js")).default;
 
-      const pusher = new PusherClient(
+      pusher = new PusherClient(
         process.env.NEXT_PUBLIC_PUSHER_KEY ?? "mock-key",
         { cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER ?? "ap1" },
       );
@@ -305,6 +306,7 @@ const DocumentsPage = () => {
     return () => {
       channel?.unbind_all();
       channel?.unsubscribe();
+      pusher?.disconnect();
     };
   }, [queryClient]);
 

@@ -7,6 +7,17 @@ import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+const MOCK_UPLOAD_ROOT = "/tmp/mock-uploads";
+
+function resolveMockPath(s3Key: string): string {
+  const root = path.resolve(MOCK_UPLOAD_ROOT);
+  const resolved = path.resolve(root, s3Key);
+  if (!resolved.startsWith(root + path.sep)) {
+    throw new Error("Invalid mock upload key");
+  }
+  return resolved;
+}
+
 // Sanitizes a filename — removes special chars that cause S3 path issues
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -70,7 +81,7 @@ export async function downloadFromS3(s3Key: string): Promise<Buffer> {
   // Mock mode — read from local /tmp/mock-uploads/
   if (env.storageMode === "mock") {
     const { readFile } = await import("fs/promises");
-    const localPath = path.join("/tmp/mock-uploads", s3Key);
+    const localPath = resolveMockPath(s3Key);
     return readFile(localPath);
   }
 
@@ -113,7 +124,7 @@ export async function saveMockUpload(
   s3Key: string,
   buffer: Buffer,
 ): Promise<void> {
-  const localPath = path.join("/tmp/mock-uploads", s3Key);
+  const localPath = resolveMockPath(s3Key);
   const dir = path.dirname(localPath);
 
   // Create directory structure if it doesn't exist

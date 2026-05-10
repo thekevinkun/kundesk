@@ -35,11 +35,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const { orgId } = await requireOrg();
 
   // Parse and validate the request body
-  const body = (await request.json()) as {
+  let body: {
     filename?: unknown;
     contentType?: unknown;
     fileSize?: unknown;
   };
+
+  // Handle malformed JSON as a client error (400)
+  // This prevents crashes and gives the client a clear error message about the issue.
+  try {
+    body = (await request.json()) as {
+      filename?: unknown;
+      contentType?: unknown;
+      fileSize?: unknown;
+    };
+  } catch {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Invalid JSON body", status: 400 },
+      { status: 400 },
+    );
+  }
 
   const { filename, contentType, fileSize } = body;
 
@@ -73,7 +88,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Validate file size — reject before issuing URL to avoid wasted uploads
-  if (typeof fileSize !== "number" || fileSize > MAX_FILE_SIZE_BYTES) {
+  // Tighten file-size validation for non-finite/negative values.
+  if (
+    typeof fileSize !== "number" ||
+    !Number.isFinite(fileSize) ||
+    fileSize <= 0 ||
+    fileSize > MAX_FILE_SIZE_BYTES
+  ) {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "File size must be under 10MB", status: 400 },
       { status: 400 },

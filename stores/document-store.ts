@@ -46,7 +46,10 @@ export const useDocumentStore = create<DocumentStore>((set) => ({
       const file = next.get(id);
       // Guard — file may have been removed before progress event fires
       if (!file) return state;
-      next.set(id, { ...file, progress });
+      const safeProgress = Number.isFinite(progress)
+        ? Math.min(100, Math.max(0, progress))
+        : file.progress;
+      next.set(id, { ...file, progress: safeProgress });
       return { uploadingFiles: next };
     }),
 

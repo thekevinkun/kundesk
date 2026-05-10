@@ -65,7 +65,11 @@ export function chunkText(text: string): TextChunk[] {
 
     // Next chunk starts OVERLAP_CHARS before the end of this one
     // This is the sliding window — overlap preserves cross-boundary context
-    start = breakPoint - OVERLAP_CHARS;
+    // If we've reached the end of the text, exit the loop
+    if (breakPoint >= normalized.length) {
+      break;
+    }
+    start = Math.max(breakPoint - OVERLAP_CHARS, start + 1);
   }
 
   return chunks;

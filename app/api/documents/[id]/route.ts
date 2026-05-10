@@ -16,14 +16,16 @@ export async function DELETE(
 
   // Await params — Next.js 16 requires async params
   const { id } = await params;
-  const documentId = parseInt(id, 10);
 
-  if (isNaN(documentId)) {
+  // Use strict numeric validation for route id
+  if (!/^\d+$/.test(id)) {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "Invalid document ID", status: 400 },
       { status: 400 },
     );
   }
+
+  const documentId = Number(id);
 
   // Verify document belongs to this org — same error for missing or forbidden
   const [document] = await db
@@ -44,18 +46,18 @@ export async function DELETE(
     );
   }
 
-  // Delete chunks first — FK constraint requires this order
-  await db.delete(chunks).where(
-    and(
-      eq(chunks.documentId, documentId),
-      eq(chunks.orgId, orgId), // ← belt-and-suspenders tenant isolation
-    ),
-  );
+  // Perform two dependent deletes separately. If the second operation fails, data is left partially deleted.
+  await db.transaction(async (tx) => {
+    // Delete chunks first — FK constraint requires this order
+    await tx
+      .delete(chunks)
+      .where(and(eq(chunks.documentId, documentId), eq(chunks.orgId, orgId)));
 
-  // Delete the document record
-  await db
-    .delete(documents)
-    .where(and(eq(documents.id, documentId), eq(documents.orgId, orgId)));
+    // Delete the document record
+    await tx
+      .delete(documents)
+      .where(and(eq(documents.id, documentId), eq(documents.orgId, orgId)));
+  });
 
   // 204 No Content — correct HTTP response for successful DELETE with no body
   return new NextResponse(null, { status: 204 });
