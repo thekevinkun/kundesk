@@ -1,6 +1,7 @@
+import type { Metadata } from "next";
 import { DocumentsPage } from "@/components/dashboard";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Dokumen",
 };
 

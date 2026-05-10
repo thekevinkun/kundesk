@@ -3,11 +3,16 @@
 // Mobile: sidebar becomes Sheet drawer. Desktop: fixed sidebar.
 
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { Sidebar, Topbar } from "@/components/dashboard";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "sonner";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 interface DashboardLayoutProps {
   children: ReactNode;
