@@ -293,6 +293,17 @@ async function renderPdfPagesToImages(buffer: Buffer): Promise<Buffer[]> {
     disableFontFace: true,
   });
   const pdfDocument = await loadingTask.promise;
+
+  // Limiting the number of PDF pages processed for OCR
+  // Limit to prevent resource exhaustion
+  const MAX_OCR_PAGES = 50;
+  if (pdfDocument.numPages > MAX_OCR_PAGES) {
+    await pdfDocument.destroy();
+    throw new Error(
+      `PDF has ${pdfDocument.numPages} pages, exceeding the OCR limit of ${MAX_OCR_PAGES} pages.`,
+    );
+  }
+
   const pageImages: Buffer[] = [];
 
   try {
@@ -337,6 +348,7 @@ async function ocrPdfPageWithOpenAI(
       Authorization: `Bearer ${env.openaiApiKey}`,
       "Content-Type": "application/json",
     },
+    signal: AbortSignal.timeout(60_000), // 60 second timeout
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
