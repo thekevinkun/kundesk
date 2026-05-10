@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["@napi-rs/canvas", "@napi-rs/canvas-linux-x64-gnu"],
 };
 
 export default nextConfig;

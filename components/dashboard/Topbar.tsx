@@ -1,7 +1,3 @@
-// Dashboard topbar — sticky header with search, actions, user pill
-// Hamburger button on mobile opens sidebar drawer via Zustand store
-// Color picker updates CSS variable live — stored in chatbots.accentColor (Phase 5)
-
 "use client";
 
 import { useState } from "react";
@@ -34,7 +30,7 @@ const COLOR_PRESETS = [
   { hex: "#64748b", label: "Slate" },
 ];
 
-const DashboardTopbar = () => {
+const Topbar = () => {
   const { toggleMobile } = useSidebarStore();
   const [colorPanelOpen, setColorPanelOpen] = useState(false);
   const [activeColor, setActiveColor] = useState("#069494");
@@ -204,4 +200,4 @@ const DashboardTopbar = () => {
   );
 };
 
-export default DashboardTopbar;
+export default Topbar;

@@ -1,4 +1,5 @@
-import DashboardSidebar from "./DashboardSidebar";
-import DashboardTopbar from "./DashboardTopbar";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
+import DocumentsPage from "./DocumentsPage";
 
-export { DashboardSidebar, DashboardTopbar };
+export { Sidebar, Topbar, DocumentsPage };

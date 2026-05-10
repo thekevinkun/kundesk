@@ -3,9 +3,11 @@
 // Mobile: sidebar becomes Sheet drawer. Desktop: fixed sidebar.
 
 import type { ReactNode } from "react";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { DashboardSidebar, DashboardTopbar } from "@/components/dashboard";
+import { auth } from "@clerk/nextjs/server";
+import { Sidebar, Topbar } from "@/components/dashboard";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { Toaster } from "sonner";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -23,18 +25,35 @@ export default async function DashboardLayout({
   if (!orgId) redirect("/select-organization");
 
   return (
-    <div className="min-h-screen bg-(--color-bg-page) flex">
-      {/* Sidebar — hidden on mobile, fixed on desktop */}
-      <DashboardSidebar />
+    // QueryProvider wraps everything — TanStack Query available to all dashboard pages
+    <QueryProvider>
+      <div className="min-h-screen bg-(--color-bg-page) flex">
+        {/* Sidebar — hidden on mobile, fixed on desktop */}
+        <Sidebar />
 
-      {/* Main area — offset by sidebar width on desktop */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
-        {/* Topbar — sticky at top */}
-        <DashboardTopbar />
+        {/* Main area — offset by sidebar width on desktop */}
+        <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
+          {/* Topbar — sticky at top */}
+          <Topbar />
 
-        {/* Page content — each dashboard route renders here */}
-        <main className="flex-1 p-4 md:p-6 lg:p-7">{children}</main>
+          {/* Page content — each dashboard route renders here */}
+          <main className="flex-1 p-4 md:p-6 lg:p-7">{children}</main>
+        </div>
       </div>
-    </div>
+      {/* Sonner toast container — positioned bottom-right, matches design system */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            fontFamily: "var(--font-body)",
+            fontSize: "13px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-border)",
+            background: "var(--color-bg-card)",
+            color: "var(--color-text-900)",
+          },
+        }}
+      />
+    </QueryProvider>
   );
 }

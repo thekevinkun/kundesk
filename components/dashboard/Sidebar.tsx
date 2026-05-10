@@ -1,7 +1,3 @@
-// Dashboard sidebar — fixed on desktop, Sheet drawer on mobile
-// Nav items, logo, org switcher, sidebar CTA card
-// Active state uses --color-brand from design system
-
 "use client";
 
 import Link from "next/link";
@@ -230,7 +226,7 @@ const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
 };
 
 // ── Main export — handles both desktop fixed + mobile drawer ──
-const DashboardSidebar = () => {
+const Sidebar = () => {
   const { mobileOpen, closeMobile } = useSidebarStore();
 
   return (
@@ -259,4 +255,4 @@ const DashboardSidebar = () => {
   );
 };
 
-export default DashboardSidebar;
+export default Sidebar;
