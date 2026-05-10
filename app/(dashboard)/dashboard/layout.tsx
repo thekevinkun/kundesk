@@ -43,14 +43,21 @@ export default async function DashboardLayout({
       {/* Sonner toast container — positioned bottom-right, matches design system */}
       <Toaster
         position="bottom-right"
+        duration={5000}
         toastOptions={{
           style: {
+            display: "flex",
+            alignItems: "start",
             fontFamily: "var(--font-body)",
-            fontSize: "13px",
+            fontSize: "12px",
             borderRadius: "var(--radius-md)",
             border: "1px solid var(--color-border)",
             background: "var(--color-bg-card)",
             color: "var(--color-text-900)",
+          },
+          classNames: {
+            // Targets the icon container
+            icon: "pt-1",
           },
         }}
       />
