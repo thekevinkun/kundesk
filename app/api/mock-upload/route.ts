@@ -3,6 +3,7 @@
 // Only active when KUNDESK_STORAGE_MODE=mock — real S3 never hits this route
 
 import { type NextRequest, NextResponse } from "next/server";
+import path from "path";
 import { saveMockUpload } from "@/lib/aws/s3";
 import { requireOrg } from "@/lib/auth";
 import { env } from "@/lib/env";
@@ -27,7 +28,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   }
 
   // Ensure the key belongs to the authenticated org before saving.
-  if (!s3Key.startsWith(`orgs/${orgId}/documents/`)) {
+  const normalizedKey = path.posix.normalize(s3Key);
+  const parts = normalizedKey.split("/");
+  const hasTraversal =
+    parts.includes("..") ||
+    parts.includes(".") ||
+    normalizedKey.startsWith("/");
+  if (hasTraversal || !normalizedKey.startsWith(`orgs/${orgId}/documents/`)) {
     return NextResponse.json({ error: "Forbidden key scope" }, { status: 403 });
   }
 
@@ -40,7 +47,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
   const buffer = Buffer.from(arrayBuffer);
 
   // Save to /tmp/mock-uploads/{s3Key} — mirrors the S3 key path structure
-  await saveMockUpload(s3Key, buffer);
+  await saveMockUpload(normalizedKey, buffer);
 
   // Return 200 with empty body — matches real S3 presigned PUT response
   return new NextResponse(null, { status: 200 });
