@@ -2,11 +2,12 @@
 // Pure function — no side effects, fully unit testable
 // Target: ~500 tokens per chunk, 50 token overlap between consecutive chunks
 
-// Approximate token count — 1 token ≈ 4 characters (OpenAI's rule of thumb)
-// Not exact, but consistent — all chunks use the same approximation
-const CHARS_PER_TOKEN = 4;
-const TARGET_CHUNK_TOKENS = 500;
-const OVERLAP_TOKENS = 50;
+// Approximate token count for Indonesian text — 1 token ≈ 3 characters
+// Indonesian has longer words than English so the standard "4 chars" underestimates token count
+// Using 3 produces chunks of ~600–900 chars which matches ~250–350 tokens — better retrieval precision
+const CHARS_PER_TOKEN = 3;
+const TARGET_CHUNK_TOKENS = 300; // was 500 — produces ~900 char chunks for Indonesian
+const OVERLAP_TOKENS = 30; // was 50 — proportional to new target
 
 const TARGET_CHUNK_CHARS = TARGET_CHUNK_TOKENS * CHARS_PER_TOKEN; // 2000 chars
 const OVERLAP_CHARS = OVERLAP_TOKENS * CHARS_PER_TOKEN; // 200 chars
