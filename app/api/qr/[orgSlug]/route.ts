@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { orgs, chatbots } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 import QRCode from "qrcode";
+import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { orgs, chatbots } from "@/lib/db/schema";
 
 export async function GET(
   request: NextRequest,
@@ -29,13 +29,13 @@ export async function GET(
 
   // Fetch active chatbot to get the accent color for the QR code foreground
   const [chatbot] = await db
-    .select({ accentColor: chatbots.accentColor, isActive: chatbots.isActive })
+    .select({ accentColor: chatbots.accentColor })
     .from(chatbots)
-    .where(eq(chatbots.orgId, org.id))
+    .where(and(eq(chatbots.orgId, org.id), eq(chatbots.isActive, true)))
     .limit(1);
 
   // No chatbot or inactive — same 404, no enumeration
-  if (!chatbot?.isActive) {
+  if (!chatbot) {
     return new Response("Not found", { status: 404 });
   }
 
