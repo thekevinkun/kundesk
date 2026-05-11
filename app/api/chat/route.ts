@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
@@ -130,6 +130,9 @@ function createOpenAIStream(
         controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
         controller.close();
       } catch (err) {
+        // Save the user's message even on failure — history shouldn't be silently lost
+        // Pass empty string — handleStreamComplete skips saving assistant msg when empty
+        onComplete("");
         // Send error event so the client can show an error state instead of hanging
         controller.enqueue(
           encoder.encode(
@@ -336,19 +339,27 @@ export async function POST(request: NextRequest) {
           content: message,
         });
 
-        // Save the assistant's complete response
-        await tx.insert(messages).values({
-          orgId: org.id,
-          conversationId,
-          role: "assistant",
-          content: assistantResponse,
-        });
+        // Save assistant response only if non-empty — empty means stream failed
+        if (assistantResponse) {
+          await tx.insert(messages).values({
+            orgId: org.id,
+            conversationId,
+            role: "assistant",
+            content: assistantResponse,
+          });
+        }
 
-        // Atomic increment — SET x = x + 1 avoids race conditions from concurrent requests
+        // True atomic increment with SQL-level limit enforcement —
+        // WHERE clause prevents exceeding the limit even under concurrent load
         await tx
           .update(orgs)
-          .set({ messagesUsed: org.messagesUsed + 1 })
-          .where(eq(orgs.id, org.id));
+          .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
+          .where(
+            and(
+              eq(orgs.id, org.id),
+              sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
+            ),
+          );
       });
     } catch (err) {
       // Log but don't crash — the customer already received their response

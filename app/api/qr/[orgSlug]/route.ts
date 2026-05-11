@@ -71,8 +71,9 @@ export async function GET(
   }
 
   // PNG — better for printing, download button in dashboard
-  const pngBuffer = await QRCode.toBuffer(chatUrl, {
-    type: "png",
+  // toBuffer() doesn't exist in qrcode v1.5.4 — use toDataURL() and decode from base64
+  const dataUrl = await QRCode.toDataURL(chatUrl, {
+    type: "image/png",
     color: {
       dark: chatbot.accentColor,
       light: "#ffffff",
@@ -83,8 +84,9 @@ export async function GET(
     errorCorrectionLevel: "M",
   });
 
-  // Convert Buffer to Uint8Array — Buffer isn't assignable to BodyInit in Next.js types
-  const pngBytes = new Uint8Array(pngBuffer);
+  // Strip the data URL prefix to get raw base64, then decode to bytes
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+  const pngBytes = new Uint8Array(Buffer.from(base64, "base64"));
 
   return new Response(pngBytes, {
     headers: {
