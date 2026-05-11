@@ -7,6 +7,7 @@ import { requireOrg } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { documents } from "@/lib/db/schema";
 import { generatePresignedUploadUrl } from "@/lib/aws/s3";
+import { checkUploadRateLimit } from "@/lib/redis";
 import type { ApiResponse } from "@/types/api";
 
 // Allowed MIME types — enforced here and again in the processing route
@@ -33,6 +34,20 @@ interface UploadUrlData {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Guard — requires both userId and orgId from Clerk session
   const { orgId } = await requireOrg();
+
+  // Check upload rate limit — 10 uploads per hour per org
+  // Prevents bulk upload abuse and runaway S3 + processing costs
+  const uploadLimit = await checkUploadRateLimit(orgId);
+  if (!uploadLimit.success) {
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: "Terlalu banyak upload. Maksimal 10 file per jam.",
+        status: 429,
+      },
+      { status: 429 },
+    );
+  }
 
   // Parse and validate the request body
   let body: {

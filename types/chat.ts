@@ -21,6 +21,16 @@ export interface ChatMessage {
   createdAt: Date;
 }
 
+// Shape of chatbot configuration used when building the system prompt and rendering the chat UI
+export type ChatbotConfig = {
+  name: string;
+  tone: "friendly" | "professional" | "formal";
+  language: "id" | "en" | "both";
+  accentColor: string;
+  greetingMessage: string | null;
+  systemPrompt: string | null;
+};
+
 // A conversation session
 export interface Conversation {
   id: number;
@@ -41,6 +51,13 @@ export interface ConversationSession {
   startedAt: number; // Unix timestamp
 }
 
+// Lean message shape for OpenAI conversation history — role + content only
+// ChatMessage has the full DB shape — this is what we pass to the API
+export type ConversationTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 // Payload sent to the chat API route
 export interface ChatRequestPayload {
   message: string;
@@ -55,3 +72,36 @@ export type StreamEvent =
   | { type: "done"; conversationId: number }
   | { type: "error"; message: string }
   | { type: "limit"; message: string };
+
+// Shape of a message as rendered in the chat UI — extends ConversationTurn with a local id
+export interface ChatUIMessage {
+  // Local-only id for React key — not the DB id
+  localId: string;
+  role: "user" | "assistant";
+  content: string;
+  // True while the assistant is still streaming this message
+  isStreaming?: boolean;
+}
+
+export interface ChatStore {
+  // All messages rendered in the chat UI
+  messages: ChatUIMessage[];
+  // True while waiting for the first token of a new assistant response
+  isLoading: boolean;
+  // The session ID for this browser session — generated once on first load
+  sessionId: string;
+  // Whether the input should be disabled (streaming in progress)
+  isStreaming: boolean;
+  // Error message to show in the UI — null when no error
+  error: string | null;
+
+  // Actions
+  setSessionId: (id: string) => void;
+  addUserMessage: (content: string) => void;
+  startAssistantMessage: () => string; // returns localId of the new message
+  appendToken: (localId: string, token: string) => void;
+  finalizeAssistantMessage: (localId: string) => void;
+  setError: (error: string | null) => void;
+  setLoading: (loading: boolean) => void;
+  clearError: () => void;
+}

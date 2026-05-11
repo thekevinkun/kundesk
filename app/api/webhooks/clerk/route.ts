@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { orgs, processedWebhooks } from "@/lib/db/schema";
+import { orgs, chatbots, processedWebhooks } from "@/lib/db/schema";
 
 // Clerk webhook event types we care about — typed, not free text
 type ClerkOrgEvent =
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
 
       // Handle org sync based on event type
       if (type === "organization.created" || type === "organization.updated") {
-        // Upsert — insert if new, update name/slug if already exists
+        // Upsert org — insert if new, update name/slug if already exists
         await tx
           .insert(orgs)
           .values({
@@ -103,6 +103,25 @@ export async function POST(req: Request) {
               slug: `${data.slug ?? data.id}-${data.id.slice(-8)}`,
             },
           });
+
+        // On new org creation — seed a default chatbot row automatically.
+        // onConflictDoNothing — if org.updated fires again, existing chatbot is untouched.
+        // Business owner customizes name/tone/color from dashboard in Phase 5.
+        if (type === "organization.created") {
+          await tx
+            .insert(chatbots)
+            .values({
+              orgId: data.id,
+              name: `${data.name}'s Assistant`,
+              systemPrompt: null,
+              language: "id",
+              tone: "friendly",
+              greetingMessage: "Halo! Ada yang bisa saya bantu?",
+              accentColor: "#069494",
+              isActive: true,
+            })
+            .onConflictDoNothing();
+        }
       }
 
       if (type === "organization.deleted") {
