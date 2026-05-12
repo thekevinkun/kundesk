@@ -74,3 +74,27 @@ export interface MidtransNotification {
   signature_key: string;
   status_code: string;
 }
+
+// Represents a single past payment — for the history table on billing page
+// Populated from processedWebhooks + orgs
+// Extended with real Midtrans transaction history in a future phase
+export interface PaymentHistoryItem {
+  orderId: string;
+  plan: PlanName;
+  amount: number;
+  paymentMethod: string;
+  paidAt: Date;
+  status: "success" | "failed" | "pending";
+}
+
+// All data the billing page needs — fetched once in page.tsx via Promise.all
+export interface BillingPageData {
+  currentPlan: PlanName;
+  subscriptionStatus: SubscriptionStatus;
+  messagesUsed: number;
+  messagesLimit: number;
+  currentPeriodEnd: Date | null;
+  nextBillingDate: Date | null;
+  lastPaymentMethod: string | null;
+  paymentHistory: PaymentHistoryItem[];
+}

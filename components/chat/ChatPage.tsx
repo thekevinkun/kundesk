@@ -125,6 +125,7 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
     isLoading,
     isStreaming,
     error,
+    errorType,
     sessionId,
     setSessionId,
     clearError,
@@ -271,8 +272,32 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
         {/* Typing indicator — shown while waiting for first token */}
         {isLoading && <TypingIndicator accentColor={config.accentColor} />}
 
-        {/* Error banner */}
-        {error && (
+        {/* Quota exceeded — intentional block, not a generic error */}
+        {error && errorType === "quota_exceeded" && (
+          <div
+            className="flex flex-col items-center text-center px-6 py-8 mb-4"
+            role="status"
+            aria-live="polite"
+          >
+            {/* Lock icon */}
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-4"
+              style={{ background: `${config.accentColor}18` }}
+              aria-hidden="true"
+            >
+              🔒
+            </div>
+            <p className="text-gray-800 font-semibold text-sm mb-1">
+              Batas pesan telah tercapai
+            </p>
+            <p className="text-gray-500 text-xs leading-relaxed max-w-[240px]">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {/* Generic error banner — rate limit, network issues, etc. */}
+        {error && errorType !== "quota_exceeded" && (
           <div
             className="flex items-center gap-2 px-4 py-3 mb-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm"
             role="alert"

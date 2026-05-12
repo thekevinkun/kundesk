@@ -10,6 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { slideInLeft, staggerContainer, staggerItem } from "@/lib/animations";
+import type { SubscriptionStatus } from "@/types/billing";
 
 // ── Nav item type ──
 interface NavItem {
@@ -25,11 +26,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     label: "Main",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-      {
-        href: "/dashboard/conversations",
-        label: "Percakapan",
-        icon: "💬",
-      },
+      { href: "/dashboard/conversations", label: "Percakapan", icon: "💬" },
       {
         href: "/dashboard/analytics",
         label: "Analytics",
@@ -67,16 +64,24 @@ const badgeClass: Record<string, string> = {
 const NavItemRow = ({
   item,
   onClick,
+  subscriptionStatus,
 }: {
   item: NavItem;
   onClick?: (() => void) | undefined;
+  subscriptionStatus: SubscriptionStatus;
 }) => {
   const pathname = usePathname();
-  // Exact match for dashboard root, startsWith for nested routes
+
   const isActive =
     item.href === "/dashboard"
       ? pathname === "/dashboard"
       : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+  // Billing badge — amber warning when past_due or suspended
+  // Rendered only on the billing nav item, only when action is needed
+  const showBillingWarning =
+    item.href === "/dashboard/billing" &&
+    (subscriptionStatus === "past_due" || subscriptionStatus === "suspended");
 
   return (
     <Link
@@ -84,14 +89,13 @@ const NavItemRow = ({
       aria-current={isActive ? "page" : undefined}
       {...(onClick ? { onClick } : {})}
       className={cn(
-        // Base nav item styles from design system
         "flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-[13.5px] font-medium transition-all duration-150 relative group",
         isActive
           ? "bg-(--color-brand-light) text-(--color-brand) font-semibold"
           : "text-(--color-text-500) hover:bg-(--color-bg-page) hover:text-(--color-text-900)",
       )}
     >
-      {/* Active indicator bar on left edge */}
+      {/* Active indicator bar */}
       {isActive && (
         <motion.div
           layoutId="active-nav-bar"
@@ -99,7 +103,7 @@ const NavItemRow = ({
         />
       )}
 
-      {/* Icon background — teal tint when active */}
+      {/* Icon background */}
       <div
         className={cn(
           "w-8 h-8 rounded-[7px] flex items-center justify-center text-base flex-shrink-0 transition-colors",
@@ -112,8 +116,8 @@ const NavItemRow = ({
       {/* Label */}
       <span className="flex-1">{item.label}</span>
 
-      {/* Badge */}
-      {item.badge && (
+      {/* Static badge from nav config — e.g. "Live" on Analytics */}
+      {item.badge && !showBillingWarning && (
         <span
           className={cn(
             "text-[10.5px] font-bold min-w-5 h-5 rounded-full flex items-center justify-center px-1.5",
@@ -124,22 +128,37 @@ const NavItemRow = ({
         </span>
       )}
 
-      {/* Live pending handoff badge — red, only shows when count > 0 */}
+      {/* Billing warning badge — amber ⚠ when past_due or suspended */}
+      {showBillingWarning && (
+        <span
+          className="text-[10.5px] font-bold min-w-5 h-5 rounded-full flex items-center justify-center px-1.5 bg-(--color-warning-bg) text-(--color-warning)"
+          aria-label="Tindakan diperlukan — tagihan jatuh tempo"
+        >
+          ⚠
+        </span>
+      )}
+
+      {/* Live pending handoff badge */}
       {item.href === "/dashboard/conversations" && <ConversationCountBadge />}
 
-      {/* Live document count badge — only on the documents nav item */}
+      {/* Live document count badge */}
       {item.href === "/dashboard/documents" && <DocCountBadge />}
     </Link>
   );
 };
 
-// ── Sidebar content — shared between desktop and mobile drawer ─
-const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
+// ── Sidebar content — shared between desktop and mobile drawer ──
+const SidebarContent = ({
+  onNavClick,
+  subscriptionStatus,
+}: {
+  onNavClick?: () => void;
+  subscriptionStatus: SubscriptionStatus;
+}) => {
   return (
     <div className="flex flex-col h-full">
       {/* Logo + Org Switcher */}
       <div className="px-6 py-5 border-b border-(--color-border) flex-shrink-0">
-        {/* Kundesk wordmark */}
         <div className="text-[22px] font-extrabold tracking-[-0.04em] leading-none mb-3">
           <span className="text-(--color-text-900)">Kun</span>
           <span className="text-(--color-brand)">desk</span>
@@ -147,8 +166,6 @@ const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
         <div className="text-[11px] text-(--color-text-400) mb-3">
           AI Customer Service
         </div>
-
-        {/* Clerk org switcher — lets owner switch between orgs */}
         <OrganizationSwitcher
           hidePersonal
           afterSelectOrganizationUrl="/dashboard"
@@ -168,22 +185,24 @@ const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
+        aria-label="Dashboard navigation"
       >
         {NAV_SECTIONS.map((section) => (
           <div key={section.label} className="mb-4">
-            {/* Section label */}
             <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-(--color-text-400) px-2.5 mb-1">
               {section.label}
             </div>
-
-            {/* Nav items */}
             <motion.div
               variants={staggerContainer}
               className="flex flex-col gap-0.5"
             >
               {section.items.map((item) => (
                 <motion.div key={item.href} variants={staggerItem}>
-                  <NavItemRow item={item} onClick={onNavClick} />
+                  <NavItemRow
+                    item={item}
+                    onClick={onNavClick}
+                    subscriptionStatus={subscriptionStatus}
+                  />
                 </motion.div>
               ))}
             </motion.div>
@@ -193,7 +212,7 @@ const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
 
       <Separator className="bg-(--color-border)" />
 
-      {/* Sidebar CTA card — upgrade prompt */}
+      {/* Sidebar CTA card */}
       <div className="p-3 flex-shrink-0">
         <div
           className="relative overflow-hidden rounded-[14px] p-[18px]"
@@ -202,11 +221,12 @@ const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
               "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-dark) 100%)",
           }}
         >
-          {/* Decorative circles */}
           <div className="absolute -right-5 -top-5 w-[90px] h-[90px] rounded-full bg-white/10" />
           <div className="absolute right-2.5 -bottom-8 w-[70px] h-[70px] rounded-full bg-white/7" />
 
-          <span className="text-[28px] mb-2 block">🚀</span>
+          <span className="text-[28px] mb-2 block" aria-hidden="true">
+            🚀
+          </span>
           <div className="text-[13px] font-bold text-white mb-1">
             Upgrade ke Pro
           </div>
@@ -226,30 +246,36 @@ const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => {
   );
 };
 
-// ── Main export — handles both desktop fixed + mobile drawer ──
-const Sidebar = () => {
+// ── Main export ──
+interface SidebarProps {
+  subscriptionStatus: SubscriptionStatus;
+}
+
+const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
   const { mobileOpen, closeMobile } = useSidebarStore();
 
   return (
     <>
-      {/* Desktop sidebar — fixed, always visible on lg+ */}
+      {/* Desktop sidebar */}
       <motion.aside
         className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[230px] bg-(--color-bg-card) border-r border-(--color-border) z-50"
         variants={slideInLeft}
         initial="hidden"
         animate="visible"
       >
-        <SidebarContent />
+        <SidebarContent subscriptionStatus={subscriptionStatus} />
       </motion.aside>
 
-      {/* Mobile sidebar — Sheet drawer, triggered by topbar hamburger */}
-      {/* Exported separately so topbar can trigger it */}
+      {/* Mobile sidebar drawer */}
       <Sheet open={mobileOpen} onOpenChange={(open) => !open && closeMobile()}>
         <SheetContent
           side="left"
           className="p-0 w-[230px] bg-(--color-bg-card) border-r border-(--color-border)"
         >
-          <SidebarContent onNavClick={closeMobile} />
+          <SidebarContent
+            onNavClick={closeMobile}
+            subscriptionStatus={subscriptionStatus}
+          />
         </SheetContent>
       </Sheet>
     </>

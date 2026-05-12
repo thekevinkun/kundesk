@@ -1,6 +1,7 @@
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import DashboardOverview from "./DashboardOverview";
+import BillingPage from "./BillingPage";
 import DocumentsPage from "./DocumentsPage";
 import ConversationsPage, {
   ConversationRowSkeleton,
@@ -14,6 +15,7 @@ export {
   Sidebar,
   Topbar,
   DashboardOverview,
+  BillingPage,
   DocumentsPage,
   ConversationsPage,
   ConversationRowSkeleton,

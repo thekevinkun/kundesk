@@ -7,6 +7,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   sessionId: "",
   isStreaming: false,
   error: null,
+  // Tracks whether the error is quota-related or generic — drives different UI in ChatPage
+  errorType: null,
 
   setSessionId: (id) => set({ sessionId: id }),
 
@@ -22,6 +24,7 @@ export const useChatStore = create<ChatStore>((set) => ({
         },
       ],
       error: null,
+      errorType: null,
     })),
 
   // Adds an empty assistant message bubble that tokens will stream into
@@ -60,7 +63,16 @@ export const useChatStore = create<ChatStore>((set) => ({
       isStreaming: false,
     })),
 
-  setError: (error) => set({ error, isLoading: false, isStreaming: false }),
+  // Generic error setter — errorType defaults to "generic"
+  setError: (error) =>
+    set({ error, errorType: "generic", isLoading: false, isStreaming: false }),
+
+  // Typed error setter — used by useChatStream for specific error types
+  setErrorWithType: (error, errorType) =>
+    set({ error, errorType, isLoading: false, isStreaming: false }),
+
   setLoading: (isLoading) => set({ isLoading }),
-  clearError: () => set({ error: null }),
+
+  // Clears both error message and type together — never leave them out of sync
+  clearError: () => set({ error: null, errorType: null }),
 }));

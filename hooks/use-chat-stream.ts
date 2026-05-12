@@ -11,6 +11,7 @@ export function useChatStream(orgSlug: string) {
     appendToken,
     finalizeAssistantMessage,
     setError,
+    setErrorWithType,
     setLoading,
     isStreaming,
   } = useChatStore();
@@ -35,17 +36,32 @@ export function useChatStream(orgSlug: string) {
           }),
         });
 
-        // Handle non-streaming error responses (rate limit, plan limit, etc.)
+        // Handle non-streaming error responses — typed so ChatPage renders appropriate UI
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
-          const errorMessage =
-            response.status === 402
-              ? "Batas pesan bisnis ini telah tercapai. Silakan hubungi mereka langsung."
-              : response.status === 429
-                ? "Terlalu banyak pesan. Tunggu sebentar dan coba lagi."
-                : ((err as { error?: string }).error ??
-                  "Terjadi kesalahan. Coba lagi.");
-          setError(errorMessage);
+
+          if (response.status === 402) {
+            // Quota exhausted — ChatPage renders a dedicated block, not a generic error banner
+            setErrorWithType(
+              "Batas pesan bisnis ini telah tercapai. Silakan hubungi mereka langsung.",
+              "quota_exceeded",
+            );
+            return;
+          }
+
+          if (response.status === 429) {
+            setErrorWithType(
+              "Terlalu banyak pesan. Tunggu sebentar dan coba lagi.",
+              "rate_limit",
+            );
+            return;
+          }
+
+          // Generic fallback — unknown error from server
+          setError(
+            (err as { error?: string }).error ??
+              "Terjadi kesalahan. Coba lagi.",
+          );
           return;
         }
 
@@ -120,6 +136,7 @@ export function useChatStream(orgSlug: string) {
       appendToken,
       finalizeAssistantMessage,
       setError,
+      setErrorWithType,
     ],
   );
 

@@ -30,6 +30,9 @@ export const env = {
   // ── App URL ──
   appUrl: requireEnv("NEXT_PUBLIC_APP_URL"),
 
+  // Cron secret — validates requests come from Vercel scheduler, not random callers
+  cronSecret: requireEnv("CRON_SECRET"),
+
   // ── AI — only required when mode=openai ──
   openaiApiKey: process.env.OPENAI_API_KEY,
 

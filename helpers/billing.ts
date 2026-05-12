@@ -1,0 +1,89 @@
+// UI-only config for plan cards — labels, icons, feature lists, colors
+// Separate from types/billing.ts (which owns PlanName, PLAN_LIMITS, PLAN_PRICE)
+// This is presentation data — only imported by billing UI components
+
+import type { PlanName } from "@/types/billing";
+
+export interface PlanUIConfig {
+  label: string;
+  desc: string;
+  color: string; // icon background Tailwind class
+  icon: string;
+  features: string[];
+  unavailable: string[];
+}
+
+export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
+  free: {
+    label: "Free",
+    desc: "Untuk bisnis yang baru mulai menjajal AI",
+    color: "bg-(--color-bg-page)",
+    icon: "🌱",
+    features: [
+      "100 pesan / bulan",
+      "3 dokumen upload",
+      "1 chatbot",
+      "QR Code + link publik",
+    ],
+    unavailable: [
+      "Embed widget",
+      "Analytics dashboard",
+      "Custom branding",
+      "API access",
+    ],
+  },
+  starter: {
+    label: "Starter",
+    desc: "Untuk bisnis yang sudah aktif melayani pelanggan",
+    color: "bg-(--color-brand-light)",
+    icon: "⚡",
+    features: [
+      "1.000 pesan / bulan",
+      "20 dokumen upload",
+      "1 chatbot",
+      "QR Code + link publik",
+      "Embed widget",
+      "Analytics dasar",
+    ],
+    unavailable: ["Custom branding", "API access"],
+  },
+  pro: {
+    label: "Pro",
+    desc: "Untuk bisnis besar atau agensi yang kelola banyak klien",
+    color: "bg-(--color-brand-light)",
+    icon: "🚀",
+    features: [
+      "10.000 pesan / bulan",
+      "Dokumen unlimited",
+      "3 chatbot",
+      "QR Code + link publik",
+      "Embed widget",
+      "Analytics lengkap",
+      "Custom branding",
+      "API access",
+    ],
+    unavailable: [],
+  },
+};
+
+// Maps subscriptionStatus to display label + badge class
+export function getStatusDisplay(
+  status: "free" | "active" | "past_due" | "suspended" | "cancelled",
+): { label: string; className: string } {
+  switch (status) {
+    case "active":
+      return { label: "Aktif", className: "badge-base badge-success" };
+    case "past_due":
+      return {
+        label: "Tagihan Jatuh Tempo",
+        className: "badge-base badge-warning",
+      };
+    case "suspended":
+      return { label: "Disuspend", className: "badge-base badge-danger" };
+    case "cancelled":
+      return { label: "Dibatalkan", className: "badge-base badge-danger" };
+    case "free":
+    default:
+      return { label: "Gratis", className: "badge-base badge-brand" };
+  }
+}

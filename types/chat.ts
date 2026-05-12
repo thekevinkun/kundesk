@@ -94,6 +94,8 @@ export interface ChatStore {
   isStreaming: boolean;
   // Error message to show in the UI — null when no error
   error: string | null;
+  // Error type — distinguishes quota exhausted from generic errors for different UI treatment
+  errorType: "quota_exceeded" | "rate_limit" | "generic" | null;
 
   // Actions
   setSessionId: (id: string) => void;
@@ -104,4 +106,8 @@ export interface ChatStore {
   setError: (error: string | null) => void;
   setLoading: (loading: boolean) => void;
   clearError: () => void;
+  setErrorWithType: (
+    error: string,
+    errorType: "quota_exceeded" | "rate_limit" | "generic",
+  ) => void;
 }
