@@ -10,10 +10,13 @@ interface CurrentPlanCardProps {
 const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
   const config = PLAN_CONFIG[data.currentPlan];
   const status = getStatusDisplay(data.subscriptionStatus);
-  const usagePct = Math.min(
-    Math.round((data.messagesUsed / data.messagesLimit) * 100),
-    100,
-  );
+  const usagePct =
+    data.messagesLimit > 0
+      ? Math.min(
+          Math.round((data.messagesUsed / data.messagesLimit) * 100),
+          100,
+        )
+      : 0;
 
   // Usage bar turns red above 90% — visual warning before quota runs out
   const barColor =
@@ -34,7 +37,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
         <span className={status.className}>{status.label}</span>
       </div>
 
-      {/* Plan identity — icon + name + description */}
+      {/* Plan identity — icon  name + description */}
       <div className="flex items-center gap-4 mb-6">
         <div
           className={`w-14 h-14 rounded-(--radius-md) ${config.color} flex items-center justify-center text-2xl flex-shrink-0 border border-(--color-border)`}

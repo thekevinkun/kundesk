@@ -65,7 +65,12 @@ export const useChatStore = create<ChatStore>((set) => ({
 
   // Generic error setter — errorType defaults to "generic"
   setError: (error) =>
-    set({ error, errorType: "generic", isLoading: false, isStreaming: false }),
+    set({
+      error,
+      errorType: error ? "generic" : null,
+      isLoading: false,
+      isStreaming: false,
+    }),
 
   // Typed error setter — used by useChatStream for specific error types
   setErrorWithType: (error, errorType) =>

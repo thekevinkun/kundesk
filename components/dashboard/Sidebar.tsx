@@ -83,6 +83,11 @@ const NavItemRow = ({
     item.href === "/dashboard/billing" &&
     (subscriptionStatus === "past_due" || subscriptionStatus === "suspended");
 
+  const billingWarningAriaLabel =
+    subscriptionStatus === "suspended"
+      ? "Tindakan diperlukan — akun disuspend"
+      : "Tindakan diperlukan — tagihan jatuh tempo";
+
   return (
     <Link
       href={item.href}
@@ -132,7 +137,7 @@ const NavItemRow = ({
       {showBillingWarning && (
         <span
           className="text-[10.5px] font-bold min-w-5 h-5 rounded-full flex items-center justify-center px-1.5 bg-(--color-warning-bg) text-(--color-warning)"
-          aria-label="Tindakan diperlukan — tagihan jatuh tempo"
+          aria-label={billingWarningAriaLabel}
         >
           ⚠
         </span>

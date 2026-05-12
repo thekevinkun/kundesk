@@ -3,7 +3,6 @@
 // Protected by CRON_SECRET header — rejects all other callers
 
 import { NextRequest, NextResponse } from "next/server";
-import { inArray } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
@@ -28,21 +27,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ message: "No orgs found", reset: 0 });
   }
 
-  // Bulk reset — one UPDATE for all orgs instead of N individual updates
-  // resetMessagesUsed handles single org — here we do it in bulk directly
-  const orgIds = allOrgs.map((o) => o.id);
-
-  await db
-    .update(orgs)
-    .set({ messagesUsed: 0 })
-    .where(inArray(orgs.id, orgIds));
+  await db.update(orgs).set({ messagesUsed: 0 });
 
   console.log(
-    `[cron/reset-usage] Reset messagesUsed for ${orgIds.length} org(s)`,
+    `[cron/reset-usage] Reset messagesUsed for ${allOrgs.length} org(s)`,
   );
 
   return NextResponse.json({
     message: "Usage reset complete",
-    reset: orgIds.length,
+    reset: allOrgs.length,
   });
 }

@@ -124,10 +124,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Layer 6: Look up org by id prefix ──
   // orgId slice is first 8 chars of Clerk orgId — e.g. "org_3DZH"
   // Using raw SQL LEFT() — Drizzle has no built-in substring on columns
-  const [org] = await db
+  const matchingOrgs = await db
     .select({ id: orgs.id })
     .from(orgs)
     .where(sql`LEFT(${orgs.id}, 8) = ${orgIdSlice}`);
+
+  if (matchingOrgs.length !== 1) {
+    console.error("[midtrans webhook] Org not found for order_id", {
+      order_id,
+      orgIdSlice,
+      matches: matchingOrgs.length,
+    });
+    return NextResponse.json(
+      { error: "Org resolution ambiguous" },
+      { status: 200 },
+    );
+  }
+
+  const org = matchingOrgs[0];
 
   if (!org) {
     console.error("[midtrans webhook] Org not found for order_id", {

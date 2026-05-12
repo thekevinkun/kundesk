@@ -37,7 +37,7 @@ const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
   let ctaLabel = "Pilih Plan Ini";
   if (isCurrent && subscriptionStatus === "active") ctaLabel = "Plan Aktif";
   if (plan === "free")
-    ctaLabel = isCurrent ? "Plan Aktif" : "Downgrade ke Free";
+    ctaLabel = isCurrent ? "Plan Aktif" : "Gunakan menu Batalkan Langganan";
 
   const isDisabled =
     isPending ||
