@@ -62,8 +62,8 @@ export async function saveChatbotConfig(
       language,
       tone,
       // Empty string → null — keeps DB clean
-      greetingMessage: greetingMessage ?? null,
-      systemPrompt: systemPrompt ?? null,
+      greetingMessage: greetingMessage?.trim() ? greetingMessage.trim() : null,
+      systemPrompt: systemPrompt?.trim() ? systemPrompt.trim() : null,
       accentColor,
     })
     .where(

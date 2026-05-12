@@ -59,7 +59,10 @@ const BotStatusPanel = ({
   messagesLimit,
 }: BotStatusPanelProps) => {
   // Usage percentage — clamped to 100 max
-  const usagePct = Math.min((messagesUsed / messagesLimit) * 100, 100);
+  const usagePct =
+    messagesLimit > 0
+      ? Math.min(Math.max((messagesUsed / messagesLimit) * 100, 0), 100)
+      : 0;
 
   // Usage bar color — green < 70%, amber 70–90%, red > 90%
   const usageBarColor =
@@ -142,6 +145,7 @@ const BotStatusPanel = ({
           <Link
             href={`/chat/${orgSlug}`}
             target="_blank"
+            rel="noopener noreferrer"
             className="font-mono text-[12px] text-(--color-brand) bg-(--color-brand-light) border border-(--color-brand-mid) px-2 py-0.5 rounded-[5px] hover:bg-(--color-brand-mid) transition-colors"
           >
             /chat/{orgSlug}
@@ -160,6 +164,7 @@ const BotStatusPanel = ({
         <Link
           href={`/chat/${orgSlug}`}
           target="_blank"
+          rel="noopener noreferrer"
           className="flex-1 text-center text-[12.5px] font-semibold py-2 rounded-[8px] bg-(--color-brand) text-white hover:bg-(--color-brand-dark) transition-all"
         >
           🔗 Buka Chat

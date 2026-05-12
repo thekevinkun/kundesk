@@ -97,7 +97,7 @@ const ConversationRow = ({ convo }: { convo: Conversation }) => {
       {/* Session ID chip */}
       <td className="px-4 py-3.5 border-b border-(--color-border-sm)">
         <span className="font-mono text-[11.5px] text-(--color-text-400) bg-(--color-bg-page) px-2 py-1 rounded-[5px] border border-(--color-border)">
-          #{convo.id}
+          #{convo.sessionId}
         </span>
       </td>
 

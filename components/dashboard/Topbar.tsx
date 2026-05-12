@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -46,13 +47,18 @@ const Topbar = () => {
     // Fetch saved accent color from DB on mount — source of truth
     // Avoids race condition with DashboardOverview's useEffect
     const loadColor = async () => {
-      const config = await getChatbotConfig();
-      if (config?.accentColor) {
-        setActiveColor(config.accentColor);
-        document.documentElement.style.setProperty(
-          "--color-brand",
-          config.accentColor,
-        );
+      try {
+        const config = await getChatbotConfig();
+        if (config?.accentColor) {
+          setActiveColor(config.accentColor);
+          document.documentElement.style.setProperty(
+            "--color-brand",
+            config.accentColor,
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load accent color:", error);
+        toast.error("Gagal memuat warna brand");
       }
     };
     void loadColor();

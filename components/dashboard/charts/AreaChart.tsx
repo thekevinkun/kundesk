@@ -49,8 +49,15 @@ const AreaChart = ({ data }: AreaChartProps) => {
 
     // Gradient fill — brand color at top fading to transparent at bottom
     const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, `${brandColor}30`); // 19% opacity
-    gradient.addColorStop(1, `${brandColor}03`); // ~1% opacity
+    // Use CSS color-mix for format-agnostic opacity
+    gradient.addColorStop(
+      0,
+      `color-mix(in srgb, ${brandColor} 19%, transparent)`,
+    ); // 19% opacity
+    gradient.addColorStop(
+      1,
+      `color-mix(in srgb, ${brandColor} 1%, transparent)`,
+    ); // ~1% opacity
 
     chartRef.current = new Chart(canvas, {
       type: "line",

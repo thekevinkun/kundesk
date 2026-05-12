@@ -110,8 +110,8 @@ const TipPanel = () => {
 
               {/* Download sample — gives users a concrete starting point */}
               <a
-                href="/samples/contoh-dokumen-bisnis.txt"
-                download="contoh-dokumen-bisnis.txt"
+                href="/samples/kedai-borneo.txt"
+                download="kedai-borneo.txt"
                 className="mt-3 flex items-center gap-2 text-[12.5px] font-semibold text-(--color-brand) hover:text-(--color-brand-dark) transition-colors group/dl"
               >
                 <span className="w-7 h-7 rounded-[7px] bg-white/60 border border-(--color-brand-mid) flex items-center justify-center text-sm group-hover/dl:bg-(--color-brand-light) transition-colors">
@@ -366,7 +366,12 @@ const UploadZone = ({ onFiles }: { onFiles: (files: File[]) => void }) => {
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
-      onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
     >
       {/* Cloud icon — scales up when dragging */}
       <div
