@@ -1,6 +1,3 @@
-// Shown by Next.js while the documents route is loading
-// Matches the card-base shape of DocumentsPage
-
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DocumentsLoading() {

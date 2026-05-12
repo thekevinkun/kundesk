@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { ConversationCountBadge, DocCountBadge } from "@/components/dashboard";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,6 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
         href: "/dashboard/conversations",
         label: "Percakapan",
         icon: "💬",
-        badge: { text: "12", variant: "red" },
       },
       {
         href: "/dashboard/analytics",
@@ -42,12 +42,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     label: "Chatbot",
     items: [
       { href: "/dashboard/chatbot", label: "Konfigurasi", icon: "⚙️" },
-      {
-        href: "/dashboard/documents",
-        label: "Dokumen",
-        icon: "📄",
-        badge: { text: "3", variant: "gray" },
-      },
+      { href: "/dashboard/documents", label: "Dokumen", icon: "📄" },
       { href: "/dashboard/widget", label: "Widget Embed", icon: "🔗" },
     ],
   },
@@ -128,6 +123,12 @@ const NavItemRow = ({
           {item.badge.text}
         </span>
       )}
+
+      {/* Live pending handoff badge — red, only shows when count > 0 */}
+      {item.href === "/dashboard/conversations" && <ConversationCountBadge />}
+
+      {/* Live document count badge — only on the documents nav item */}
+      {item.href === "/dashboard/documents" && <DocCountBadge />}
     </Link>
   );
 };

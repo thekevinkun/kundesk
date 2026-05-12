@@ -1,0 +1,309 @@
+// Dashboard stat queries — all scoped to orgId (tenant isolation)
+// Called in parallel from dashboard page.tsx via Promise.all
+// Never called without orgId — requireOrg() enforces this upstream
+
+import { eq, count, countDistinct, and, sql } from "drizzle-orm";
+import { db } from "@/lib/db";
+import {
+  orgs,
+  messages,
+  conversations,
+  chatbots,
+  documents,
+  chunks,
+} from "@/lib/db/schema";
+
+// ── Total messages sent to this org's chatbot ──
+// Counts ALL roles (user + assistant + human_agent) — full volume metric
+export async function getTotalMessages(orgId: string): Promise<number> {
+  const [result] = await db.select({ total: count() }).from(messages).where(
+    // Always scope to org first — tenant isolation
+    eq(messages.orgId, orgId),
+  );
+
+  return result?.total ?? 0;
+}
+
+// ── Auto-answer rate — assistant messages / total messages × 100 ──
+// "Terjawab Otomatis" stat — shows how much the AI is handling
+export async function getAnsweredRate(orgId: string): Promise<number> {
+  // Run both counts in parallel — no need to wait for one before the other
+  const [totalResult, assistantResult] = await Promise.all([
+    db
+      .select({ total: count() })
+      .from(messages)
+      .where(eq(messages.orgId, orgId)),
+    db
+      .select({ total: count() })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.orgId, orgId),
+          // Only count AI responses — not user messages or human_agent messages
+          eq(messages.role, "assistant"),
+        ),
+      ),
+  ]);
+
+  const total = totalResult[0]?.total ?? 0;
+  const answered = assistantResult[0]?.total ?? 0;
+
+  // Avoid division by zero — return 0 if no messages yet
+  if (total === 0) return 0;
+
+  return Math.round((answered / total) * 1000) / 10; // e.g. 97.3
+}
+
+// ── Unique visitors — distinct sessionIds across all conversations ──
+// Each browser session = one anonymous visitor (no auth required for customers)
+export async function getUniqueVisitors(orgId: string): Promise<number> {
+  const [result] = await db
+    .select({ total: countDistinct(conversations.sessionId) })
+    .from(conversations)
+    .where(
+      // Scope to org — tenant isolation
+      eq(conversations.orgId, orgId),
+    );
+
+  return result?.total ?? 0;
+}
+
+// ── Daily message trend — last 30 days for area chart ──
+// Returns array of { date: "DD/MM", count: number } sorted oldest→newest
+export async function getDailyMessageTrend(
+  orgId: string,
+): Promise<{ date: string; count: number }[]> {
+  // Raw SQL — Drizzle doesn't have a clean date_trunc + group by date abstraction
+  // Cast createdAt to date, group, count — scoped to org and last 30 days
+  const result = await db.execute<{ date: string; count: number }>(
+    sql`
+      SELECT
+        TO_CHAR(DATE_TRUNC('day', ${messages.createdAt}), 'DD/MM') AS date,
+        COUNT(*)::int AS count
+      FROM ${messages}
+      WHERE
+        ${messages.orgId} = ${orgId}
+        AND ${messages.createdAt} >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE_TRUNC('day', ${messages.createdAt})
+      ORDER BY DATE_TRUNC('day', ${messages.createdAt}) ASC
+    `,
+  );
+
+  return result.rows as { date: string; count: number }[];
+}
+
+// ── Monthly message totals — current year vs previous year for line chart ──
+// Returns { current: number[], previous: number[] } — index 0 = January
+export async function getMonthlyMessageComparison(orgId: string): Promise<{
+  current: number[];
+  previous: number[];
+}> {
+  const currentYear = new Date().getFullYear();
+  const previousYear = currentYear - 1;
+
+  // Both years in one query — cheaper than two round trips
+  const result = await db.execute<{
+    year: number;
+    month: number;
+    count: number;
+  }>(
+    sql`
+      SELECT
+        EXTRACT(YEAR FROM ${messages.createdAt})::int AS year,
+        EXTRACT(MONTH FROM ${messages.createdAt})::int AS month,
+        COUNT(*)::int AS count
+      FROM ${messages}
+      WHERE
+        ${messages.orgId} = ${orgId}
+        AND EXTRACT(YEAR FROM ${messages.createdAt}) IN (${currentYear}, ${previousYear})
+      GROUP BY year, month
+      ORDER BY year, month
+    `,
+  );
+
+  // Initialize 12-month arrays with zeros — months without data stay 0
+  const current = Array<number>(12).fill(0);
+  const previous = Array<number>(12).fill(0);
+
+  for (const row of result.rows as {
+    year: number;
+    month: number;
+    count: number;
+  }[]) {
+    // month from SQL is 1-indexed — convert to 0-indexed array position
+    const idx = row.month - 1;
+    if (row.year === currentYear) current[idx] = row.count;
+    else previous[idx] = row.count;
+  }
+
+  return { current, previous };
+}
+
+// ── Weekly message counts — Mon–Sun this week for bar chart ──
+// Returns array of 7 numbers, index 0 = Monday
+export async function getWeeklyMessages(orgId: string): Promise<number[]> {
+  const result = await db.execute<{ dow: number; count: number }>(
+    sql`
+      SELECT
+        EXTRACT(DOW FROM ${messages.createdAt})::int AS dow,
+        COUNT(*)::int AS count
+      FROM ${messages}
+      WHERE
+        ${messages.orgId} = ${orgId}
+        AND DATE_TRUNC('week', ${messages.createdAt}) = DATE_TRUNC('week', NOW())
+      GROUP BY dow
+      ORDER BY dow
+    `,
+  );
+
+  // DOW: 0=Sunday, 1=Mon ... 6=Sat — remap to Mon-first (index 0=Mon)
+  const week = Array<number>(7).fill(0);
+  for (const row of result.rows as { dow: number; count: number }[]) {
+    // Convert Sunday(0) → index 6, Mon(1) → index 0, etc.
+    const idx = row.dow === 0 ? 6 : row.dow - 1;
+    week[idx] = row.count;
+  }
+
+  return week;
+}
+
+// ── Recent conversations — last 10 for dashboard overview table ──
+// Joins messages to get the last message preview per conversation
+// Scoped to orgId — tenant isolation
+export async function getRecentConversations(orgId: string): Promise<
+  {
+    id: number;
+    sessionId: string;
+    handoffStatus: string;
+    deliveryChannel: string;
+    createdAt: Date;
+    lastMessage: string | null;
+    messageCount: number;
+  }[]
+> {
+  // Raw SQL — Drizzle doesn't have a clean DISTINCT ON abstraction
+  // Gets last message per conversation + total message count in one query
+  const result = await db.execute<{
+    id: number;
+    session_id: string;
+    handoff_status: string;
+    delivery_channel: string;
+    created_at: Date;
+    last_message: string | null;
+    message_count: number;
+  }>(
+    sql`
+      SELECT
+        c.id,
+        c.session_id,
+        c.handoff_status,
+        c.delivery_channel,
+        c.created_at,
+
+        -- Last message content — truncated to 80 chars for preview
+        LEFT(
+          (
+            SELECT m.content
+            FROM ${messages} m
+            WHERE m.conversation_id = c.id
+            ORDER BY m.created_at DESC
+            LIMIT 1
+          ),
+          80
+        ) AS last_message,
+
+        -- Total message count for this conversation
+        (
+          SELECT COUNT(*)::int
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+        ) AS message_count
+
+      FROM ${conversations} c
+      WHERE c.org_id = ${orgId}
+      ORDER BY c.created_at DESC
+      LIMIT 10
+    `,
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    handoffStatus: row.handoff_status,
+    deliveryChannel: row.delivery_channel,
+    createdAt: new Date(row.created_at),
+    lastMessage: row.last_message,
+    messageCount: row.message_count,
+  }));
+}
+
+// ── Bot status data — chatbot config + document/chunk counts for status panel ──
+// Single query joining chatbots + aggregated document/chunk counts
+export async function getBotStatus(orgId: string): Promise<{
+  name: string;
+  language: string;
+  tone: string;
+  isActive: boolean;
+  accentColor: string;
+  documentCount: number;
+  totalChunks: number;
+} | null> {
+  // Get chatbot config — one per org
+  const [chatbot] = await db
+    .select({
+      name: chatbots.name,
+      language: chatbots.language,
+      tone: chatbots.tone,
+      isActive: chatbots.isActive,
+      accentColor: chatbots.accentColor,
+    })
+    .from(chatbots)
+    .where(
+      // IDOR protection — always scope to orgId
+      eq(chatbots.orgId, orgId),
+    )
+    .limit(1);
+
+  // No chatbot yet — shouldn't happen after Phase 4 auto-seed, but guard anyway
+  if (!chatbot) return null;
+
+  // Document and chunk counts in parallel
+  const [docResult, chunkResult] = await Promise.all([
+    db
+      .select({ total: count() })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.orgId, orgId),
+          // Only count ready documents — processing/failed don't contribute to knowledge base
+          eq(documents.status, "ready"),
+        ),
+      ),
+    db.select({ total: count() }).from(chunks).where(eq(chunks.orgId, orgId)),
+  ]);
+
+  return {
+    ...chatbot,
+    documentCount: docResult[0]?.total ?? 0,
+    totalChunks: chunkResult[0]?.total ?? 0,
+  };
+}
+
+// ── Org data — slug + message usage for bot status panel ──
+export async function getOrgData(orgId: string): Promise<{
+  slug: string;
+  messagesUsed: number;
+  messagesLimit: number;
+} | null> {
+  const [org] = await db
+    .select({
+      slug: orgs.slug,
+      messagesUsed: orgs.messagesUsed,
+      messagesLimit: orgs.messagesLimit,
+    })
+    .from(orgs)
+    .where(eq(orgs.id, orgId))
+    .limit(1);
+
+  return org ?? null;
+}

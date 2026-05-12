@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebar-store";
@@ -11,8 +11,9 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { fadeIn } from "@/lib/animations";
 import { cn } from "@/lib/utils";
+import { fadeIn } from "@/lib/animations";
+import { saveAccentColor, getChatbotConfig } from "@/lib/actions/chatbot";
 
 // ── Brand color presets — matches dashboard mockup ──
 const COLOR_PRESETS = [
@@ -34,12 +35,39 @@ const Topbar = () => {
   const { toggleMobile } = useSidebarStore();
   const [colorPanelOpen, setColorPanelOpen] = useState(false);
   const [activeColor, setActiveColor] = useState("#069494");
+  // useTransition — keeps UI responsive while Server Action runs in background
+  const [, startTransition] = useTransition();
 
-  // Apply brand color live by updating CSS variable on :root
-  // In Phase 5 this will also save to chatbots.accentColor in DB
+  // On mount — read the saved accent color from the CSS variable
+  // The chatbot config page sets this via Server Action + revalidatePath
+  // BotStatusPanel passes accentColor to DashboardOverview which applies it on load
+  // We read from CSS variable so Topbar stays in sync without an extra fetch
+  useEffect(() => {
+    // Fetch saved accent color from DB on mount — source of truth
+    // Avoids race condition with DashboardOverview's useEffect
+    const loadColor = async () => {
+      const config = await getChatbotConfig();
+      if (config?.accentColor) {
+        setActiveColor(config.accentColor);
+        document.documentElement.style.setProperty(
+          "--color-brand",
+          config.accentColor,
+        );
+      }
+    };
+    void loadColor();
+  }, []);
+
+  // Apply color live + persist to DB via Server Action
   const applyColor = (hex: string) => {
+    // Update CSS variable immediately — no wait for server
     document.documentElement.style.setProperty("--color-brand", hex);
     setActiveColor(hex);
+
+    // Persist in background — useTransition keeps UI non-blocking
+    startTransition(() => {
+      void saveAccentColor(hex);
+    });
   };
 
   return (
