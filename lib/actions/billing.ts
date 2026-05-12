@@ -4,22 +4,24 @@
 
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
-import { currentUser } from "@clerk/nextjs/server";
 import { requireOrg } from "@/lib/auth";
 import { createSubscriptionTransaction } from "@/lib/midtrans";
 import { cancelSubscription } from "@/lib/db/queries/billing";
+import { revalidatePath } from "next/cache";
+import { currentUser } from "@clerk/nextjs/server";
+import { db } from "@/lib/db";
+import { processedWebhooks } from "@/lib/db/schema";
+import { and, eq, gte } from "drizzle-orm";
 import type { PlanName } from "@/types/billing";
 
-// ── Input schemas ──
-
+// ── Input schema ──
 const upgradeSchema = z.object({
   // Only paid plans can be selected — free has no payment flow
   plan: z.enum(["starter", "pro"]),
 });
 
-// Return type for all billing actions — consistent shape for useActionState
+// Return type for createPayment — consistent shape for useActionState
 type BillingActionResult =
   | { success: true; redirectUrl: string }
   | { success: false; error: string };
@@ -34,15 +36,43 @@ export async function createPayment(
   const { orgId } = await requireOrg();
 
   // Validate the selected plan
-  const result = upgradeSchema.safeParse({
-    plan: formData.get("plan"),
-  });
-
+  const result = upgradeSchema.safeParse({ plan: formData.get("plan") });
   if (!result.success) {
     return { success: false, error: "Invalid plan selected." };
   }
 
   const { plan } = result.data;
+
+  // ── Idempotency check — one active unpaid transaction per org per plan per day ──
+  // Prevents duplicate Midtrans transactions on rapid re-submits or double-clicks
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  // Idempotency key format: PAYMENT-{orgId}-{plan}-{YYYY-MM-DD}
+  const today = todayStart.toISOString().slice(0, 10);
+  const idempotencyKey = `PAYMENT-${orgId}-${plan}-${today}`;
+
+  const [existingAttempt] = await db
+    .select({ id: processedWebhooks.id })
+    .from(processedWebhooks)
+    .where(
+      and(
+        eq(processedWebhooks.source, "midtrans"),
+        eq(processedWebhooks.externalId, idempotencyKey),
+        // Only block within the same calendar day — next day allows a fresh attempt
+        gte(processedWebhooks.processedAt, todayStart),
+      ),
+    );
+
+  if (existingAttempt) {
+    // Transaction already created today — this is a re-submit, not a new intent
+    // Return an error prompting them to check their payment or wait until tomorrow
+    return {
+      success: false,
+      error:
+        "Transaksi untuk plan ini sudah dibuat hari ini. Selesaikan pembayaran sebelumnya atau coba lagi besok.",
+    };
+  }
 
   // Get the customer's email from Clerk — passed to Midtrans for their records
   const user = await currentUser();
@@ -55,7 +85,13 @@ export async function createPayment(
       email,
     );
 
-    // Revalidate billing page so status reflects any immediate changes
+    // ── Record the attempt after successful transaction creation ──
+    // Subsequent re-submits today will hit the idempotency check above
+    await db.insert(processedWebhooks).values({
+      externalId: idempotencyKey,
+      source: "midtrans",
+    });
+
     revalidatePath("/dashboard/billing");
 
     return { success: true, redirectUrl };
@@ -69,7 +105,6 @@ export async function createPayment(
 }
 
 // Cancels the current subscription — sets status to "cancelled"
-// Immediate effect — no refund logic (out of scope for Phase 6)
 export async function cancelSubscriptionAction(
   _prev: { success: boolean; error?: string } | null,
   _formData: FormData,

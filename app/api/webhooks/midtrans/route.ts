@@ -141,16 +141,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const org = matchingOrgs[0];
-
-  if (!org) {
-    console.error("[midtrans webhook] Org not found for order_id", {
-      order_id,
-      orgIdSlice,
-    });
-    // Return 200 — 4xx causes Midtrans to retry forever
-    return NextResponse.json({ error: "Org not found" }, { status: 200 });
-  }
+  const org = matchingOrgs[0]!;
 
   // ── Layer 7: Activate subscription ──
   await activateSubscription(org.id, plan, payment_type, order_id);

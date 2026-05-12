@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import { Toaster } from "sonner";
 import { Sidebar, Topbar } from "@/components/dashboard";
 import { QueryProvider } from "@/components/providers/query-provider";
-import { Toaster } from "sonner";
 import { getBillingData } from "@/lib/db/queries/billing";
+import type { SubscriptionStatus } from "@/types/billing";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -20,7 +21,14 @@ export default async function DashboardLayout({
 
   // Fetch subscription status at layout level — passed to Sidebar as prop
   // Billing status changes infrequently — server fetch is correct, no polling needed
-  const { subscriptionStatus } = await getBillingData(orgId);
+  // Fallback to "free" if billing query fails — layout must never crash over a badge
+  let subscriptionStatus: SubscriptionStatus = "free";
+  try {
+    const billing = await getBillingData(orgId);
+    subscriptionStatus = billing.subscriptionStatus;
+  } catch (err) {
+    console.error("[dashboard/layout] Failed to fetch billing status:", err);
+  }
 
   return (
     <QueryProvider>
