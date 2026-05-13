@@ -18,23 +18,31 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Count orgs first — single aggregation query, no rows loaded into memory
-  const countResult = await db.select({ total: count() }).from(orgs);
-  const total = countResult[0]?.total ?? 0;
+  try {
+    // Count orgs first — single aggregation query, no rows loaded into memory
+    const countResult = await db.select({ total: count() }).from(orgs);
+    const total = countResult[0]?.total ?? 0;
 
-  if (total === 0) {
-    console.log("[cron/reset-usage] No orgs found");
-    return NextResponse.json({ message: "No orgs found", reset: 0 });
+    if (total === 0) {
+      console.log("[cron/reset-usage] No orgs found");
+      return NextResponse.json({ message: "No orgs found", reset: 0 });
+    }
+
+    // Bulk reset — single UPDATE with no WHERE clause resets all orgs at once
+    // Applies to all plans including free — consistent behavior, no exceptions
+    await db.update(orgs).set({ messagesUsed: 0 });
+
+    console.log(`[cron/reset-usage] Reset messagesUsed for ${total} org(s)`);
+
+    return NextResponse.json({
+      message: "Usage reset complete",
+      reset: total,
+    });
+  } catch (error) {
+    console.error("[cron/reset-usage] Failed to reset usage", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
-
-  // Bulk reset — single UPDATE with no WHERE clause resets all orgs at once
-  // Applies to all plans including free — consistent behavior, no exceptions
-  await db.update(orgs).set({ messagesUsed: 0 });
-
-  console.log(`[cron/reset-usage] Reset messagesUsed for ${total} org(s)`);
-
-  return NextResponse.json({
-    message: "Usage reset complete",
-    reset: total,
-  });
 }
