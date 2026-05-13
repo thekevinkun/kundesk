@@ -3,9 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { fadeUp, staggerContainer, staggerItem } from "@/lib/animations";
-import { saveChatbotConfig } from "@/lib/actions/chatbot";
-import type { ActionResult } from "@/lib/actions/chatbot";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,21 +17,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
-// ── Color presets — same 12 as Topbar ──
-const COLOR_PRESETS = [
-  { hex: "#069494", label: "Teal (Default)" },
-  { hex: "#3b82f6", label: "Biru" },
-  { hex: "#8b5cf6", label: "Ungu" },
-  { hex: "#f59e0b", label: "Amber" },
-  { hex: "#ef4444", label: "Merah" },
-  { hex: "#ec4899", label: "Pink" },
-  { hex: "#06b6d4", label: "Cyan" },
-  { hex: "#f97316", label: "Orange" },
-  { hex: "#14b8a6", label: "Teal Alt" },
-  { hex: "#6366f1", label: "Indigo" },
-  { hex: "#84cc16", label: "Lime" },
-  { hex: "#64748b", label: "Slate" },
-];
+import { COLOR_PRESETS } from "@/helpers/chatbot";
+import { fadeUp, staggerContainer, staggerItem } from "@/lib/animations";
+import { saveChatbotConfig } from "@/lib/actions/chatbot";
+import type { ActionResult } from "@/lib/actions/chatbot";
 
 // ── Current chatbot config — passed from Server Component ──
 interface ChatbotConfig {
@@ -48,10 +35,10 @@ interface ChatbotConfig {
 
 // ── Server Action wrapper — bridges useActionState with saveChatbotConfig ──
 // useActionState passes (prevState, formData) — we extract values and call action
-async function formAction(
+const formAction = async (
   _prevState: ActionResult | null,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<ActionResult> => {
   return saveChatbotConfig({
     name: formData.get("name"),
     language: formData.get("language"),
@@ -60,7 +47,7 @@ async function formAction(
     systemPrompt: formData.get("systemPrompt") || undefined,
     accentColor: formData.get("accentColor"),
   });
-}
+};
 
 // ── Section wrapper — consistent card styling ──
 const ConfigSection = ({

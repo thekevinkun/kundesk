@@ -26,3 +26,15 @@ export interface PaginatedResponse<T> {
   totalPages: number;
   hasMore: boolean;
 }
+
+// Dashboard conversation row — returned by getRecentConversations query
+// Extends the DB shape with aggregated fields: lastMessage, messageCount
+export interface ConversationRow {
+  id: number;
+  sessionId: string;
+  handoffStatus: string;
+  deliveryChannel: string;
+  createdAt: Date;
+  lastMessage: string | null;
+  messageCount: number;
+}

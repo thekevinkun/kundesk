@@ -1,4 +1,4 @@
-import { ConversationRowSkeleton } from "@/components/dashboard/ConversationsPage";
+import { ConversationRowSkeleton } from "@/components/dashboard/conversations";
 
 export default function ConversationsLoading() {
   return (

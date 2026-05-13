@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cancelSubscriptionAction } from "@/lib/actions/billing";
-import { PLAN_CONFIG } from "@/helpers/billing";
+import { PLAN_CONFIG } from "@/components/dashboard/billing/constants";
 import type { PlanName } from "@/types/billing";
 
 interface CancelDialogProps {

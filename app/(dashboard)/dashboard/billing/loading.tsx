@@ -1,7 +1,7 @@
 // Skeleton shown while billing data loads — matches BillingPage layout
 export default function BillingLoading() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Page header skeleton */}
       <div className="space-y-2">
         <div className="skeleton h-7 w-32 rounded-(--radius-sm)" />

@@ -12,25 +12,10 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { COLOR_PRESETS } from "@/helpers/chatbot";
 import { cn } from "@/lib/utils";
 import { fadeIn } from "@/lib/animations";
 import { saveAccentColor, getChatbotConfig } from "@/lib/actions/chatbot";
-
-// ── Brand color presets — matches dashboard mockup ──
-const COLOR_PRESETS = [
-  { hex: "#069494", label: "Teal (Default)" },
-  { hex: "#3b82f6", label: "Biru" },
-  { hex: "#8b5cf6", label: "Ungu" },
-  { hex: "#f59e0b", label: "Amber" },
-  { hex: "#ef4444", label: "Merah" },
-  { hex: "#ec4899", label: "Pink" },
-  { hex: "#06b6d4", label: "Cyan" },
-  { hex: "#f97316", label: "Orange" },
-  { hex: "#14b8a6", label: "Teal Alt" },
-  { hex: "#6366f1", label: "Indigo" },
-  { hex: "#84cc16", label: "Lime" },
-  { hex: "#64748b", label: "Slate" },
-];
 
 const Topbar = () => {
   const { toggleMobile } = useSidebarStore();

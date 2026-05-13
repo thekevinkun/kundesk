@@ -4,7 +4,7 @@ import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { createPayment } from "@/lib/actions/billing";
-import { PLAN_CONFIG } from "@/helpers/billing";
+import { PLAN_CONFIG } from "@/components/dashboard/billing/constants";
 import { formatRupiah } from "@/helpers/format";
 import { PLAN_PRICE } from "@/types/billing";
 import type { BillingPageData, PlanName } from "@/types/billing";
@@ -65,7 +65,7 @@ const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-lg">{config.icon}</span>
-          <span className="text-sm font-700 text-(--color-brand) tracking-wide uppercase">
+          <span className="text-sm font-bold text-(--color-brand) tracking-wide uppercase">
             {config.label}
           </span>
           {/* Active badge — shown inline on current plan card */}
@@ -80,7 +80,7 @@ const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
 
       {/* Price */}
       <div className="mb-5">
-        <div className="text-3xl font-800 tracking-tight text-(--color-text-900) leading-none mb-1">
+        <div className="text-3xl font-extrabold tracking-tight text-(--color-text-900) leading-none mb-1">
           {formatRupiah(price)}
         </div>
         {price > 0 && (
@@ -94,7 +94,7 @@ const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
         <button
           type="submit"
           disabled={isDisabled}
-          className={`w-full py-2.5 px-4 rounded-(--radius-full) text-sm font-700 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full py-2.5 px-4 rounded-(--radius-full) text-sm font-bold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
             isFeatured
               ? "bg-(--color-brand) text-white hover:bg-(--color-brand-dark) shadow-md hover:shadow-lg"
               : "bg-(--color-text-900) text-white hover:bg-(--color-text-700)"
@@ -117,7 +117,7 @@ const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
             className="flex items-center gap-2 text-xs text-(--color-text-700)"
           >
             <span
-              className="text-(--color-success) font-700 flex-shrink-0"
+              className="text-(--color-success) font-bold flex-shrink-0"
               aria-hidden="true"
             >
               ✓

@@ -9,10 +9,10 @@ interface BillingPageProps {
 
 const BillingPage = ({ data }: BillingPageProps) => {
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-800 tracking-tight text-(--color-text-900) leading-none mb-1">
+        <h1 className="text-2xl font-extrabold tracking-tight text-(--color-text-900) leading-none mb-1">
           Billing
         </h1>
         <p className="text-sm text-(--color-text-500)">
@@ -25,7 +25,7 @@ const BillingPage = ({ data }: BillingPageProps) => {
 
       {/* Plan selection grid */}
       <div>
-        <h2 className="text-base font-700 text-(--color-text-900) mb-1">
+        <h2 className="text-base font-semibold text-(--color-text-900) mb-1">
           Pilih Plan
         </h2>
         <p className="text-xs text-(--color-text-500) mb-4">
@@ -58,7 +58,7 @@ const BillingPage = ({ data }: BillingPageProps) => {
           🔒
         </span>
         <div>
-          <p className="text-xs font-600 text-(--color-text-700) mb-1">
+          <p className="text-xs font-semibold text-(--color-text-700) mb-1">
             Pembayaran aman via Midtrans
           </p>
           <p className="text-xs text-(--color-text-400) leading-relaxed">

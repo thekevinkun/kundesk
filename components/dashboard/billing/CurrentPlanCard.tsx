@@ -1,5 +1,8 @@
 import { Separator } from "@/components/ui/separator";
-import { PLAN_CONFIG, getStatusDisplay } from "@/helpers/billing";
+import {
+  PLAN_CONFIG,
+  getStatusDisplay,
+} from "@/components/dashboard/billing/constants";
 import { formatDate, formatPaymentMethod } from "@/helpers/format";
 import type { BillingPageData } from "@/types/billing";
 
@@ -26,7 +29,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
     <div className="card-base p-6">
       <div className="flex items-start justify-between gap-4 mb-5">
         <div>
-          <h2 className="text-base font-700 text-(--color-text-900) mb-1">
+          <h2 className="text-base font-bold text-(--color-text-900) mb-1">
             Plan Saat Ini
           </h2>
           <p className="text-xs text-(--color-text-500)">
@@ -45,7 +48,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
           {config.icon}
         </div>
         <div>
-          <div className="text-2xl font-800 tracking-tight text-(--color-text-900) leading-none mb-1">
+          <div className="text-2xl font-extrabold tracking-tight text-(--color-text-900) leading-none mb-1">
             {config.label}
           </div>
           <div className="text-sm text-(--color-text-500)">{config.desc}</div>
@@ -57,11 +60,11 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
       {/* Usage progress bar */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-600 text-(--color-text-700)">
+          <span className="text-sm font-semibold text-(--color-text-700)">
             Kuota Pesan
           </span>
           <span className="text-xs text-(--color-text-500)">
-            <strong className="text-(--color-text-900) font-700">
+            <strong className="text-(--color-text-900) font-bold">
               {data.messagesUsed.toLocaleString("id-ID")}
             </strong>{" "}
             / {data.messagesLimit.toLocaleString("id-ID")}
@@ -81,7 +84,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-(--color-text-400)">
             Reset:{" "}
-            <span className="font-600 text-(--color-text-500)">
+            <span className="font-semibold text-(--color-text-500)">
               {formatDate(data.currentPeriodEnd)}
             </span>
           </p>
@@ -101,7 +104,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
             <p className="text-xs text-(--color-text-400) mb-1">
               Tagihan Berikutnya
             </p>
-            <p className="text-sm font-600 text-(--color-text-900)">
+            <p className="text-sm font-semibold text-(--color-text-900)">
               {formatDate(data.nextBillingDate)}
             </p>
           </div>
@@ -109,7 +112,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
             <p className="text-xs text-(--color-text-400) mb-1">
               Metode Pembayaran
             </p>
-            <p className="text-sm font-600 text-(--color-text-900)">
+            <p className="text-sm font-semibold text-(--color-text-900)">
               {formatPaymentMethod(data.lastPaymentMethod)}
             </p>
           </div>
@@ -119,7 +122,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
       {/* Past due warning banner */}
       {data.subscriptionStatus === "past_due" && (
         <div className="mt-4 p-4 rounded-(--radius-sm) bg-(--color-warning-bg) border border-(--color-warning)/30">
-          <p className="text-sm font-600 text-(--color-warning)">
+          <p className="text-sm font-semibold text-(--color-warning)">
             ⚠ Tagihan jatuh tempo
           </p>
           <p className="text-xs text-(--color-warning) mt-1 opacity-80">
@@ -131,7 +134,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
       {/* Suspended warning banner */}
       {data.subscriptionStatus === "suspended" && (
         <div className="mt-4 p-4 rounded-(--radius-sm) bg-(--color-danger-bg) border border-(--color-danger)/30">
-          <p className="text-sm font-600 text-(--color-danger)">
+          <p className="text-sm font-semibold text-(--color-danger)">
             🚫 Akun disuspend
           </p>
           <p className="text-xs text-(--color-danger) mt-1 opacity-80">
