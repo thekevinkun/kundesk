@@ -3,7 +3,7 @@
 
 import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import type {
   BillingPageData,
   PlanName,
@@ -103,8 +103,8 @@ export async function cancelSubscription(orgId: string): Promise<void> {
     .where(eq(orgs.id, orgId));
 }
 
-// Resets monthly message usage — called by the monthly reset cron
-// Runs on the first day of each billing period
+// Fetches all orgs where nextBillingDate falls within today — used by renewal cron
+// Date window filtering done at DB level — never in memory
 export async function resetMessagesUsed(orgId: string): Promise<void> {
   await db.update(orgs).set({ messagesUsed: 0 }).where(eq(orgs.id, orgId));
 }
@@ -119,26 +119,27 @@ export async function getOrgsDueForRenewal(): Promise<
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // Filter entirely in the DB — only active orgs whose nextBillingDate is today
   const results = await db
     .select({
       id: orgs.id,
       plan: orgs.plan,
       subscriptionStatus: orgs.subscriptionStatus,
-      nextBillingDate: orgs.nextBillingDate,
     })
     .from(orgs)
-    .where(eq(orgs.subscriptionStatus, "active"));
+    .where(
+      and(
+        eq(orgs.subscriptionStatus, "active"),
+        // nextBillingDate >= start of today
+        gte(orgs.nextBillingDate, today),
+        // nextBillingDate < start of tomorrow
+        lt(orgs.nextBillingDate, tomorrow),
+      ),
+    );
 
-  // Filter to orgs whose nextBillingDate is today
-  return results
-    .filter((org) => {
-      if (!org.nextBillingDate) return false;
-      const d = new Date(org.nextBillingDate);
-      return d >= today && d < tomorrow;
-    })
-    .map((org) => ({
-      id: org.id,
-      plan: org.plan as PlanName,
-      subscriptionStatus: org.subscriptionStatus as SubscriptionStatus,
-    }));
+  return results.map((org) => ({
+    id: org.id,
+    plan: org.plan as PlanName,
+    subscriptionStatus: org.subscriptionStatus as SubscriptionStatus,
+  }));
 }

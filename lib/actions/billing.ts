@@ -79,18 +79,21 @@ export async function createPayment(
   const email = user?.emailAddresses[0]?.emailAddress ?? "noemail@kundesk.app";
 
   try {
+    // ── Record the attempt BEFORE calling Midtrans ──
+    // Prevents duplicate transactions on concurrent requests (double-click, rapid resubmit)
+    // Consistent with cron renewal pattern — insert before external call, not after
+    // Tradeoff: a transient Midtrans failure blocks the user for the day — acceptable
+    // because Midtrans Sandbox + production are reliable, and the error message is clear
+    await db.insert(processedWebhooks).values({
+      externalId: idempotencyKey,
+      source: "midtrans",
+    });
+
     const { redirectUrl } = await createSubscriptionTransaction(
       orgId,
       plan as PlanName,
       email,
     );
-
-    // ── Record the attempt after successful transaction creation ──
-    // Subsequent re-submits today will hit the idempotency check above
-    await db.insert(processedWebhooks).values({
-      externalId: idempotencyKey,
-      source: "midtrans",
-    });
 
     revalidatePath("/dashboard/billing");
 

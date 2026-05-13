@@ -2,7 +2,7 @@
 // Separate from types/billing.ts (which owns PlanName, PLAN_LIMITS, PLAN_PRICE)
 // This is presentation data — only imported by billing UI components
 
-import type { PlanName } from "@/types/billing";
+import type { PlanName, SubscriptionStatus } from "@/types/billing";
 
 export interface PlanUIConfig {
   label: string;
@@ -67,9 +67,10 @@ export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
 };
 
 // Maps subscriptionStatus to display label + badge class
-export function getStatusDisplay(
-  status: "free" | "active" | "past_due" | "suspended" | "cancelled",
-): { label: string; className: string } {
+export function getStatusDisplay(status: SubscriptionStatus): {
+  label: string;
+  className: string;
+} {
   switch (status) {
     case "active":
       return { label: "Aktif", className: "badge-base badge-success" };

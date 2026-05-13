@@ -10,6 +10,9 @@ export type HandoffStatus = "ai" | "human" | "pending_handoff";
 // Channel the conversation came through — metadata only, not logic
 export type DeliveryChannel = "web_widget" | "qr_link" | "whatsapp";
 
+// Error type for chat store
+export type ChatErrorType = "quota_exceeded" | "rate_limit" | "generic";
+
 // A single chat message
 export interface ChatMessage {
   id: number;
@@ -95,7 +98,7 @@ export interface ChatStore {
   // Error message to show in the UI — null when no error
   error: string | null;
   // Error type — distinguishes quota exhausted from generic errors for different UI treatment
-  errorType: "quota_exceeded" | "rate_limit" | "generic" | null;
+  errorType: ChatErrorType | null;
 
   // Actions
   setSessionId: (id: string) => void;
@@ -106,8 +109,5 @@ export interface ChatStore {
   setError: (error: string | null) => void;
   setLoading: (loading: boolean) => void;
   clearError: () => void;
-  setErrorWithType: (
-    error: string,
-    errorType: "quota_exceeded" | "rate_limit" | "generic",
-  ) => void;
+  setErrorWithType: (error: string, errorType: ChatErrorType | null) => void;
 }
