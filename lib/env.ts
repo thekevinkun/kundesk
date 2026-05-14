@@ -30,6 +30,9 @@ export const env = {
   // ── App URL ──
   appUrl: requireEnv("NEXT_PUBLIC_APP_URL"),
 
+  // ── Logo URL ──
+  logoUrl: requireEnv("LOGO_URL"),
+
   // Cron secret — validates requests come from Vercel scheduler, not random callers
   cronSecret: requireEnv("CRON_SECRET"),
 
@@ -53,6 +56,11 @@ export const env = {
   pusherKey: process.env.PUSHER_KEY,
   pusherSecret: process.env.PUSHER_SECRET,
   pusherCluster: process.env.PUSHER_CLUSTER ?? "ap1",
+
+  // ── PostHog — optional, analytics degrade gracefully if missing ──
+  posthogKey: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+  posthogHost:
+    process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
 
   // ── Resend — only required when mode=resend ──
   resendApiKey: process.env.RESEND_API_KEY,

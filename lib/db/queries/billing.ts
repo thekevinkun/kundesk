@@ -111,35 +111,44 @@ export async function resetMessagesUsed(orgId: string): Promise<void> {
 
 // Fetches all orgs where nextBillingDate falls within today — used by renewal cron
 export async function getOrgsDueForRenewal(): Promise<
-  Array<{ id: string; plan: PlanName; subscriptionStatus: SubscriptionStatus }>
+  Array<{
+    id: string;
+    name: string;
+    plan: PlanName;
+    subscriptionStatus: SubscriptionStatus;
+    nextBillingDate: Date | null;
+    ownerEmail: string | null;
+  }>
 > {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Filter entirely in the DB — only active orgs whose nextBillingDate is today
   const results = await db
     .select({
       id: orgs.id,
+      name: orgs.name,
       plan: orgs.plan,
       subscriptionStatus: orgs.subscriptionStatus,
+      nextBillingDate: orgs.nextBillingDate,
+      ownerEmail: orgs.ownerEmail,
     })
     .from(orgs)
     .where(
       and(
         eq(orgs.subscriptionStatus, "active"),
-        // nextBillingDate >= start of today
         gte(orgs.nextBillingDate, today),
-        // nextBillingDate < start of tomorrow
         lt(orgs.nextBillingDate, tomorrow),
       ),
     );
 
   return results.map((org) => ({
     id: org.id,
+    name: org.name,
+    ownerEmail: org.ownerEmail,
     plan: org.plan as PlanName,
     subscriptionStatus: org.subscriptionStatus as SubscriptionStatus,
+    nextBillingDate: org.nextBillingDate,
   }));
 }

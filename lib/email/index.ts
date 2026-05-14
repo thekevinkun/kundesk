@@ -1,123 +1,178 @@
-// Resend email client — transactional emails
-// Mock mode logs email content to console — nothing actually sent
-// Real mode sends via Resend API
+// Resend email client — transactional emails via React Email templates
+// Mock mode logs to console. Real mode sends via Resend API using onboarding@resend.dev
 
-import { env } from "@/lib/env"
+import { render } from "@react-email/components";
+import { env } from "@/lib/env";
+import { WelcomeEmail } from "@/emails/WelcomeEmail";
+import { BillingReminderEmail } from "@/emails/BillingReminderEmail";
+import { UsageWarningEmail } from "@/emails/UsageWarningEmail";
+import { PastDueEmail } from "@/emails/PastDueEmail";
 
-// Email payload — same shape for mock and real
+// onboarding@resend.dev — Resend's free sender, no custom domain needed
+// Switch to "Kundesk <noreply@kundesk.app>" once domain is verified
+const DEFAULT_FROM = "Kundesk <onboarding@resend.dev>";
+
 interface EmailPayload {
-  to:      string
-  subject: string
-  html:    string
-  from?:   string
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
 }
 
-// Default sender — override per email if needed
-const DEFAULT_FROM = "Kundesk <noreply@kundesk.app>"
+// Core send function — mock logs, real calls Resend API
+async function sendEmail(payload: EmailPayload): Promise<void> {
+  const from = payload.from ?? DEFAULT_FROM;
 
-// Sends an email — mock logs to console, real sends via Resend
-export async function sendEmail(payload: EmailPayload): Promise<void> {
-  const from = payload.from ?? DEFAULT_FROM
+  // Resend free plan restriction — can only send to verified email until domain is added
+  // Change RESEND_TO_EMAIL in .env once custom domain is verified
+  const to = process.env.RESEND_TO_EMAIL ?? payload.to;
 
-  // Mock mode — log full email to console so content is visible during dev
   if (env.emailMode === "mock") {
-    console.log("\n📧 [MOCK EMAIL]")
-    console.log(`From:    ${from}`)
-    console.log(`To:      ${payload.to}`)
-    console.log(`Subject: ${payload.subject}`)
-    console.log(`Body:\n${payload.html}`)
-    console.log("─".repeat(60) + "\n")
-    return
+    console.log("\n📧 [MOCK EMAIL]");
+    console.log(`From:    ${from}`);
+    console.log(`To:      ${to}`);
+    console.log(`Subject: ${payload.subject}`);
+    console.log("─".repeat(60) + "\n");
+    return;
   }
 
-  // Real mode — send via Resend
   if (!env.resendApiKey) {
-    throw new Error("RESEND_API_KEY is required when KUNDESK_EMAIL_MODE=resend")
+    throw new Error(
+      "RESEND_API_KEY is required when KUNDESK_EMAIL_MODE=resend",
+    );
   }
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${env.resendApiKey}`,
+      Authorization: `Bearer ${env.resendApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       from,
-      to:      [payload.to],
+      to: [to],
       subject: payload.subject,
-      html:    payload.html,
+      html: payload.html,
     }),
-  })
+  });
 
   if (!response.ok) {
-    throw new Error(`Resend error: ${response.statusText}`)
+    const error = await response.text();
+    throw new Error(`Resend error: ${response.statusText} — ${error}`);
   }
 }
 
-// Sends welcome email after org creation
+// ── Typed email senders — one per template ──
+
 export async function sendWelcomeEmail(
   to: string,
-  orgName: string
+  orgName: string,
+  logoUrl: string,
 ): Promise<void> {
+  const html = await render(
+    WelcomeEmail({
+      orgName,
+      logoUrl,
+      dashboardUrl: `${env.appUrl}/dashboard`,
+    }),
+  );
+
   await sendEmail({
     to,
     subject: `Selamat datang di Kundesk, ${orgName}! 🎉`,
-    html: `
-      <h1>Selamat datang di Kundesk!</h1>
-      <p>Halo ${orgName},</p>
-      <p>Akun Kundesk kamu sudah aktif. Mulai upload dokumen bisnis kamu dan chatbot AI kamu akan siap dalam hitungan menit.</p>
-      <p><a href="${env.appUrl}/dashboard">Buka Dashboard →</a></p>
-      <p>Salam,<br>Tim Kundesk</p>
-    `,
-  })
+    html,
+  });
 }
 
-// Sends billing reminder when next payment is approaching
 export async function sendBillingReminderEmail(
   to: string,
   orgName: string,
   dueDate: Date,
-  amount: number
+  amount: number,
+  redirectUrl: string,
+  logoUrl: string,
 ): Promise<void> {
-  const formattedDate = dueDate.toLocaleDateString("id-ID", {
-    day: "numeric", month: "long", year: "numeric"
-  })
+  // Format values here — keeps templates free of formatting logic
   const formattedAmount = new Intl.NumberFormat("id-ID", {
-    style: "currency", currency: "IDR"
-  }).format(amount)
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(amount);
+
+  const formattedDate = dueDate.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const html = await render(
+    BillingReminderEmail({
+      orgName,
+      logoUrl,
+      redirectUrl,
+      amount: formattedAmount,
+      dueDate: formattedDate,
+    }),
+  );
 
   await sendEmail({
     to,
     subject: `Tagihan Kundesk kamu jatuh tempo ${formattedDate}`,
-    html: `
-      <h1>Pengingat Tagihan</h1>
-      <p>Halo ${orgName},</p>
-      <p>Tagihan Kundesk kamu sebesar <strong>${formattedAmount}</strong> jatuh tempo pada <strong>${formattedDate}</strong>.</p>
-      <p><a href="${env.appUrl}/dashboard/billing">Bayar Sekarang →</a></p>
-      <p>Salam,<br>Tim Kundesk</p>
-    `,
-  })
+    html,
+  });
 }
 
-// Sends usage warning when org approaches their message limit
 export async function sendUsageWarningEmail(
   to: string,
   orgName: string,
   used: number,
-  limit: number
+  limit: number,
+  logoUrl: string,
 ): Promise<void> {
-  const percentage = Math.round((used / limit) * 100)
+  const percentage = Math.round((used / limit) * 100);
+
+  const html = await render(
+    UsageWarningEmail({
+      orgName,
+      logoUrl,
+      percentage,
+      used,
+      limit,
+      billingUrl: `${env.appUrl}/dashboard/billing`,
+    }),
+  );
 
   await sendEmail({
     to,
     subject: `Peringatan: Kuota pesan Kundesk kamu sudah ${percentage}% terpakai`,
-    html: `
-      <h1>Peringatan Kuota</h1>
-      <p>Halo ${orgName},</p>
-      <p>Kuota pesan bulan ini sudah <strong>${percentage}%</strong> terpakai (${used} dari ${limit} pesan).</p>
-      <p>Upgrade plan kamu untuk mendapatkan lebih banyak kuota.</p>
-      <p><a href="${env.appUrl}/dashboard/billing">Lihat Plan →</a></p>
-      <p>Salam,<br>Tim Kundesk</p>
-    `,
-  })
+    html,
+  });
+}
+
+export async function sendPastDueEmail(
+  to: string,
+  orgName: string,
+  amount: number,
+  logoUrl: string,
+): Promise<void> {
+  const formattedAmount = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(amount);
+
+  const html = await render(
+    PastDueEmail({
+      orgName,
+      logoUrl,
+      amount: formattedAmount,
+      billingUrl: `${env.appUrl}/dashboard/billing`,
+    }),
+  );
+
+  await sendEmail({
+    to,
+    subject: `Pembayaran Kundesk kamu tertunggak — segera selesaikan`,
+    html,
+  });
 }

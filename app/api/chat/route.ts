@@ -2,10 +2,13 @@ import { NextRequest } from "next/server";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { db } from "@/lib/db";
-import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
+import { env } from "@/lib/env";
+import { trackEvent } from "@/lib/posthog";
+import { triggerOrgEvent } from "@/lib/pusher";
+import { sendUsageWarningEmail } from "@/lib/email";
 import { retrieveContext, buildSystemPrompt } from "@/lib/ai/rag";
 import { checkChatRateLimit, checkOrgMessageLimit } from "@/lib/redis";
-import { env } from "@/lib/env";
+import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
 import type { ConversationTurn } from "@/types/chat";
 
 // ─── Input validation ───
@@ -291,6 +294,17 @@ export async function POST(request: NextRequest) {
     }
 
     conversationId = inserted[0].id;
+
+    // Track new conversation start
+    trackEvent(org.id, "conversation_started", {
+      delivery_channel: "web_widget",
+    });
+
+    // Fire Pusher event — dashboard bell increments in real time
+    triggerOrgEvent(org.id, "conversation:new", {
+      conversationId,
+      sessionId,
+    }).catch(console.error); // fire-and-forget — don't block the stream
   }
 
   // ── 9. Fetch last 6 messages for conversation history ──
@@ -339,6 +353,11 @@ export async function POST(request: NextRequest) {
           content: message,
         });
 
+        // Notify dashboard of new message — fire-and-forget outside transaction
+        triggerOrgEvent(org.id, "conversation:message", {
+          conversationId,
+        }).catch(console.error);
+
         // Save assistant response only if non-empty — empty means stream failed
         if (assistantResponse) {
           await tx.insert(messages).values({
@@ -361,6 +380,42 @@ export async function POST(request: NextRequest) {
             ),
           );
       });
+
+      // Track chat message — gives us per-org volume in PostHog
+      trackEvent(org.id, "chat_message_sent", {
+        delivery_channel: "web_widget",
+        ai_mode: env.aiMode,
+      });
+
+      // ── Usage warning email at 80% quota ──
+      // Check after increment — fire once when they cross the threshold
+      // Fire and forget — never block the chat response over an email
+      const updatedOrg = await db
+        .select({
+          messagesUsed: orgs.messagesUsed,
+          messagesLimit: orgs.messagesLimit,
+        })
+        .from(orgs)
+        .where(eq(orgs.id, org.id))
+        .limit(1);
+
+      if (updatedOrg[0]) {
+        const { messagesUsed: used, messagesLimit: limit } = updatedOrg[0];
+
+        // Fire at exactly 80% — the increment just crossed the threshold
+        // Checking used === Math.floor(limit * 0.8) prevents repeat emails
+        if (used === Math.floor(limit * 0.8)) {
+          sendUsageWarningEmail(
+            org.ownerEmail ?? "",
+            org.name ?? "",
+            used,
+            limit,
+            env.logoUrl,
+          ).catch((err) =>
+            console.error("[chat] Failed to send usage warning email:", err),
+          );
+        }
+      }
     } catch (err) {
       // Log but don't crash — the customer already received their response
       console.error("[chat] Failed to save messages after stream:", err);

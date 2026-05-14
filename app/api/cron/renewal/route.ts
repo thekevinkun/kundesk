@@ -3,12 +3,14 @@
 // Protected by CRON_SECRET header — rejects all other callers
 
 import { NextRequest, NextResponse } from "next/server";
+import { and, eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { processedWebhooks } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
-import { getOrgsDueForRenewal, markPastDue } from "@/lib/db/queries/billing";
 import { createSubscriptionTransaction } from "@/lib/midtrans";
+import { sendBillingReminderEmail } from "@/lib/email";
+import { getOrgsDueForRenewal, markPastDue } from "@/lib/db/queries/billing";
+import { PLAN_PRICE, type PlanName } from "@/types/billing";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   // ── Auth: verify cron secret header ──
@@ -69,16 +71,34 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         source: "midtrans",
       });
 
+      // Owner email stored on org — no Clerk API call needed
+      const ownerEmail = org.ownerEmail ?? "developer.kevinkun@gmail.com";
+
       // ── Create Midtrans transaction ──
-      // Phase 7: pull real owner email via Clerk API once Resend is wired
       const { redirectUrl } = await createSubscriptionTransaction(
         org.id,
         org.plan,
-        "renewal@kundesk.app",
+        ownerEmail,
       );
 
-      // ── Mark as past_due — reactivates to "active" when webhook fires after payment ──
+      // ── Mark as past_due ──
       await markPastDue(org.id);
+
+      // ── Send billing reminder email — payment link included ──
+      // Fire and forget — email failure must not affect cron result
+      sendBillingReminderEmail(
+        ownerEmail,
+        org.name,
+        org.nextBillingDate ?? new Date(),
+        PLAN_PRICE[org.plan as PlanName],
+        redirectUrl,
+        env.logoUrl,
+      ).catch((err) =>
+        console.error(
+          `[cron/renewal] Failed to send billing email for org ${org.id}:`,
+          err,
+        ),
+      );
 
       console.log(
         `[cron/renewal] Charged org ${org.id} — payment link: ${redirectUrl}`,

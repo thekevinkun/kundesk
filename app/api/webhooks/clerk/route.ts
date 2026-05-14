@@ -1,8 +1,10 @@
 import { headers } from "next/headers";
+import { clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { sendWelcomeEmail } from "@/lib/email";
 import { orgs, chatbots, processedWebhooks } from "@/lib/db/schema";
 
 // Clerk webhook event types we care about — typed, not free text
@@ -19,6 +21,7 @@ interface ClerkOrgData {
   slug: string | null;
   created_at: number;
   updated_at: number;
+  created_by: string | null;
 }
 
 // Full webhook payload shape from Clerk
@@ -95,6 +98,7 @@ export async function POST(req: Request) {
             subscriptionStatus: "free",
             messagesUsed: 0,
             messagesLimit: 100,
+            createdBy: data.created_by,
           })
           .onConflictDoUpdate({
             target: orgs.id,
@@ -132,6 +136,37 @@ export async function POST(req: Request) {
           .where(eq(orgs.id, data.id));
       }
     });
+
+    // Welcome email on new org — runs after transaction so email failure
+    // never rolls back the org creation
+    if (type === "organization.created" && data.created_by) {
+      try {
+        // Fetch the creator's email from Clerk API using their userId
+        const clerk = await clerkClient();
+        const user = await clerk.users.getUser(data.created_by);
+        const email =
+          user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
+            ?.emailAddress ?? user.emailAddresses[0]?.emailAddress;
+
+        if (email) {
+          await db
+            .update(orgs)
+            .set({ ownerEmail: email })
+            .where(eq(orgs.id, data.id));
+
+          // Fire and forget — email failure must never affect webhook response
+          sendWelcomeEmail(email, data.name, env.logoUrl).catch((err) =>
+            console.error("[clerk-webhook] Failed to send welcome email:", err),
+          );
+        }
+      } catch (err) {
+        // Log but don't fail — org is already created successfully
+        console.error(
+          "[clerk-webhook] Failed to fetch user for welcome email:",
+          err,
+        );
+      }
+    }
 
     // Transaction committed — both claim and org sync succeeded
     return new Response("OK", { status: 200 });

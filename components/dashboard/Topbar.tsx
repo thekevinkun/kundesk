@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { useConversationStore } from "@/stores/conversation-store";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -23,6 +24,7 @@ const Topbar = () => {
   const [activeColor, setActiveColor] = useState("#069494");
   // useTransition — keeps UI responsive while Server Action runs in background
   const [, startTransition] = useTransition();
+  const { unreadCount, clearUnread } = useConversationStore();
 
   // On mount — read the saved accent color from the CSS variable
   // The chatbot config page sets this via Server Action + revalidatePath
@@ -61,6 +63,30 @@ const Topbar = () => {
     });
   };
 
+  const notifications = [
+    {
+      icon: "🔔",
+      label: "Notifikasi",
+      dot: "bg-red-500",
+      count: unreadCount,
+      onClick: clearUnread,
+    },
+    {
+      icon: "💬",
+      label: "Pesan",
+      dot: "bg-blue-500",
+      count: 0,
+      onClick: undefined,
+    },
+    {
+      icon: "📦",
+      label: "Update",
+      dot: "bg-(--color-brand)",
+      count: 0,
+      onClick: undefined,
+    },
+  ];
+
   return (
     <TooltipProvider>
       <motion.header
@@ -93,25 +119,27 @@ const Topbar = () => {
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
           {/* Notification buttons */}
-          {[
-            { icon: "🔔", label: "Notifikasi", dot: "bg-red-500" },
-            { icon: "💬", label: "Pesan", dot: "bg-blue-500" },
-            { icon: "📦", label: "Update", dot: "bg-(--color-brand)" },
-          ].map(({ icon, label, dot }) => (
+          {notifications.map(({ icon, label, dot, count, onClick }) => (
             <Tooltip key={label}>
               <TooltipTrigger asChild>
                 <button
-                  className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) border border-(--color-border) flex items-center justify-center text-base text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) transition-all"
+                  className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
+                    border border-(--color-border) flex items-center justify-center text-base 
+                    text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) 
+                    transition-all"
                   aria-label={label}
+                  onClick={onClick}
                 >
                   {icon}
                   {/* Notification dot */}
-                  <span
-                    className={cn(
-                      "absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white",
-                      dot,
-                    )}
-                  />
+                  {count > 0 && (
+                    <span
+                      className={cn(
+                        "absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white animate-pulse",
+                        dot,
+                      )}
+                    />
+                  )}
                 </button>
               </TooltipTrigger>
               <TooltipContent>{label}</TooltipContent>

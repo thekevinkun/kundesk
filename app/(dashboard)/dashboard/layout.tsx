@@ -4,6 +4,8 @@ import { auth } from "@clerk/nextjs/server";
 import { Toaster } from "sonner";
 import { Sidebar, Topbar } from "@/components/dashboard";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { PusherProvider } from "@/components/providers/pusher-provider";
+import { PostHogProvider } from "@/components/providers/posthog-provider";
 import { getBillingData } from "@/lib/db/queries/billing";
 import type { SubscriptionStatus } from "@/types/billing";
 
@@ -32,34 +34,38 @@ export default async function DashboardLayout({
 
   return (
     <QueryProvider>
-      <div className="min-h-screen bg-(--color-bg-page) flex">
-        {/* Pass subscriptionStatus so Sidebar can show billing warning badge */}
-        <Sidebar subscriptionStatus={subscriptionStatus} />
+      <PostHogProvider orgId={orgId}>
+        <PusherProvider orgId={orgId} />
 
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
-          <Topbar />
-          <main className="flex-1 p-4 md:p-6 lg:p-7">{children}</main>
+        <div className="min-h-screen bg-(--color-bg-page) flex">
+          {/* Pass subscriptionStatus so Sidebar can show billing warning badge */}
+          <Sidebar subscriptionStatus={subscriptionStatus} />
+
+          <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
+            <Topbar />
+            <main className="flex-1 p-4 md:p-6 lg:p-7">{children}</main>
+          </div>
         </div>
-      </div>
-      <Toaster
-        position="bottom-right"
-        duration={5000}
-        toastOptions={{
-          style: {
-            display: "flex",
-            alignItems: "start",
-            fontFamily: "var(--font-body)",
-            fontSize: "12px",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            background: "var(--color-bg-card)",
-            color: "var(--color-text-900)",
-          },
-          classNames: {
-            icon: "pt-1",
-          },
-        }}
-      />
+        <Toaster
+          position="bottom-right"
+          duration={5000}
+          toastOptions={{
+            style: {
+              display: "flex",
+              alignItems: "start",
+              fontFamily: "var(--font-body)",
+              fontSize: "12px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--color-border)",
+              background: "var(--color-bg-card)",
+              color: "var(--color-text-900)",
+            },
+            classNames: {
+              icon: "pt-1",
+            },
+          }}
+        />
+      </PostHogProvider>
     </QueryProvider>
   );
 }

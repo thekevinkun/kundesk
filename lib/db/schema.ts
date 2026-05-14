@@ -38,6 +38,13 @@ export const orgs = pgTable("orgs", {
   // Display name — synced from Clerk org name
   name: text("name").notNull(),
 
+  // Owner's email — synced from Clerk on org creation, used for transactional emails
+  // Avoids Clerk API call on every usage check
+  ownerEmail: text("owner_email"),
+
+  // Clerk userId of the org creator — used to fetch owner email for transactional emails
+  createdBy: text("created_by"),
+
   // Subscription plan — enforced server-side on every chat message
   plan: text("plan").notNull().default("free"),
 
