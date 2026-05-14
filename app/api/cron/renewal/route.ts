@@ -36,6 +36,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     status: "charged" | "skipped" | "failed";
   }> = [];
 
+  // Collect email promises — awaited together at the end so serverless runtime
+  // doesn't tear down before emails are sent
+  const emailTasks: Array<Promise<void>> = [];
+
   for (const org of orgsDue) {
     // Build a deterministic idempotency key for today's renewal attempt
     // Format: RENEWAL-{orgId}-{YYYY-MM-DD} — one attempt per org per day max
@@ -44,7 +48,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     try {
       // ── Idempotency check — did we already attempt this org today? ──
-      // Prevents double-charging if cron fires twice or markPastDue failed last run
       const [alreadyAttempted] = await db
         .select({ id: processedWebhooks.id })
         .from(processedWebhooks)
@@ -64,8 +67,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
 
       // ── Record the attempt BEFORE calling Midtrans ──
-      // If Midtrans succeeds but markPastDue fails, next run sees this record and skips
-      // This prevents double-charging even if the state transition fails
+      // Prevents double-charging even if state transition fails after
       await db.insert(processedWebhooks).values({
         externalId: renewalKey,
         source: "midtrans",
@@ -76,7 +78,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
       if (!ownerEmail) {
         console.warn(
-          `[cron/renewal] Org ${org.id} has no ownerEmail; skipping renewal`,
+          `[cron/renewal] Org ${org.id} has no ownerEmail — skipping renewal`,
         );
         results.push({ orgId: org.id, status: "failed" });
         continue;
@@ -92,19 +94,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       // ── Mark as past_due ──
       await markPastDue(org.id);
 
-      // ── Send billing reminder email — payment link included ──
-      // Fire and forget — email failure must not affect cron result
-      sendBillingReminderEmail(
-        ownerEmail,
-        org.name,
-        org.nextBillingDate ?? new Date(),
-        PLAN_PRICE[org.plan as PlanName],
-        redirectUrl,
-        env.logoUrl,
-      ).catch((err) =>
-        console.error(
-          `[cron/renewal] Failed to send billing email for org ${org.id}:`,
-          err,
+      // ── Collect email task — awaited together after loop ──
+      emailTasks.push(
+        sendBillingReminderEmail(
+          ownerEmail,
+          org.name,
+          org.nextBillingDate ?? new Date(),
+          PLAN_PRICE[org.plan as PlanName],
+          redirectUrl,
+          env.logoUrl,
+        ).catch((err) =>
+          console.error(
+            `[cron/renewal] Failed to send billing email for org ${org.id}:`,
+            err,
+          ),
         ),
       );
 
@@ -118,6 +121,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       results.push({ orgId: org.id, status: "failed" });
     }
   }
+
+  // Await all email sends before responding — prevents serverless teardown dropping emails
+  await Promise.allSettled(emailTasks);
 
   return NextResponse.json({
     message: "Renewal run complete",

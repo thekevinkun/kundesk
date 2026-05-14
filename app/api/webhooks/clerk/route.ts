@@ -137,8 +137,11 @@ export async function POST(req: Request) {
       }
     });
 
-    // Welcome email on new org — runs after transaction so email failure
-    // never rolls back the org creation
+    // NOTE: ownerEmail sync is best-effort after transaction commits.
+    // If Clerk API call fails, createdBy column is already persisted as fallback.
+    // Backfill any affected orgs with:
+    // UPDATE orgs SET owner_email = ... WHERE owner_email IS NULL AND created_by IS NOT NULL
+    // A proper retry queue is planned for Phase 9 infrastructure.
     if (type === "organization.created" && data.created_by) {
       try {
         const clerk = await clerkClient();

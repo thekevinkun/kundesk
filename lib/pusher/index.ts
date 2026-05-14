@@ -1,6 +1,6 @@
 // Server-side Pusher client — fires events to connected dashboard browsers
 // Mock mode: logs to console. Real mode: triggers via Pusher API.
-// Channel naming convention: org-{orgId} — never deviate from this
+// Channel naming convention: private-org-{orgId} — never deviate from this
 
 import { env } from "@/lib/env";
 
