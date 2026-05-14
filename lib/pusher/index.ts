@@ -15,14 +15,14 @@ export interface DocumentUpdatedPayload {
 
 // ── Channel naming ──
 
-// All org events go on this channel — consistent across the entire codebase
+// All private-org-{orgId} events go on this channel — consistent across the entire codebase
 export function orgChannel(orgId: string): string {
   return `private-org-${orgId}`;
 }
 
 // ── Trigger function ──
 
-// Fires an event on the org's Pusher channel
+// Fires an event on the private-org-{orgId}'s Pusher channel
 // Callers don't check the mode — this function handles the switch
 export async function triggerOrgEvent(
   orgId: string,

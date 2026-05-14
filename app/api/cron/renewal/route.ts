@@ -66,13 +66,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         continue;
       }
 
-      // ── Record the attempt BEFORE calling Midtrans ──
-      // Prevents double-charging even if state transition fails after
-      await db.insert(processedWebhooks).values({
-        externalId: renewalKey,
-        source: "midtrans",
-      });
-
       // Owner email stored on org — no Clerk API call needed
       const ownerEmail = org.ownerEmail;
 
@@ -84,12 +77,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         continue;
       }
 
-      // ── Create Midtrans transaction ──
+      // ── Create Midtrans transaction FIRST ──
+      // Record idempotency key only after Midtrans confirms the charge
+      // If Midtrans throws here, renewalKey stays unrecorded — same-day retry is allowed
       const { redirectUrl } = await createSubscriptionTransaction(
         org.id,
         org.plan,
         ownerEmail,
       );
+
+      // ── Record the attempt AFTER Midtrans succeeds ──
+      // Real charge exists — block same-day retries to prevent double-charging
+      await db.insert(processedWebhooks).values({
+        externalId: renewalKey,
+        source: "midtrans",
+      });
 
       // ── Mark as past_due ──
       await markPastDue(org.id);
