@@ -1,7 +1,7 @@
 // Resend email client — transactional emails via React Email templates
 // Mock mode logs to console. Real mode sends via Resend API using onboarding@resend.dev
 
-import { render } from "@react-email/components";
+import { render } from "@react-email/render";
 import { env } from "@/lib/env";
 import { WelcomeEmail } from "@/emails/WelcomeEmail";
 import { BillingReminderEmail } from "@/emails/BillingReminderEmail";
@@ -44,6 +44,7 @@ async function sendEmail(payload: EmailPayload): Promise<void> {
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: {
       Authorization: `Bearer ${env.resendApiKey}`,
       "Content-Type": "application/json",

@@ -17,7 +17,7 @@ export interface DocumentUpdatedPayload {
 
 // All org events go on this channel — consistent across the entire codebase
 export function orgChannel(orgId: string): string {
-  return `org-${orgId}`;
+  return `private-org-${orgId}`;
 }
 
 // ── Trigger function ──

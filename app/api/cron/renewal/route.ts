@@ -72,7 +72,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       });
 
       // Owner email stored on org — no Clerk API call needed
-      const ownerEmail = org.ownerEmail ?? "developer.kevinkun@gmail.com";
+      const ownerEmail = org.ownerEmail;
+
+      if (!ownerEmail) {
+        console.warn(
+          `[cron/renewal] Org ${org.id} has no ownerEmail; skipping renewal`,
+        );
+        results.push({ orgId: org.id, status: "failed" });
+        continue;
+      }
 
       // ── Create Midtrans transaction ──
       const { redirectUrl } = await createSubscriptionTransaction(

@@ -141,7 +141,6 @@ export async function POST(req: Request) {
     // never rolls back the org creation
     if (type === "organization.created" && data.created_by) {
       try {
-        // Fetch the creator's email from Clerk API using their userId
         const clerk = await clerkClient();
         const user = await clerk.users.getUser(data.created_by);
         const email =
@@ -149,20 +148,22 @@ export async function POST(req: Request) {
             ?.emailAddress ?? user.emailAddresses[0]?.emailAddress;
 
         if (email) {
+          // Update ownerEmail — if this fails, createdBy column allows manual backfill
+          // via: SELECT id, created_by FROM orgs WHERE owner_email IS NULL
           await db
             .update(orgs)
             .set({ ownerEmail: email })
             .where(eq(orgs.id, data.id));
 
-          // Fire and forget — email failure must never affect webhook response
           sendWelcomeEmail(email, data.name, env.logoUrl).catch((err) =>
             console.error("[clerk-webhook] Failed to send welcome email:", err),
           );
         }
       } catch (err) {
-        // Log but don't fail — org is already created successfully
+        // Non-fatal — org created successfully, createdBy stored for backfill
+        // Query to find affected orgs: SELECT id FROM orgs WHERE owner_email IS NULL AND created_by IS NOT NULL
         console.error(
-          "[clerk-webhook] Failed to fetch user for welcome email:",
+          "[clerk-webhook] Failed to sync ownerEmail — backfill via createdBy column:",
           err,
         );
       }

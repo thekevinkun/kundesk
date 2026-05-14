@@ -353,11 +353,6 @@ export async function POST(request: NextRequest) {
           content: message,
         });
 
-        // Notify dashboard of new message — fire-and-forget outside transaction
-        triggerOrgEvent(org.id, "conversation:message", {
-          conversationId,
-        }).catch(console.error);
-
         // Save assistant response only if non-empty — empty means stream failed
         if (assistantResponse) {
           await tx.insert(messages).values({
@@ -380,6 +375,11 @@ export async function POST(request: NextRequest) {
             ),
           );
       });
+
+      // Notify dashboard of new message — fire-and-forget outside transaction
+      triggerOrgEvent(org.id, "conversation:message", {
+        conversationId,
+      }).catch(console.error);
 
       // Track chat message — gives us per-org volume in PostHog
       trackEvent(org.id, "chat_message_sent", {

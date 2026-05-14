@@ -10,6 +10,7 @@ import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
 import { sendPastDueEmail } from "@/lib/email";
+import { processedWebhooks } from "@/lib/db/schema";
 import { suspendSubscription } from "@/lib/db/queries/billing";
 import { PLAN_PRICE, type PlanName } from "@/types/billing";
 
@@ -72,20 +73,43 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         );
         results.push({ orgId: org.id, status: "suspended" });
       } else if (daysOverdue >= 3) {
-        // ── Day 3–6: send past due warning email ──
-        if (org.ownerEmail) {
-          sendPastDueEmail(
-            org.ownerEmail,
-            org.name,
-            PLAN_PRICE[org.plan as PlanName],
-            env.logoUrl,
-          ).catch((err) =>
-            console.error(
-              `[cron/past-due] Failed to send email for org ${org.id}:`,
-              err,
+        // ── Day 3 only — use idempotency key to prevent repeat emails ──
+        // Key format: PASTDUE-{orgId}-{billingDate} — unique per billing cycle
+        const billingDateStr = org.nextBillingDate.toISOString().slice(0, 10);
+        const pastDueKey = `PASTDUE-${org.id}-${billingDateStr}`;
+
+        const [alreadyWarned] = await db
+          .select({ id: processedWebhooks.id })
+          .from(processedWebhooks)
+          .where(
+            and(
+              eq(processedWebhooks.source, "midtrans"),
+              eq(processedWebhooks.externalId, pastDueKey),
             ),
           );
+
+        if (!alreadyWarned) {
+          // Record before sending — prevents duplicate emails on cron retry
+          await db.insert(processedWebhooks).values({
+            externalId: pastDueKey,
+            source: "midtrans",
+          });
+
+          if (org.ownerEmail) {
+            sendPastDueEmail(
+              org.ownerEmail,
+              org.name,
+              PLAN_PRICE[org.plan as PlanName],
+              env.logoUrl,
+            ).catch((err) =>
+              console.error(
+                `[cron/past-due] Failed to send email for org ${org.id}:`,
+                err,
+              ),
+            );
+          }
         }
+
         console.log(
           `[cron/past-due] Warned org ${org.id} — ${daysOverdue} days overdue`,
         );

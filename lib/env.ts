@@ -62,6 +62,9 @@ export const env = {
   posthogHost:
     process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
 
+  //  ── Sentry ──
+  sentryDsn: process.env.SENTRY_DSN,
+
   // ── Resend — only required when mode=resend ──
   resendApiKey: process.env.RESEND_API_KEY,
 

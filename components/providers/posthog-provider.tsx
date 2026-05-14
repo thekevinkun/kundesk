@@ -22,7 +22,10 @@ export function PostHogProvider({ children, orgId }: PostHogProviderProps) {
       autocapture: false,
       respect_dnt: true,
     });
+  }, []);
 
+  useEffect(() => {
+    if (!orgId) return;
     posthog.identify(orgId, { org_id: orgId });
   }, [orgId]);
 

@@ -40,10 +40,15 @@ export function usePusherChannel(orgId: string): void {
       const pusher = new PusherClient(key, {
         cluster,
         forceTLS: true,
+        // Auth endpoint — Pusher calls this to verify the user has access to the channel
+        channelAuthorization: {
+          endpoint: "/api/pusher/auth",
+          transport: "ajax",
+        },
       });
 
-      // Subscribe to the org's private channel — all dashboard events land here
-      const channel = pusher.subscribe(`org-${orgId}`);
+      // private- prefix — Pusher requires server-side auth before granting access
+      const channel = pusher.subscribe(`private-org-${orgId}`);
 
       // New conversation started — increment notification bell
       channel.bind(EVENTS.CONVERSATION_NEW, () => {

@@ -8,11 +8,22 @@ Sentry.init({
 
   // Scrub sensitive fields before sending to Sentry
   beforeSend(event) {
-    // Strip message content — never send customer chat messages to Sentry
+    const SCRUBBED_KEYS = [
+      "password",
+      "token",
+      "secret",
+      "embedding",
+      "content",
+      "message",
+      "apiKey",
+      "authorization",
+    ];
+
     if (event.request?.data) {
       const data = event.request.data as Record<string, unknown>;
-      if (data.message) data.message = "[scrubbed]";
-      if (data.content) data.content = "[scrubbed]";
+      for (const key of SCRUBBED_KEYS) {
+        if (key in data) data[key] = "[scrubbed]";
+      }
     }
     return event;
   },

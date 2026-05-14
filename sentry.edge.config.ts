@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
+import { env } from "./lib/env";
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
+  dsn: env.sentryDsn,
   tracesSampleRate: 0.1,
   enableLogs: true,
   sendDefaultPii: false,

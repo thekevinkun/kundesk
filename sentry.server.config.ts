@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
+import { env } from "@/lib/env";
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
+  dsn: env.sentryDsn,
   tracesSampleRate: 0.1,
   enableLogs: true,
   sendDefaultPii: false,
@@ -17,22 +18,28 @@ Sentry.init({
       "message",
       "apiKey",
       "authorization",
-    ];
+    ].map((k) => k.toLowerCase());
 
-    // Scrub from request body
-    if (event.request?.data) {
-      const data = event.request.data as Record<string, unknown>;
-      for (const key of SCRUBBED_KEYS) {
-        if (key in data) data[key] = "[scrubbed]";
+    // Recursively scrub any object or array
+    function scrubObject(obj: unknown): void {
+      if (!obj || typeof obj !== "object") return;
+
+      if (Array.isArray(obj)) {
+        obj.forEach(scrubObject);
+        return;
+      }
+
+      for (const key in obj) {
+        if (SCRUBBED_KEYS.includes(key.toLowerCase())) {
+          (obj as Record<string, unknown>)[key] = "[scrubbed]";
+        } else {
+          scrubObject((obj as Record<string, unknown>)[key]);
+        }
       }
     }
 
-    // Scrub from extra context — sometimes logged manually
-    if (event.extra) {
-      for (const key of SCRUBBED_KEYS) {
-        if (key in event.extra) event.extra[key] = "[scrubbed]";
-      }
-    }
+    scrubObject(event.request?.data);
+    scrubObject(event.extra);
 
     return event;
   },
