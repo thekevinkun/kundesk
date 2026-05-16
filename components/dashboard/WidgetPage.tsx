@@ -45,7 +45,8 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kundesk.app";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://kundesk.vercel.app";
   const chatUrl = `${appUrl}/chat/${data.orgSlug}`;
 
   // Script loads widget.js with org + color as query params

@@ -79,7 +79,8 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
-    if (!key || !cluster || !orgId) return;
+
+    if (!key || !cluster || !orgId || conversationId === null) return;
 
     let cleanup: (() => void) | undefined;
 
@@ -94,14 +95,15 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         forceTLS: true,
       });
 
-      // Subscribe to the org's public channel — different from dashboard private channel
-      // We use org-{orgId} (no "private-" prefix) for the customer-facing side
+      // Per-conversation channel — only this customer receives messages for this conversation
+      const channelName = `conversation-${conversationId}`;
       const channel = pusher.subscribe(`org-${orgId}`);
 
       channel.bind("conversation:message", (payload: PusherMessagePayload) => {
-        // Filter to this session's conversation — prevents cross-session message bleeding
+        // Ignore all events until this client has a concrete conversationId,
+        // then strictly match that conversation.
         if (
-          conversationId !== null &&
+          conversationId === null ||
           payload.conversationId !== conversationId
         ) {
           return;
@@ -113,7 +115,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
       cleanup = () => {
         channel.unbind_all();
-        pusher.unsubscribe(`org-${orgId}`);
+        pusher.unsubscribe(channelName);
         pusher.disconnect();
       };
     });

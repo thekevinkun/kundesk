@@ -1,9 +1,6 @@
-// Single conversation row — click to expand inline conversation dialog
-// Shows handoff controls and full message history in the expanded panel
-
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { ConversationDialog } from "@/components/dashboard/conversations";
@@ -133,6 +130,10 @@ const ConversationRow = ({
     setIsExpanded(false);
     onReturn(convo.id);
   };
+
+  useEffect(() => {
+    setHandoffStatus(convo.handoffStatus);
+  }, [convo.handoffStatus]);
 
   return (
     <>

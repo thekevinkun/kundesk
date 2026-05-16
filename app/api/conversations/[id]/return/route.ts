@@ -67,7 +67,7 @@ export async function POST(
   }
 
   // Transition back to AI — clear handoff fields
-  await db
+  const updated = await db
     .update(conversations)
     .set({
       handoffStatus: "ai",
@@ -78,8 +78,21 @@ export async function POST(
       and(
         eq(conversations.id, conversationId),
         eq(conversations.orgId, orgId), // ← IDOR on update
+        eq(conversations.handoffStatus, "human"),
       ),
+    )
+    .returning({ id: conversations.id });
+
+  if (updated.length === 0) {
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: "Conversation is not in human handoff mode",
+        status: 409,
+      },
+      { status: 409 },
     );
+  }
 
   // Notify dashboard — conversation badge goes back to green
   await triggerConversationReturn(orgId, { conversationId }).catch(
@@ -87,7 +100,7 @@ export async function POST(
   );
 
   // Notify owner — AI has resumed handling
-  createNotification(
+  await createNotification(
     orgId,
     "conversation_return",
     "AI kembali menangani percakapan",

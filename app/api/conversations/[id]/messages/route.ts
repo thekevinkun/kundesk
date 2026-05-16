@@ -6,6 +6,7 @@ import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
 import { conversations, messages } from "@/lib/db/schema";
+import { parseNeonTimestamp } from "@/helpers/format";
 import type { ApiResponse, ConversationMessage } from "@/types/api";
 
 interface RouteParams {
@@ -72,7 +73,7 @@ export async function GET(
     createdAt:
       row.createdAt instanceof Date
         ? row.createdAt.toISOString()
-        : new Date(String(row.createdAt).replace(" ", "T") + "Z").toISOString(),
+        : (parseNeonTimestamp(row.createdAt) ?? new Date()).toISOString(),
   }));
 
   return NextResponse.json<ApiResponse<ConversationMessage[]>>({

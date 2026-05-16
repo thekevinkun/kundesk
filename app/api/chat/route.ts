@@ -238,16 +238,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 6. Plan limit check ──
-  // Atomic check — actual increment happens after successful stream completion
-  if (org.messagesUsed >= org.messagesLimit) {
-    return errorResponse(
-      "Batas pesan bulanan telah tercapai. Silakan upgrade plan Anda.",
-      402,
-    );
-  }
-
-  // ── 7. Prompt injection detection ──
+  // ── 6. Prompt injection detection ──
   if (detectInjection(message)) {
     // Return 200 with a natural deflection — attacker gets no signal that we detected them
     const deflectionStream = new ReadableStream({
@@ -272,7 +263,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // ── 8a. Resolve or create conversation ──
+  // ── 7a. Resolve or create conversation ──
   // sessionId is browser-generated — same session = same conversation thread
   let conversationId: number;
 
@@ -321,7 +312,7 @@ export async function POST(request: NextRequest) {
     }).catch(console.error); // fire-and-forget — don't block the stream
 
     // Only notify on truly new conversations — first message in this session
-    createNotification(
+    await createNotification(
       org.id,
       "conversation_new",
       "Percakapan baru dimulai",
@@ -330,7 +321,7 @@ export async function POST(request: NextRequest) {
     ).catch(console.error);
   }
 
-  // ── 8b. Handoff check — if human has taken over, don't stream AI response ──
+  // ── 7b. Handoff check — if human has taken over, don't stream AI response ──
   // Check handoffStatus on the existing conversation
   if (existingConversation) {
     const [convoStatus] = await db
@@ -371,7 +362,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Notify staff — new customer message arrived during handoff
-      createNotification(
+      await createNotification(
         org.id,
         "message_new",
         "Pesan baru dari pelanggan",
@@ -380,7 +371,7 @@ export async function POST(request: NextRequest) {
       ).catch(console.error);
 
       // Notify dashboard — staff sees new customer message appear live
-      triggerConversationMessage(org.id, {
+      triggerConversationMessage(org.id, conversationId, {
         conversationId,
         role: "user",
         content: message,
@@ -394,6 +385,15 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+  }
+
+  // ── 8. Plan limit check ──
+  // Atomic check — actual increment happens after successful stream completion
+  if (org.messagesUsed >= org.messagesLimit) {
+    return errorResponse(
+      "Batas pesan bulanan telah tercapai. Silakan upgrade plan Anda.",
+      402,
+    );
   }
 
   // ── 9. Fetch last 6 messages for conversation history ──

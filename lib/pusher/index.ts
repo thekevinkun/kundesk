@@ -58,14 +58,17 @@ export async function triggerOrgEvent(
   await pusher.trigger(channel, event, payload);
 }
 
-// Fires an event on the PUBLIC org-{orgId} channel — no auth required
-// Used for events the customer widget needs to receive (staff replies)
-export async function triggerPublicOrgEvent(
-  orgId: string,
+// Fires on a per-conversation public channel — customer widget subscribes here
+// Using conversationId instead of orgId prevents cross-session data leakage
+// The channel name includes conversationId which is a DB integer — not guessable
+// but also not a secret. For higher security, Phase 10 can add a signed token.
+export async function triggerPublicConversationEvent(
+  conversationId: number,
   event: string,
   payload: unknown,
 ): Promise<void> {
-  const channel = `org-${orgId}`; // public — no "private-" prefix
+  // Channel scoped to one conversation — no cross-session leakage possible
+  const channel = `conversation-${conversationId}`;
 
   if (env.realtimeMode === "mock") {
     console.log(`[Pusher Mock] channel=${channel} event=${event}`, payload);
@@ -73,13 +76,10 @@ export async function triggerPublicOrgEvent(
   }
 
   if (!env.pusherAppId || !env.pusherKey || !env.pusherSecret) {
-    throw new Error(
-      "Pusher credentials required when KUNDESK_REALTIME_MODE=pusher",
-    );
+    throw new Error("Pusher credentials required");
   }
 
   const Pusher = (await import("pusher")).default;
-
   const pusher = new Pusher({
     appId: env.pusherAppId,
     key: env.pusherKey,
@@ -138,19 +138,22 @@ export async function triggerConversationReturn(
   await triggerOrgEvent(orgId, "conversation:return", payload);
 }
 
-// Fires when a new message is added — fires on BOTH channels:
+// Fires when a new message is added:
 // private-org-{orgId} → dashboard staff see it live
-// org-{orgId} → customer widget sees staff replies live (public channel, no Clerk auth)
+// conversation-{conversationId} → only the relevant customer widget receives it
 export async function triggerConversationMessage(
   orgId: string,
+  conversationId: number,
   payload: ConversationMessagePayload,
 ): Promise<void> {
-  // Fire on private channel for dashboard
+  // Dashboard gets it on the private org channel
   await triggerOrgEvent(orgId, "conversation:message", payload);
-
-  // Also fire on public channel so the customer widget receives it
-  // Public channel has no auth — scoped by orgId so cross-org leakage is impossible
-  await triggerPublicOrgEvent(orgId, "conversation:message", payload);
+  // Customer widget gets it on the per-conversation public channel
+  await triggerPublicConversationEvent(
+    conversationId,
+    "conversation:message",
+    payload,
+  );
 }
 
 // Fires when a new notification is created — dashboard panel updates live

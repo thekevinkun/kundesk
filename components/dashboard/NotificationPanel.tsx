@@ -133,7 +133,6 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
                     </div>
 
                     {/* Content */}
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div
                         className={`text-[13px] leading-snug ${
@@ -145,32 +144,30 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
                         {notif.title}
                       </div>
 
-                      {notif.body &&
-                        (() => {
-                          // Body format: "sessionId|message"
-                          const [sessionPart, messagePart] =
-                            notif.body.split("|");
-                          return (
-                            <>
-                              {messagePart && (
-                                <div className="text-[11.5px] text-(--color-text-500) mt-0.5 truncate">
-                                  {messagePart}
+                      {(() => {
+                        const [sessionPart, messagePart] = (
+                          notif.body ?? ""
+                        ).split("|");
+                        return (
+                          <>
+                            {messagePart && (
+                              <div className="text-[11.5px] text-(--color-text-500) mt-0.5 truncate">
+                                {messagePart}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="text-[11px] text-(--color-text-400)">
+                                {formatRelativeTime(notif.createdAt)}
+                              </div>
+                              {sessionPart && (
+                                <div className="text-[11px] font-mono text-(--color-text-400)">
+                                  Sesi #{sessionPart}
                                 </div>
                               )}
-                              {/* Bottom row — time left, session right */}
-                              <div className="flex items-center justify-between mt-1">
-                                <div className="text-[11px] text-(--color-text-400)">
-                                  {formatRelativeTime(notif.createdAt)}
-                                </div>
-                                {sessionPart && (
-                                  <div className="text-[11px] font-mono text-(--color-text-400)">
-                                    Sesi #{sessionPart}
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          );
-                        })()}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </button>
                 ))}

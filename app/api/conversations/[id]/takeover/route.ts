@@ -3,7 +3,7 @@
 // Only valid when current status is "ai" or "pending_handoff"
 
 import { type NextRequest, NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
 import { conversations } from "@/lib/db/schema";
@@ -65,7 +65,7 @@ export async function POST(
   }
 
   // Transition to human — record who took over and when
-  await db
+  const updated = await db
     .update(conversations)
     .set({
       handoffStatus: "human",
@@ -73,8 +73,20 @@ export async function POST(
       takenOverBy: userId,
     })
     .where(
-      and(eq(conversations.id, conversationId), eq(conversations.orgId, orgId)),
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.orgId, orgId),
+        inArray(conversations.handoffStatus, ["ai", "pending_handoff"]),
+      ),
+    )
+    .returning({ id: conversations.id });
+
+  if (updated.length === 0) {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Invalid handoff transition", status: 409 },
+      { status: 409 },
     );
+  }
 
   // Notify dashboard live — badge turns orange
   await triggerConversationTakeover(orgId, {
@@ -83,7 +95,7 @@ export async function POST(
   }).catch(console.error);
 
   // Insert notification — staff took over a conversation
-  createNotification(
+  await createNotification(
     orgId,
     "conversation_takeover",
     "Percakapan diambil alih",

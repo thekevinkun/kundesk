@@ -100,7 +100,7 @@ export async function POST(
   });
 
   // Notify chat widget — customer sees the reply appear live
-  await triggerConversationMessage(orgId, {
+  await triggerConversationMessage(orgId, conversationId, {
     conversationId,
     role: "human_agent",
     content,

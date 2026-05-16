@@ -59,6 +59,8 @@ export function usePusherChannel(
   const incrementUnread = useConversationStore((s) => s.incrementUnread);
 
   useEffect(() => {
+    let cancelled = false;
+
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
     if (!orgId || !key || !cluster) {
@@ -71,6 +73,8 @@ export function usePusherChannel(
     let cleanup: (() => void) | undefined;
 
     import("pusher-js").then((mod) => {
+      if (cancelled) return;
+
       const PusherClient = mod.default;
 
       const pusher = new PusherClient(key, {
@@ -127,7 +131,10 @@ export function usePusherChannel(
       };
     });
 
-    return () => cleanup?.();
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
     // callbacks ref excluded intentionally — would cause infinite reconnects if caller
     // passes an inline object. Callers should memoize callbacks with useCallback.
   }, [orgId, incrementUnread]);
