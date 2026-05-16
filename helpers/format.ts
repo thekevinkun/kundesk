@@ -46,7 +46,13 @@ export function formatRelativeTime(date: Date | string): string {
   if (diffHours < 24) return `${diffHours} jam lalu`;
   if (diffDays < 30) return `${diffDays} hari lalu`;
 
-  return `${diffDays} hari lalu`;
+  const diffMonths = Math.floor(diffDays / 30);
+  
+  if (diffMonths < 12) return `${diffMonths} bulan lalu`;
+
+  const diffYears = Math.floor(diffDays / 365);
+
+  return `${diffYears} tahun lalu`;
 }
 
 // Safely converts a Neon timestamp to a JavaScript Date

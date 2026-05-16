@@ -249,7 +249,9 @@ export async function POST(request: NextRequest) {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ token: deflection })}\n\n`),
         );
-        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`),
+        );
         controller.close();
       },
     });

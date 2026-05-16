@@ -13,7 +13,7 @@ import {
   chunks,
   notifications,
 } from "@/lib/db/schema";
-import { toDateSafe, parseNeonTimestamp } from "@/helpers/format";
+import { toDateSafe } from "@/helpers/format";
 
 // ── Total messages sent to this org's chatbot ──
 // Counts ALL roles (user + assistant + human_agent) — full volume metric
@@ -253,7 +253,7 @@ export async function getRecentConversations(orgId: string): Promise<
     createdAt: toDateSafe(row.created_at),
     lastMessage: row.last_message,
     lastMessageAt: row.last_message_at
-      ? parseNeonTimestamp(row.last_message_at)
+      ? toDateSafe(row.last_message_at)
       : null,
     messageCount: row.message_count,
     takenOverBy: row.taken_over_by,

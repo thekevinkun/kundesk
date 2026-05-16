@@ -97,7 +97,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
       // Per-conversation channel — only this customer receives messages for this conversation
       const channelName = `conversation-${conversationId}`;
-      const channel = pusher.subscribe(`org-${orgId}`);
+      const channel = pusher.subscribe(channelName);
 
       channel.bind("conversation:message", (payload: PusherMessagePayload) => {
         // Ignore all events until this client has a concrete conversationId,
