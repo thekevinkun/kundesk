@@ -56,9 +56,10 @@ export function formatRelativeTime(date: Date | string): string {
 }
 
 export const toDateSafe = (value: Date | string | null): Date => {
+  if (value === null) return new Date(NaN); // or throw, or return a sentinel
   if (value instanceof Date) return value;
 
-  const raw = String(value);
+  const raw = value;
   const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
 
   const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)

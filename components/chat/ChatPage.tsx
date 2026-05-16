@@ -81,7 +81,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
-    if (!key || !cluster || !channelToken) return;
+    if (!key || !cluster || !orgId || !channelToken) return;
 
     let cancelled = false;
     let cleanup: (() => void) | undefined;
@@ -128,7 +128,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       cancelled = true;
       cleanup?.();
     };
-  }, [orgId, addHumanAgentMessage, conversationId]);
+  }, [orgId, addHumanAgentMessage, conversationId, channelToken]);
 
   const handleSend = async () => {
     const trimmed = input.trim();

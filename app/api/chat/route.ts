@@ -225,7 +225,11 @@ export async function POST(request: NextRequest) {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ token: deflection })}\n\n`),
         );
-        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        // Consistent done format — no conversationId/channelToken since
+        // injection is detected before conversation creation
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`),
+        );
         controller.close();
       },
     });

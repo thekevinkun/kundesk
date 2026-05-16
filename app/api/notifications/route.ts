@@ -7,6 +7,7 @@ import { requireOrg } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { notifications } from "@/lib/db/schema";
 import type { ApiResponse } from "@/types/api";
+import { toDateSafe } from "@/helpers/format";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 export async function GET(): Promise<NextResponse> {
@@ -29,7 +30,7 @@ export async function GET(): Promise<NextResponse> {
     createdAt:
       row.createdAt instanceof Date
         ? row.createdAt.toISOString()
-        : new Date(String(row.createdAt).replace(" ", "T") + "Z").toISOString(),
+        : toDateSafe(row.createdAt).toISOString(),
   }));
 
   return NextResponse.json<ApiResponse<NotificationItem[]>>({

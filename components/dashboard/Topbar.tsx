@@ -168,10 +168,7 @@ const Topbar = () => {
           >
             <button
               onClick={() => {
-                // On touch devices, toggle on click
-                if (window.matchMedia("(hover: none)").matches) {
-                  setNotifPanelOpen((p) => !p);
-                }
+                setNotifPanelOpen((p) => !p);
               }}
               className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
                 border border-(--color-border) flex items-center justify-center text-base 

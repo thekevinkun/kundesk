@@ -101,13 +101,17 @@ export function useChatStream(orgSlug: string) {
               const parsed = JSON.parse(data) as
                 | { token: string }
                 | { error: string }
-                | { done: true; conversationId: number; channelToken: string };
+                | { done: true; conversationId: number; channelToken?: string };
 
               if ("done" in parsed) {
                 finalizeAssistantMessage(localId);
-                // Store conversationId so Pusher can filter messages to this session only
-                setConversationId(parsed.conversationId);
-                setChannelToken(parsed.channelToken);
+                // Only set if present — absent on injection deflection responses
+                if (parsed.conversationId !== undefined) {
+                  setConversationId(parsed.conversationId);
+                }
+                if (parsed.channelToken !== undefined) {
+                  setChannelToken(parsed.channelToken);
+                }
                 return;
               }
 

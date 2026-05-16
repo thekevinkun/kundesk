@@ -59,9 +59,8 @@ export async function triggerOrgEvent(
 }
 
 // Fires on a per-conversation public channel — customer widget subscribes here
-// Using conversationId instead of orgId prevents cross-session data leakage
-// The channel name includes conversationId which is a DB integer — not guessable
-// but also not a secret. For higher security, Phase 10 can add a signed token.
+// Using channelToken (UUID) instead of orgId prevents cross-session data leakage
+// The channel name uses an unguessable UUID token — prevents enumeration attacks
 export async function triggerPublicConversationEvent(
   channelToken: string,
   event: string,
