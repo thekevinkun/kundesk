@@ -63,12 +63,12 @@ export async function triggerOrgEvent(
 // The channel name includes conversationId which is a DB integer — not guessable
 // but also not a secret. For higher security, Phase 10 can add a signed token.
 export async function triggerPublicConversationEvent(
-  conversationId: number,
+  channelToken: string,
   event: string,
   payload: unknown,
 ): Promise<void> {
   // Channel scoped to one conversation — no cross-session leakage possible
-  const channel = `conversation-${conversationId}`;
+  const channel = `conversation-${channelToken}`;
 
   if (env.realtimeMode === "mock") {
     console.log(`[Pusher Mock] channel=${channel} event=${event}`, payload);
@@ -143,14 +143,14 @@ export async function triggerConversationReturn(
 // conversation-{conversationId} → only the relevant customer widget receives it
 export async function triggerConversationMessage(
   orgId: string,
-  conversationId: number,
+  channelToken: string,
   payload: ConversationMessagePayload,
 ): Promise<void> {
   // Dashboard gets it on the private org channel
   await triggerOrgEvent(orgId, "conversation:message", payload);
   // Customer widget gets it on the per-conversation public channel
   await triggerPublicConversationEvent(
-    conversationId,
+    channelToken,
     "conversation:message",
     payload,
   );

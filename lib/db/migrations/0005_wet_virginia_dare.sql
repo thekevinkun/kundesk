@@ -1,0 +1,1 @@
+ALTER TABLE "conversations" ADD COLUMN "channel_token" text DEFAULT '' NOT NULL;

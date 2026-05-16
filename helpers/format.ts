@@ -36,7 +36,7 @@ export function formatRelativeTime(date: Date | string): string {
 
   if (Number.isNaN(d.getTime())) return "—";
 
-  const diffMs = Date.now() - d.getTime();
+  const diffMs = Math.max(0, Date.now() - d.getTime());
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
@@ -47,7 +47,7 @@ export function formatRelativeTime(date: Date | string): string {
   if (diffDays < 30) return `${diffDays} hari lalu`;
 
   const diffMonths = Math.floor(diffDays / 30);
-  
+
   if (diffMonths < 12) return `${diffMonths} bulan lalu`;
 
   const diffYears = Math.floor(diffDays / 365);
@@ -55,18 +55,7 @@ export function formatRelativeTime(date: Date | string): string {
   return `${diffYears} tahun lalu`;
 }
 
-// Safely converts a Neon timestamp to a JavaScript Date
-// Drizzle .select() returns Date objects, db.execute() returns strings
-// The Z suffix forces UTC interpretation on strings — matches how Neon stores timestamps
-export function parseNeonTimestamp(value: Date | string | null): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  // Neon strings: "2026-05-15 07:30:11.720836" — no timezone marker
-  // Adding T and Z: "2026-05-15T07:30:11.720836Z" — valid UTC ISO string
-  return new Date(String(value).replace(" ", "T") + "Z");
-}
-
-export const toDateSafe = (value: unknown): Date => {
+export const toDateSafe = (value: Date | string | null): Date => {
   if (value instanceof Date) return value;
 
   const raw = String(value);

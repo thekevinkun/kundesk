@@ -1,6 +1,6 @@
 // Inserts a human_agent message into a conversation in handoff mode
+// Atomic transaction with row lock prevents TOCTOU race with /return route
 // Fires conversation:message Pusher event so the chat widget updates live
-// Only valid when handoffStatus is "human"
 
 import { type NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
@@ -12,7 +12,6 @@ import { triggerConversationMessage } from "@/lib/pusher";
 import type { ApiResponse } from "@/types/api";
 
 const replySchema = z.object({
-  // Staff reply content — same 500 char cap as customer messages
   content: z.string().min(1).max(500),
 });
 
@@ -36,7 +35,6 @@ export async function POST(
     );
   }
 
-  // Validate request body
   let body: unknown;
   try {
     body = await request.json();
@@ -57,30 +55,46 @@ export async function POST(
 
   const { content } = parsed.data;
 
-  // Fetch conversation with IDOR protection
-  const [conversation] = await db
-    .select({
-      id: conversations.id,
-      handoffStatus: conversations.handoffStatus,
-    })
-    .from(conversations)
-    .where(
-      and(
-        eq(conversations.id, conversationId),
-        eq(conversations.orgId, orgId), // ← tenant isolation
-      ),
-    )
-    .limit(1);
+  // Atomic check + insert — prevents TOCTOU where /return flips status between check and insert
+  // Row lock ensures handoffStatus cannot change between our read and write
+  const result = await db.transaction(async (tx) => {
+    const [convo] = await tx
+      .select({
+        handoffStatus: conversations.handoffStatus,
+        channelToken: conversations.channelToken,
+      })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.orgId, orgId),
+        ),
+      )
+      .limit(1)
+      .for("update"); // ← row-level lock — blocks concurrent /return until we commit
 
-  if (!conversation) {
+    if (!convo) return { error: "not_found", channelToken: null } as const;
+    if (convo.handoffStatus !== "human")
+      return { error: "not_human", channelToken: null } as const;
+
+    await tx.insert(messages).values({
+      orgId,
+      conversationId,
+      role: "human_agent",
+      content,
+    });
+
+    return { error: null, channelToken: convo.channelToken } as const;
+  });
+
+  if (result.error === "not_found") {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "Conversation not found", status: 404 },
       { status: 404 },
     );
   }
 
-  // Only allow replies when the conversation is in human handoff mode
-  if (conversation.handoffStatus !== "human") {
+  if (result.error === "not_human") {
     return NextResponse.json<ApiResponse>(
       {
         ok: false,
@@ -91,16 +105,9 @@ export async function POST(
     );
   }
 
-  // Insert the human_agent message — third role alongside user and assistant
-  await db.insert(messages).values({
-    orgId,
-    conversationId,
-    role: "human_agent",
-    content,
-  });
-
-  // Notify chat widget — customer sees the reply appear live
-  await triggerConversationMessage(orgId, conversationId, {
+  // Notify dashboard (private channel) + customer widget (public UUID channel)
+  // channelToken is the unguessable UUID — not the integer conversationId
+  await triggerConversationMessage(orgId, result.channelToken, {
     conversationId,
     role: "human_agent",
     content,

@@ -34,6 +34,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     errorType,
     sessionId,
     conversationId,
+    channelToken,
     setSessionId,
     clearError,
     addHumanAgentMessage,
@@ -80,11 +81,14 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
-    if (!key || !cluster || !orgId || conversationId === null) return;
+    if (!key || !cluster || !channelToken) return;
 
+    let cancelled = false;
     let cleanup: (() => void) | undefined;
 
     import("pusher-js").then((mod) => {
+      if (cancelled) return;
+
       const PusherClient = mod.default;
 
       // Chat widget uses a public channel — customers don't have Clerk sessions
@@ -95,8 +99,8 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         forceTLS: true,
       });
 
-      // Per-conversation channel — only this customer receives messages for this conversation
-      const channelName = `conversation-${conversationId}`;
+      // UUID-based channel — unguessable, prevents enumeration
+      const channelName = `conversation-${channelToken}`;
       const channel = pusher.subscribe(channelName);
 
       channel.bind("conversation:message", (payload: PusherMessagePayload) => {
@@ -120,7 +124,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       };
     });
 
-    return () => cleanup?.();
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
   }, [orgId, addHumanAgentMessage, conversationId]);
 
   const handleSend = async () => {

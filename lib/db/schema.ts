@@ -202,6 +202,10 @@ export const conversations = pgTable(
     // Browser-generated UUID — identifies the customer's session anonymously
     sessionId: text("session_id").notNull(),
 
+    // Random UUID — used as the public Pusher channel name for the customer widget
+    // Unguessable — prevents enumeration of conversation channels by sequential ID
+    channelToken: text("channel_token").notNull().default(""),
+    
     // Entry channel — metadata only, RAG pipeline is identical for all channels
     // "web_widget" | "qr_link" | "whatsapp"
     deliveryChannel: text("delivery_channel").notNull().default("web_widget"),

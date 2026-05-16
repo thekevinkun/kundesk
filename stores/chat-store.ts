@@ -13,6 +13,9 @@ export const useChatStore = create<ChatStore>((set) => ({
   conversationId: null,
   setConversationId: (id) => set({ conversationId: id }),
 
+  channelToken: null,
+  setChannelToken: (token) => set({ channelToken: token }),
+
   setSessionId: (id) => set({ sessionId: id }),
 
   // Adds the user's message to the list immediately — optimistic UI

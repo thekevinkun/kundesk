@@ -96,6 +96,8 @@ export interface ChatStore {
   sessionId: string;
   // conversationId — set after first message, used to filter Pusher events by session
   conversationId: number | null;
+  // channel token for chat widget
+  channelToken: string | null;
   // Whether the input should be disabled (streaming in progress)
   isStreaming: boolean;
   // Error message to show in the UI — null when no error
@@ -106,6 +108,7 @@ export interface ChatStore {
   // Actions
   setSessionId: (id: string) => void;
   setConversationId: (id: number) => void;
+  setChannelToken: (token: string) => void;
   addUserMessage: (content: string) => void;
   addHumanAgentMessage: (content: string) => void; // Appends a staff reply directly — called when Pusher fires conversation:message with role human_agent
   startAssistantMessage: () => string; // returns localId of the new message

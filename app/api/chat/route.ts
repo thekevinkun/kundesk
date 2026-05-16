@@ -15,17 +15,13 @@ import type { ConversationTurn } from "@/types/chat";
 // ─── Input validation ───
 
 const chatRequestSchema = z.object({
-  // The customer's message — capped at 500 chars to prevent prompt stuffing
   message: z.string().min(1).max(500),
-  // Browser-generated session ID — groups messages into one conversation
   sessionId: z.string().min(1).max(100),
-  // The org's public slug — used to identify which tenant this chat belongs to
   orgSlug: z.string().min(1).max(100),
 });
 
 // ─── Prompt injection detection ───
 
-// Known injection pattern signatures — expanded from OWASP LLM top 10
 const INJECTION_PATTERNS = [
   /ignore\s+(previous|prior|above|all)\s+instructions?/i,
   /forget\s+(everything|all|your|the)\s+(instructions?|rules?|context)/i,
@@ -44,19 +40,16 @@ const INJECTION_PATTERNS = [
   /\{\{.*\}\}/i,
 ];
 
-// Returns true if the message contains a known injection pattern.
-// We return HTTP 200 with a deflection response — never tip off the attacker with a 4xx.
 function detectInjection(message: string): boolean {
   return INJECTION_PATTERNS.some((pattern) => pattern.test(message));
 }
 
 // ─── Mock streaming ───
 
-// Simulates token-by-token SSE streaming without hitting OpenAI.
-// The UI streaming experience is identical — only the content differs.
 function createMockStream(
   encoder: TextEncoder,
   conversationId: number,
+  channelToken: string,
 ): ReadableStream {
   const mockResponse =
     "Halo! Saya adalah asisten virtual bisnis ini. " +
@@ -64,24 +57,20 @@ function createMockStream(
     "Dalam mode produksi, saya akan menjawab berdasarkan dokumen bisnis yang telah diupload. " +
     "Ada yang bisa saya bantu?";
 
-  // Split into word-level tokens to simulate realistic streaming behavior
   const tokens = mockResponse.split(" ").map((word) => word + " ");
 
   return new ReadableStream({
     async start(controller) {
       for (const token of tokens) {
-        // Format each token as an SSE data event — matches the real OpenAI stream format
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ token })}\n\n`),
         );
-        // Small delay between tokens so the UI streaming effect is visible
         await new Promise((resolve) => setTimeout(resolve, 40));
       }
-      // Signal end of stream — client uses this to know the response is complete
-      // carries conversationId so widget can filter Pusher events
+      // Carry conversationId + channelToken so widget can subscribe to correct channel
       controller.enqueue(
         encoder.encode(
-          `data: ${JSON.stringify({ done: true, conversationId })}\n\n`,
+          `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
         ),
       );
       controller.close();
@@ -91,14 +80,13 @@ function createMockStream(
 
 // ─── Real OpenAI streaming ───
 
-// Streams OpenAI chat completions token by token via SSE.
-// Collects the full response in a buffer so we can save it to DB after streaming.
 function createOpenAIStream(
   systemPrompt: string,
   conversationHistory: ConversationTurn[],
   userMessage: string,
   encoder: TextEncoder,
   conversationId: number,
+  channelToken: string,
   onComplete: (fullResponse: string) => void,
 ): ReadableStream {
   return new ReadableStream({
@@ -106,7 +94,6 @@ function createOpenAIStream(
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({ apiKey: env.openaiApiKey! });
 
-      // Build the messages array — system prompt + last 6 turns + current message
       const apiMessages = [
         { role: "system" as const, content: systemPrompt },
         ...conversationHistory.map((m) => ({
@@ -123,7 +110,6 @@ function createOpenAIStream(
           model: "gpt-4o-mini",
           messages: apiMessages,
           stream: true,
-          // Cap tokens to control cost — enough for a thorough customer service reply
           max_tokens: 600,
           temperature: 0.3,
         });
@@ -138,19 +124,15 @@ function createOpenAIStream(
           }
         }
 
-        // Notify caller with the complete response text for DB storage
         onComplete(fullResponse);
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ done: true, conversationId })}\n\n`,
+            `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
           ),
         );
         controller.close();
       } catch (err) {
-        // Save the user's message even on failure — history shouldn't be silently lost
-        // Pass empty string — handleStreamComplete skips saving assistant msg when empty
         onComplete("");
-        // Send error event so the client can show an error state instead of hanging
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ error: "Stream failed" })}\n\n`,
@@ -168,14 +150,13 @@ function createOpenAIStream(
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
-  // Helper to send a non-streaming error response — used before the stream starts
   const errorResponse = (message: string, status: number) =>
     new Response(JSON.stringify({ error: message }), {
       status,
       headers: { "Content-Type": "application/json" },
     });
 
-  // ── 1. Parse and validate request body ──
+  // ── 1. Parse and validate ──
   let body: unknown;
   try {
     body = await request.json();
@@ -190,8 +171,7 @@ export async function POST(request: NextRequest) {
 
   const { message, sessionId, orgSlug } = parsed.data;
 
-  // ── 2. IP-level rate limit ──
-  // Get real client IP — Next.js sets x-forwarded-for in production
+  // ── 2. IP rate limit ──
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "127.0.0.1";
@@ -204,32 +184,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 3. Resolve org from slug ──
-  // We need the full org record to check plan limits and get orgId for tenant isolation
+  // ── 3. Resolve org ──
   const [org] = await db
     .select()
     .from(orgs)
     .where(eq(orgs.slug, orgSlug))
     .limit(1);
 
-  // Whether slug doesn't exist or chatbot is inactive — same response, never enumerate
   if (!org) {
     return errorResponse("Not found", 404);
   }
 
-  // ── 4. Fetch chatbot config ──
+  // ── 4. Fetch chatbot ──
   const [chatbot] = await db
     .select()
     .from(chatbots)
     .where(and(eq(chatbots.orgId, org.id), eq(chatbots.isActive, true)))
     .limit(1);
 
-  // If no active chatbot exists, treat same as not found — no enumeration
   if (!chatbot) {
     return errorResponse("Not found", 404);
   }
 
-  // ── 5. Org-level rate limit ──
+  // ── 5. Org rate limit ──
   const orgLimit = await checkOrgMessageLimit(org.id);
   if (!orgLimit.success) {
     return errorResponse(
@@ -238,9 +215,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 6. Prompt injection detection ──
+  // ── 6. Prompt injection ──
   if (detectInjection(message)) {
-    // Return 200 with a natural deflection — attacker gets no signal that we detected them
     const deflectionStream = new ReadableStream({
       start(controller) {
         const deflection =
@@ -249,9 +225,7 @@ export async function POST(request: NextRequest) {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ token: deflection })}\n\n`),
         );
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`),
-        );
+        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
         controller.close();
       },
     });
@@ -265,12 +239,12 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // ── 7a. Resolve or create conversation ──
-  // sessionId is browser-generated — same session = same conversation thread
+  // ── 7. Resolve or create conversation ──
   let conversationId: number;
+  let channelToken: string;
 
   const [existingConversation] = await db
-    .select({ id: conversations.id })
+    .select({ id: conversations.id, channelToken: conversations.channelToken })
     .from(conversations)
     .where(
       and(
@@ -282,39 +256,43 @@ export async function POST(request: NextRequest) {
 
   if (existingConversation) {
     conversationId = existingConversation.id;
+    channelToken = existingConversation.channelToken;
   } else {
-    // First message in this session — create a new conversation record
+    // First message — create new conversation with unguessable channel token
     const inserted = await db
       .insert(conversations)
       .values({
         orgId: org.id,
         sessionId,
-        // Track which channel this came from — web widget for now, WhatsApp in Phase 11
         deliveryChannel: "web_widget",
         handoffStatus: "ai",
+        // UUID token used as public Pusher channel — unguessable, prevents enumeration
+        channelToken: crypto.randomUUID(),
       })
-      .returning({ id: conversations.id });
+      .returning({
+        id: conversations.id,
+        channelToken: conversations.channelToken,
+      });
 
-    // Guard against unexpected empty result — should never happen but Drizzle returns an array
     if (!inserted[0]) {
       return errorResponse("Failed to create conversation", 500);
     }
 
     conversationId = inserted[0].id;
+    channelToken = inserted[0].channelToken;
 
-    // Track new conversation start
     trackEvent(org.id, "conversation_started", {
       delivery_channel: "web_widget",
     });
 
-    // Fire Pusher event — dashboard bell increments in real time
+    // Notify dashboard — bell increments live
     triggerOrgEvent(org.id, "conversation:new", {
       conversationId,
       sessionId,
-    }).catch(console.error); // fire-and-forget — don't block the stream
+    }).catch(console.error);
 
-    // Only notify on truly new conversations — first message in this session
-    await createNotification(
+    // Notification — only on truly new conversations, shows customer's first message
+    createNotification(
       org.id,
       "conversation_new",
       "Percakapan baru dimulai",
@@ -323,8 +301,7 @@ export async function POST(request: NextRequest) {
     ).catch(console.error);
   }
 
-  // ── 7b. Handoff check — if human has taken over, don't stream AI response ──
-  // Check handoffStatus on the existing conversation
+  // ── 8. Handoff check — bypass AI if staff is handling ──
   if (existingConversation) {
     const [convoStatus] = await db
       .select({ handoffStatus: conversations.handoffStatus })
@@ -338,7 +315,31 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (convoStatus?.handoffStatus === "human") {
-      // Staff is handling this — return a holding message, don't hit OpenAI
+      // Save user message so staff sees it in the reply box
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
+
+      // Notify staff — new customer message during handoff
+      createNotification(
+        org.id,
+        "message_new",
+        "Pesan baru dari pelanggan",
+        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+        conversationId,
+      ).catch(console.error);
+
+      // Live update dashboard + customer widget
+      triggerConversationMessage(org.id, channelToken, {
+        conversationId,
+        role: "user",
+        content: message,
+      }).catch(console.error);
+
+      // Return holding message — don't hit OpenAI
       const holdingStream = new ReadableStream({
         start(controller) {
           const msg =
@@ -348,36 +349,12 @@ export async function POST(request: NextRequest) {
           );
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ done: true, conversationId })}\n\n`,
+              `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
             ),
           );
           controller.close();
         },
       });
-
-      // Still save the user's message so staff can see it in the reply box
-      await db.insert(messages).values({
-        orgId: org.id,
-        conversationId,
-        role: "user",
-        content: message,
-      });
-
-      // Notify staff — new customer message arrived during handoff
-      await createNotification(
-        org.id,
-        "message_new",
-        "Pesan baru dari pelanggan",
-        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
-        conversationId,
-      ).catch(console.error);
-
-      // Notify dashboard — staff sees new customer message appear live
-      triggerConversationMessage(org.id, conversationId, {
-        conversationId,
-        role: "user",
-        content: message,
-      }).catch(console.error);
 
       return new Response(holdingStream, {
         headers: {
@@ -389,8 +366,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── 8. Plan limit check ──
-  // Atomic check — actual increment happens after successful stream completion
+  // ── 9. Plan limit check — only for AI responses, not handoff messages ──
+  // Human handoff messages bypass OpenAI entirely — no cost, no quota consumed
   if (org.messagesUsed >= org.messagesLimit) {
     return errorResponse(
       "Batas pesan bulanan telah tercapai. Silakan upgrade plan Anda.",
@@ -398,8 +375,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 9. Fetch last 6 messages for conversation history ──
-  // Limiting to 6 prevents context window bloat and prompt injection via history
+  // ── 10. Fetch conversation history ──
   const recentMessages = await db
     .select({ role: messages.role, content: messages.content })
     .from(messages)
@@ -412,13 +388,12 @@ export async function POST(request: NextRequest) {
     .orderBy(desc(messages.createdAt))
     .limit(6);
 
-  // Reverse to chronological order — we fetched newest-first for the LIMIT
   const conversationHistory = recentMessages.reverse() as ConversationTurn[];
 
-  // ── 10. RAG — retrieve relevant context chunks ──
+  // ── 11. RAG context ──
   const contextChunks = await retrieveContext(message, org.id);
 
-  // ── 11. Build system prompt with injected context ──
+  // ── 12. Build system prompt ──
   const systemPrompt = buildSystemPrompt(
     {
       name: chatbot.name,
@@ -431,12 +406,10 @@ export async function POST(request: NextRequest) {
     contextChunks,
   );
 
-  // ── 12. Build and return SSE stream ──
-  // This callback fires when the stream completes — saves messages and increments usage
+  // ── 13. Stream ──
   const handleStreamComplete = async (assistantResponse: string) => {
     try {
       await db.transaction(async (tx) => {
-        // Save the user's message
         await tx.insert(messages).values({
           orgId: org.id,
           conversationId,
@@ -444,7 +417,6 @@ export async function POST(request: NextRequest) {
           content: message,
         });
 
-        // Save assistant response only if non-empty — empty means stream failed
         if (assistantResponse) {
           await tx.insert(messages).values({
             orgId: org.id,
@@ -454,8 +426,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // True atomic increment with SQL-level limit enforcement —
-        // WHERE clause prevents exceeding the limit even under concurrent load
+        // Atomic increment — SQL-level guard prevents exceeding limit under concurrency
         await tx
           .update(orgs)
           .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
@@ -467,20 +438,16 @@ export async function POST(request: NextRequest) {
           );
       });
 
-      // Notify dashboard of new message — fire-and-forget outside transaction
       triggerOrgEvent(org.id, "conversation:message", {
         conversationId,
       }).catch(console.error);
 
-      // Track chat message — gives us per-org volume in PostHog
       trackEvent(org.id, "chat_message_sent", {
         delivery_channel: "web_widget",
         ai_mode: env.aiMode,
       });
 
-      // ── Usage warning email at 80% quota ──
-      // Check after increment — fire once when they cross the threshold
-      // Fire and forget — never block the chat response over an email
+      // Usage warning at 80% quota
       const updatedOrg = await db
         .select({
           messagesUsed: orgs.messagesUsed,
@@ -492,9 +459,6 @@ export async function POST(request: NextRequest) {
 
       if (updatedOrg[0]) {
         const { messagesUsed: used, messagesLimit: limit } = updatedOrg[0];
-
-        // Fire at exactly 80% — the increment just crossed the threshold
-        // Checking used === Math.floor(limit * 0.8) prevents repeat emails
         if (used === Math.floor(limit * 0.8)) {
           sendUsageWarningEmail(
             org.ownerEmail ?? "",
@@ -508,27 +472,24 @@ export async function POST(request: NextRequest) {
         }
       }
     } catch (err) {
-      // Log but don't crash — the customer already received their response
       console.error("[chat] Failed to save messages after stream:", err);
     }
   };
 
-  // Choose mock or real stream based on AI mode env var
   const stream =
     env.aiMode === "mock"
-      ? createMockStream(encoder, conversationId)
+      ? createMockStream(encoder, conversationId, channelToken)
       : createOpenAIStream(
           systemPrompt,
           conversationHistory,
           message,
           encoder,
           conversationId,
+          channelToken,
           handleStreamComplete,
         );
 
-  // In mock mode, save messages with a placeholder response
   if (env.aiMode === "mock") {
-    // Fire-and-forget — don't await, stream starts immediately
     handleStreamComplete(
       "Mock response — AI mode is set to mock. Switch KUNDESK_AI_MODE=openai for real responses.",
     ).catch(console.error);
@@ -536,9 +497,7 @@ export async function POST(request: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      // text/event-stream is the SSE content type — browser keeps connection open
       "Content-Type": "text/event-stream",
-      // no-cache prevents the browser or CDN from buffering the stream
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     },
