@@ -87,7 +87,7 @@ function createOpenAIStream(
   encoder: TextEncoder,
   conversationId: number,
   channelToken: string,
-  onComplete: (fullResponse: string) => void,
+  onComplete: (fullResponse: string) => Promise<void>,
 ): ReadableStream {
   return new ReadableStream({
     async start(controller) {
@@ -124,7 +124,7 @@ function createOpenAIStream(
           }
         }
 
-        onComplete(fullResponse);
+        await onComplete(fullResponse);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
@@ -132,7 +132,7 @@ function createOpenAIStream(
         );
         controller.close();
       } catch (err) {
-        onComplete("");
+        await onComplete("");
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ error: "Stream failed" })}\n\n`,
@@ -243,10 +243,6 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // ── 7. Resolve or create conversation ──
-  let conversationId: number;
-  let channelToken: string;
-
   const [existingConversation] = await db
     .select({ id: conversations.id, channelToken: conversations.channelToken })
     .from(conversations)
@@ -257,6 +253,84 @@ export async function POST(request: NextRequest) {
       ),
     )
     .limit(1);
+
+  // ── 7. Handoff check — must run before conversation creation and quota check ──
+  // Human handoff messages bypass OpenAI entirely — no quota consumed, no phantom conversations
+  if (existingConversation) {
+    const [convoStatus] = await db
+      .select({ handoffStatus: conversations.handoffStatus })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, existingConversation.id),
+          eq(conversations.orgId, org.id),
+        ),
+      )
+      .limit(1);
+
+    if (convoStatus?.handoffStatus === "human") {
+      const conversationId = existingConversation.id;
+      const channelToken = existingConversation.channelToken;
+
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
+
+      createNotification(
+        org.id,
+        "message_new",
+        "Pesan baru dari pelanggan",
+        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+        conversationId,
+      ).catch(console.error);
+
+      triggerConversationMessage(org.id, channelToken, {
+        conversationId,
+        role: "user",
+        content: message,
+      }).catch(console.error);
+
+      const holdingStream = new ReadableStream({
+        start(controller) {
+          const msg =
+            "Terima kasih, pesan kamu sudah diterima. Staff kami sedang menangani percakapan ini dan akan membalas sebentar lagi. 🙏";
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
+          );
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
+            ),
+          );
+          controller.close();
+        },
+      });
+
+      return new Response(holdingStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
+  }
+
+  // ── 8. Plan limit check — after handoff bypass, before conversation creation ──
+  // Checked here so we never create phantom conversations that get immediately rejected
+  if (org.messagesUsed >= org.messagesLimit) {
+    return errorResponse(
+      "Batas pesan bulanan telah tercapai. Silakan upgrade plan Anda.",
+      402,
+    );
+  }
+
+  // ── 9. Resolve or create conversation ──
+  let conversationId: number;
+  let channelToken: string;
 
   if (existingConversation) {
     conversationId = existingConversation.id;
@@ -303,80 +377,6 @@ export async function POST(request: NextRequest) {
       `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
       conversationId,
     ).catch(console.error);
-  }
-
-  // ── 8. Handoff check — bypass AI if staff is handling ──
-  if (existingConversation) {
-    const [convoStatus] = await db
-      .select({ handoffStatus: conversations.handoffStatus })
-      .from(conversations)
-      .where(
-        and(
-          eq(conversations.id, conversationId),
-          eq(conversations.orgId, org.id),
-        ),
-      )
-      .limit(1);
-
-    if (convoStatus?.handoffStatus === "human") {
-      // Save user message so staff sees it in the reply box
-      await db.insert(messages).values({
-        orgId: org.id,
-        conversationId,
-        role: "user",
-        content: message,
-      });
-
-      // Notify staff — new customer message during handoff
-      createNotification(
-        org.id,
-        "message_new",
-        "Pesan baru dari pelanggan",
-        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
-        conversationId,
-      ).catch(console.error);
-
-      // Live update dashboard + customer widget
-      triggerConversationMessage(org.id, channelToken, {
-        conversationId,
-        role: "user",
-        content: message,
-      }).catch(console.error);
-
-      // Return holding message — don't hit OpenAI
-      const holdingStream = new ReadableStream({
-        start(controller) {
-          const msg =
-            "Terima kasih, pesan kamu sudah diterima. Staff kami sedang menangani percakapan ini dan akan membalas sebentar lagi. 🙏";
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
-          );
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
-            ),
-          );
-          controller.close();
-        },
-      });
-
-      return new Response(holdingStream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      });
-    }
-  }
-
-  // ── 9. Plan limit check — only for AI responses, not handoff messages ──
-  // Human handoff messages bypass OpenAI entirely — no cost, no quota consumed
-  if (org.messagesUsed >= org.messagesLimit) {
-    return errorResponse(
-      "Batas pesan bulanan telah tercapai. Silakan upgrade plan Anda.",
-      402,
-    );
   }
 
   // ── 10. Fetch conversation history ──
