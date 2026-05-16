@@ -9,6 +9,9 @@ export const useChatStore = create<ChatStore>((set) => ({
   error: null,
   // Tracks whether the error is quota-related or generic — drives different UI in ChatPage
   errorType: null,
+  // conversationId — set after first message, used to filter Pusher events by session
+  conversationId: null,
+  setConversationId: (id) => set({ conversationId: id }),
 
   setSessionId: (id) => set({ sessionId: id }),
 
@@ -25,6 +28,19 @@ export const useChatStore = create<ChatStore>((set) => ({
       ],
       error: null,
       errorType: null,
+    })),
+
+  // Appends a human_agent message from staff — bypasses SSE, called via Pusher
+  addHumanAgentMessage: (content) =>
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        {
+          localId: crypto.randomUUID(),
+          role: "human_agent" as const,
+          content,
+        },
+      ],
     })),
 
   // Adds an empty assistant message bubble that tokens will stream into

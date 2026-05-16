@@ -80,7 +80,8 @@ export type StreamEvent =
 export interface ChatUIMessage {
   // Local-only id for React key — not the DB id
   localId: string;
-  role: "user" | "assistant";
+  // human_agent added for staff replies during handoff
+  role: "user" | "assistant" | "human_agent";
   content: string;
   // True while the assistant is still streaming this message
   isStreaming?: boolean;
@@ -93,6 +94,8 @@ export interface ChatStore {
   isLoading: boolean;
   // The session ID for this browser session — generated once on first load
   sessionId: string;
+  // conversationId — set after first message, used to filter Pusher events by session
+  conversationId: number | null;
   // Whether the input should be disabled (streaming in progress)
   isStreaming: boolean;
   // Error message to show in the UI — null when no error
@@ -102,7 +105,9 @@ export interface ChatStore {
 
   // Actions
   setSessionId: (id: string) => void;
+  setConversationId: (id: number) => void;
   addUserMessage: (content: string) => void;
+  addHumanAgentMessage: (content: string) => void; // Appends a staff reply directly — called when Pusher fires conversation:message with role human_agent
   startAssistantMessage: () => string; // returns localId of the new message
   appendToken: (localId: string, token: string) => void;
   finalizeAssistantMessage: (localId: string) => void;

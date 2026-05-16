@@ -289,3 +289,47 @@ export const processedWebhooks = pgTable(
     ),
   ],
 );
+
+// ─── NOTIFICATIONS ───
+// Dashboard notifications for business owners — new conversations, handoffs, etc.
+// Scoped to org — each owner only sees their own notifications
+// In-app only for now — email notifications handled separately
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+
+    // Tenant isolation — always filter by orgId first
+    orgId: text("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+
+    // Notification type — drives icon and copy in the UI
+    // "conversation_new" | "conversation_takeover" | "handoff_message"
+    type: text("type").notNull(),
+
+    // Short title shown in the notification panel
+    title: text("title").notNull(),
+
+    // Supporting detail — e.g. the first message or session ID
+    body: text("body").notNull().default(""),
+
+    // Reference to the related conversation — for "Lihat" link
+    conversationId: integer("conversation_id").references(
+      () => conversations.id,
+      { onDelete: "set null" },
+    ),
+
+    // Whether the owner has seen this notification
+    isRead: boolean("is_read").notNull().default(false),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Index on orgId — all notification queries are scoped to org
+    index("notifications_org_id_idx").on(table.orgId),
+    // Index on isRead — for unread count queries
+    index("notifications_is_read_idx").on(table.isRead),
+  ],
+);

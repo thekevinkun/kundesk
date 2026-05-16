@@ -34,7 +34,18 @@ export interface ConversationRow {
   sessionId: string;
   handoffStatus: string;
   deliveryChannel: string;
-  createdAt: Date;
+  createdAt: Date | string;
   lastMessage: string | null;
+  lastMessageAt: Date | string | null;
   messageCount: number;
+  // Handoff fields — populated when handoffStatus is "human"
+  takenOverBy: string | null;
+  takenOverAt: Date | string | null;
+}
+
+export interface ConversationMessage {
+  id: number;
+  role: "user" | "assistant" | "human_agent";
+  content: string;
+  createdAt: string; // ISO string — client parses
 }

@@ -9,7 +9,7 @@ import { eq, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireOrg } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { chatbots, conversations, documents } from "@/lib/db/schema";
+import { chatbots, conversations, documents, orgs } from "@/lib/db/schema";
 
 // ── Validation schema — matches chatbots table constraints ──
 const chatbotConfigSchema = z.object({
@@ -175,4 +175,36 @@ export async function getPendingHandoffCount(): Promise<number> {
     );
 
   return result?.total ?? 0;
+}
+
+// ── Get widget data — org slug + chatbot config for the widget page ──
+// Returns everything needed to render embed code, QR, and live preview
+export async function getWidgetData(): Promise<{
+  orgSlug: string;
+  chatbotName: string;
+  accentColor: string;
+  greetingMessage: string | null;
+} | null> {
+  const { orgId } = await requireOrg();
+
+  const [result] = await db
+    .select({
+      slug: orgs.slug,
+      name: chatbots.name,
+      accentColor: chatbots.accentColor,
+      greetingMessage: chatbots.greetingMessage,
+    })
+    .from(chatbots)
+    .innerJoin(orgs, eq(orgs.id, chatbots.orgId))
+    .where(eq(chatbots.orgId, orgId))
+    .limit(1);
+
+  if (!result) return null;
+
+  return {
+    orgSlug: result.slug,
+    chatbotName: result.name,
+    accentColor: result.accentColor,
+    greetingMessage: result.greetingMessage,
+  };
 }

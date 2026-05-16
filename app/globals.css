@@ -212,6 +212,11 @@
     border-radius: var(--radius-full);
   }
 
+  .badge-neutral {
+    background-color: var(--color-bg-page);
+    color: var(--color-text-400);
+  }
+
   .badge-brand {
     background-color: var(--color-brand-light);
     color: var(--color-brand-dark);

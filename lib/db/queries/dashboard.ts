@@ -11,6 +11,7 @@ import {
   chatbots,
   documents,
   chunks,
+  notifications,
 } from "@/lib/db/schema";
 
 // ── Total messages sent to this org's chatbot ──
@@ -178,7 +179,10 @@ export async function getRecentConversations(orgId: string): Promise<
     deliveryChannel: string;
     createdAt: Date;
     lastMessage: string | null;
+    lastMessageAt: Date | null;
     messageCount: number;
+    takenOverBy: string | null;
+    takenOverAt: Date | null;
   }[]
 > {
   // Raw SQL — Drizzle doesn't have a clean DISTINCT ON abstraction
@@ -190,7 +194,10 @@ export async function getRecentConversations(orgId: string): Promise<
     delivery_channel: string;
     created_at: Date;
     last_message: string | null;
+    last_message_at: Date | null;
     message_count: number;
+    taken_over_by: string | null;
+    taken_over_at: Date | null;
   }>(
     sql`
       SELECT
@@ -199,6 +206,17 @@ export async function getRecentConversations(orgId: string): Promise<
         c.handoff_status,
         c.delivery_channel,
         c.created_at,
+        c.taken_over_by,
+        c.taken_over_at,
+
+        -- Last message timestamp — used to derive expired status client-side
+        (
+          SELECT m.created_at
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) AS last_message_at,
 
         -- Last message content — truncated to 80 chars for preview
         LEFT(
@@ -231,9 +249,16 @@ export async function getRecentConversations(orgId: string): Promise<
     sessionId: row.session_id,
     handoffStatus: row.handoff_status,
     deliveryChannel: row.delivery_channel,
-    createdAt: new Date(row.created_at),
+    createdAt: new Date(String(row.created_at).replace(" ", "T") + "Z"),
     lastMessage: row.last_message,
+    lastMessageAt: row.last_message_at
+      ? new Date(String(row.last_message_at).replace(" ", "T") + "Z")
+      : null,
     messageCount: row.message_count,
+    takenOverBy: row.taken_over_by,
+    takenOverAt: row.taken_over_at
+      ? new Date(String(row.taken_over_at).replace(" ", "T") + "Z")
+      : null,
   }));
 }
 
@@ -306,4 +331,36 @@ export async function getOrgData(orgId: string): Promise<{
     .limit(1);
 
   return org ?? null;
+}
+
+// ── Insert a notification for the org ──
+// Called when Pusher events fire — keeps notification creation co-located with event triggers
+export async function createNotification(
+  orgId: string,
+  type: string,
+  title: string,
+  body: string,
+  conversationId?: number,
+): Promise<void> {
+  const [row] = await db
+    .insert(notifications)
+    .values({
+      orgId,
+      type,
+      title,
+      body,
+      conversationId: conversationId ?? null,
+    })
+    .returning({ id: notifications.id });
+
+  if (row) {
+    // Fire Pusher so open notification panels update live
+    const { triggerNotificationNew } = await import("@/lib/pusher");
+    triggerNotificationNew(orgId, {
+      id: row.id,
+      type,
+      title,
+      body,
+    }).catch(console.error);
+  }
 }

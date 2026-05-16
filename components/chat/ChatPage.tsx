@@ -1,10 +1,6 @@
-// Chat page — layout + state + effects only
-// All UI sub-components live alongside this file in components/chat/
-
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useChatStore } from "@/stores/chat-store";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import type { ChatbotConfig } from "@/types/chat";
@@ -18,9 +14,18 @@ interface ChatPageProps {
   config: ChatbotConfig;
   orgSlug: string;
   orgName: string;
+  // orgId needed to subscribe to the correct Pusher channel
+  orgId: string;
 }
 
-const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
+// Payload shape from Pusher conversation:message event
+interface PusherMessagePayload {
+  conversationId: number;
+  role: "user" | "assistant" | "human_agent";
+  content: string;
+}
+
+const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
   const {
     messages,
     isLoading,
@@ -28,8 +33,10 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
     error,
     errorType,
     sessionId,
+    conversationId,
     setSessionId,
     clearError,
+    addHumanAgentMessage,
   } = useChatStore();
 
   const { sendMessage } = useChatStream(orgSlug);
@@ -38,12 +45,12 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
   const [hasGreeted, setHasGreeted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Generate session ID once on mount — persisted in Zustand for this browser tab
+  // Generate session ID once on mount
   useEffect(() => {
     if (!sessionId) setSessionId(crypto.randomUUID());
   }, [sessionId, setSessionId]);
 
-  // Show greeting message once on first load — no streaming, it's pre-written
+  // Show greeting message once on first load
   useEffect(() => {
     if (hasGreeted || !config.greetingMessage || !sessionId) return;
 
@@ -62,10 +69,57 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
     setHasGreeted(true);
   }, [hasGreeted, config.greetingMessage, sessionId]);
 
-  // Auto-scroll to bottom when messages update or tokens stream in
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ── Pusher subscription — listens for staff replies during handoff ──
+  // Only subscribes when we have orgId and Pusher credentials
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    if (!key || !cluster || !orgId) return;
+
+    let cleanup: (() => void) | undefined;
+
+    import("pusher-js").then((mod) => {
+      const PusherClient = mod.default;
+
+      // Chat widget uses a public channel — customers don't have Clerk sessions
+      // so we can't use private channels here. The channel is org-scoped so
+      // one customer can't receive another org's messages.
+      const pusher = new PusherClient(key, {
+        cluster,
+        forceTLS: true,
+      });
+
+      // Subscribe to the org's public channel — different from dashboard private channel
+      // We use org-{orgId} (no "private-" prefix) for the customer-facing side
+      const channel = pusher.subscribe(`org-${orgId}`);
+
+      channel.bind("conversation:message", (payload: PusherMessagePayload) => {
+        // Filter to this session's conversation — prevents cross-session message bleeding
+        if (
+          conversationId !== null &&
+          payload.conversationId !== conversationId
+        ) {
+          return;
+        }
+        if (payload.role === "human_agent") {
+          addHumanAgentMessage(payload.content);
+        }
+      });
+
+      cleanup = () => {
+        channel.unbind_all();
+        pusher.unsubscribe(`org-${orgId}`);
+        pusher.disconnect();
+      };
+    });
+
+    return () => cleanup?.();
+  }, [orgId, addHumanAgentMessage, conversationId]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -81,21 +135,19 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
       className="flex flex-col h-screen bg-gray-50"
       style={{ "--accent": config.accentColor } as React.CSSProperties}
     >
-      {/* Header */}
       <ChatHeader
         name={config.name}
         orgName={orgName}
         accentColor={config.accentColor}
       />
 
-      {/* Message list */}
       <main
         className="flex-1 overflow-y-auto px-4 py-4"
         aria-live="polite"
         aria-label="Percakapan"
       >
-        {/* Empty state — shown before any messages */}
-        {messages.length === 0 && !isLoading && (
+        {/* Empty state — only shown when no greeting message is configured */}
+        {messages.length === 0 && !isLoading && !config.greetingMessage && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mb-4"
@@ -113,7 +165,6 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
           </div>
         )}
 
-        {/* Message bubbles */}
         {messages.map((msg) => (
           <MessageBubble
             key={msg.localId}
@@ -125,24 +176,19 @@ const ChatPage = ({ config, orgSlug, orgName }: ChatPageProps) => {
           />
         ))}
 
-        {/* Typing indicator — while waiting for first token */}
         {isLoading && <TypingIndicator accentColor={config.accentColor} />}
 
-        {/* Quota exceeded — centered block, not a red banner */}
         {error && errorType === "quota_exceeded" && (
           <QuotaExceededState error={error} accentColor={config.accentColor} />
         )}
 
-        {/* Generic error — dismissible banner */}
         {error && errorType !== "quota_exceeded" && (
           <GenericErrorBanner error={error} onDismiss={clearError} />
         )}
 
-        {/* Scroll anchor */}
         <div ref={messagesEndRef} aria-hidden="true" />
       </main>
 
-      {/* Input area */}
       <ChatInput
         value={input}
         disabled={isInputDisabled}

@@ -58,6 +58,39 @@ export async function triggerOrgEvent(
   await pusher.trigger(channel, event, payload);
 }
 
+// Fires an event on the PUBLIC org-{orgId} channel — no auth required
+// Used for events the customer widget needs to receive (staff replies)
+export async function triggerPublicOrgEvent(
+  orgId: string,
+  event: string,
+  payload: unknown,
+): Promise<void> {
+  const channel = `org-${orgId}`; // public — no "private-" prefix
+
+  if (env.realtimeMode === "mock") {
+    console.log(`[Pusher Mock] channel=${channel} event=${event}`, payload);
+    return;
+  }
+
+  if (!env.pusherAppId || !env.pusherKey || !env.pusherSecret) {
+    throw new Error(
+      "Pusher credentials required when KUNDESK_REALTIME_MODE=pusher",
+    );
+  }
+
+  const Pusher = (await import("pusher")).default;
+
+  const pusher = new Pusher({
+    appId: env.pusherAppId,
+    key: env.pusherKey,
+    secret: env.pusherSecret,
+    cluster: env.pusherCluster,
+    useTLS: true,
+  });
+
+  await pusher.trigger(channel, event, payload);
+}
+
 // ── Typed event helpers ──
 
 // Fires when a document's processing status changes
@@ -67,4 +100,63 @@ export async function triggerDocumentUpdated(
   payload: DocumentUpdatedPayload,
 ): Promise<void> {
   await triggerOrgEvent(orgId, "document:updated", payload);
+}
+
+// ── Handoff event payload types ──
+
+// Fired when a staff member takes over a conversation from the AI
+export interface ConversationTakeoverPayload {
+  conversationId: number;
+  takenOverBy: string; // Clerk userId of the staff member
+}
+
+// Fired when staff returns control back to the AI
+export interface ConversationReturnPayload {
+  conversationId: number;
+}
+
+// Fired when a new message arrives in any conversation (user, assistant, or human_agent)
+export interface ConversationMessagePayload {
+  conversationId: number;
+  role: "user" | "assistant" | "human_agent";
+  content: string;
+}
+
+// Fires when a staff member takes over a conversation
+export async function triggerConversationTakeover(
+  orgId: string,
+  payload: ConversationTakeoverPayload,
+): Promise<void> {
+  await triggerOrgEvent(orgId, "conversation:takeover", payload);
+}
+
+// Fires when AI resumes handling after human handoff
+export async function triggerConversationReturn(
+  orgId: string,
+  payload: ConversationReturnPayload,
+): Promise<void> {
+  await triggerOrgEvent(orgId, "conversation:return", payload);
+}
+
+// Fires when a new message is added — fires on BOTH channels:
+// private-org-{orgId} → dashboard staff see it live
+// org-{orgId} → customer widget sees staff replies live (public channel, no Clerk auth)
+export async function triggerConversationMessage(
+  orgId: string,
+  payload: ConversationMessagePayload,
+): Promise<void> {
+  // Fire on private channel for dashboard
+  await triggerOrgEvent(orgId, "conversation:message", payload);
+
+  // Also fire on public channel so the customer widget receives it
+  // Public channel has no auth — scoped by orgId so cross-org leakage is impossible
+  await triggerPublicOrgEvent(orgId, "conversation:message", payload);
+}
+
+// Fires when a new notification is created — dashboard panel updates live
+export async function triggerNotificationNew(
+  orgId: string,
+  payload: { id: number; type: string; title: string; body: string },
+): Promise<void> {
+  await triggerOrgEvent(orgId, "notification:new", payload);
 }

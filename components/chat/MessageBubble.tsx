@@ -8,7 +8,7 @@ const StreamingCursor = () => (
 );
 
 interface MessageBubbleProps {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "human_agent";
   content: string;
   isStreaming?: boolean | undefined;
   accentColor: string;
@@ -23,6 +23,8 @@ const MessageBubble = ({
   botName,
 }: MessageBubbleProps) => {
   const isUser = role === "user";
+  // human_agent renders on the left like assistant but with a different avatar
+  const isHumanAgent = role === "human_agent";
 
   return (
     <div
@@ -30,14 +32,14 @@ const MessageBubble = ({
         isUser ? "flex-row-reverse" : "flex-row"
       }`}
     >
-      {/* Bot avatar — only shown for assistant messages */}
+      {/* Avatar — AI bot or human staff, only for non-user messages */}
       {!isUser && (
         <div
           className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mb-1"
-          style={{ background: accentColor }}
+          style={{ background: isHumanAgent ? "#6b7280" : accentColor }}
           aria-hidden="true"
         >
-          AI
+          {isHumanAgent ? "👤" : "AI"}
         </div>
       )}
 
@@ -49,16 +51,14 @@ const MessageBubble = ({
             : "rounded-2xl rounded-bl-sm text-gray-800"
         }`}
         style={{ background: isUser ? accentColor : "#f0f2f4" }}
-        aria-label={`${isUser ? "Kamu" : botName}: ${content}`}
+        aria-label={`${isUser ? "Kamu" : isHumanAgent ? "Staff" : botName}: ${content}`}
       >
-        {/* Preserve line breaks from AI response */}
         {content.split("\n").map((line, i, arr) => (
           <span key={i}>
             {line}
             {i < arr.length - 1 && <br />}
           </span>
         ))}
-        {/* Streaming cursor — only on the last assistant message while streaming */}
         {isStreaming && <StreamingCursor />}
       </div>
     </div>

@@ -6,6 +6,7 @@ import { useChatStore } from "@/stores/chat-store";
 export function useChatStream(orgSlug: string) {
   const {
     sessionId,
+    setConversationId,
     addUserMessage,
     startAssistantMessage,
     appendToken,
@@ -95,16 +96,18 @@ export function useChatStream(orgSlug: string) {
 
             const data = line.slice(6).trim();
 
-            // [DONE] signals end of stream
-            if (data === "[DONE]") {
-              finalizeAssistantMessage(localId);
-              return;
-            }
-
             try {
               const parsed = JSON.parse(data) as
                 | { token: string }
-                | { error: string };
+                | { error: string }
+                | { done: true; conversationId: number };
+
+              if ("done" in parsed) {
+                finalizeAssistantMessage(localId);
+                // Store conversationId so Pusher can filter messages to this session only
+                setConversationId(parsed.conversationId);
+                return;
+              }
 
               if ("error" in parsed) {
                 setError(parsed.error);
@@ -129,6 +132,7 @@ export function useChatStream(orgSlug: string) {
     [
       isStreaming,
       sessionId,
+      setConversationId,
       orgSlug,
       addUserMessage,
       setLoading,

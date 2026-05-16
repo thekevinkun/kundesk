@@ -13,18 +13,75 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { NotificationPanel } from "@/components/dashboard";
 import { COLOR_PRESETS } from "@/helpers/chatbot";
 import { cn } from "@/lib/utils";
-import { fadeIn } from "@/lib/animations";
+import { fadeIn, dropdownVariants } from "@/lib/animations";
 import { saveAccentColor, getChatbotConfig } from "@/lib/actions/chatbot";
+import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 const Topbar = () => {
+  const { unreadCount, clearUnread, notificationItems, setNotifications } =
+    useConversationStore();
   const { toggleMobile } = useSidebarStore();
   const [colorPanelOpen, setColorPanelOpen] = useState(false);
   const [activeColor, setActiveColor] = useState("#069494");
   // useTransition — keeps UI responsive while Server Action runs in background
   const [, startTransition] = useTransition();
-  const { unreadCount, clearUnread } = useConversationStore();
+
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+
+  // Live clock — update every second
+  const [clock, setClock] = useState("");
+  const [utcOffset, setUtcOffset] = useState("");
+
+  // Fetch unread count on mount — persists red dot across page refreshes
+  useEffect(() => {
+    const loadUnread = async () => {
+      try {
+        const res = await fetch("/api/notifications");
+        const json = (await res.json()) as {
+          ok: boolean;
+          data: NotificationItem[];
+        };
+        if (json.ok) setNotifications(json.data);
+      } catch {
+        // Non-critical — dot just won't show on refresh
+      }
+    };
+    void loadUnread();
+  }, [setNotifications]);
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+
+      // Device local time — no hardcoded timezone
+      setClock(
+        now.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+      );
+
+      // UTC offset — e.g. "UTC+8" for WITA, "UTC+7" for WIB, "UTC+9" for WIT
+      const offsetMinutes = -now.getTimezoneOffset();
+      const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
+      const offsetMins = Math.abs(offsetMinutes) % 60;
+      const sign = offsetMinutes >= 0 ? "+" : "-";
+      setUtcOffset(
+        offsetMins > 0
+          ? `UTC${sign}${offsetHours}:${String(offsetMins).padStart(2, "0")}`
+          : `UTC${sign}${offsetHours}`,
+      );
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // On mount — read the saved accent color from the CSS variable
   // The chatbot config page sets this via Server Action + revalidatePath
@@ -63,30 +120,6 @@ const Topbar = () => {
     });
   };
 
-  const notifications = [
-    {
-      icon: "🔔",
-      label: "Notifikasi",
-      dot: "bg-red-500",
-      count: unreadCount,
-      onClick: clearUnread,
-    },
-    {
-      icon: "💬",
-      label: "Pesan",
-      dot: "bg-blue-500",
-      count: 0,
-      onClick: undefined,
-    },
-    {
-      icon: "📦",
-      label: "Update",
-      dot: "bg-(--color-brand)",
-      count: 0,
-      onClick: undefined,
-    },
-  ];
-
   return (
     <TooltipProvider>
       <motion.header
@@ -118,33 +151,64 @@ const Topbar = () => {
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Notification buttons */}
-          {notifications.map(({ icon, label, dot, count, onClick }) => (
-            <Tooltip key={label}>
-              <TooltipTrigger asChild>
-                <button
-                  className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
-                    border border-(--color-border) flex items-center justify-center text-base 
-                    text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) 
-                    transition-all"
-                  aria-label={label}
-                  onClick={onClick}
-                >
-                  {icon}
-                  {/* Notification dot */}
-                  {count > 0 && (
-                    <span
-                      className={cn(
-                        "absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white animate-pulse",
-                        dot,
-                      )}
-                    />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{label}</TooltipContent>
-            </Tooltip>
-          ))}
+          {/* Bell icon — hover on desktop, click on mobile */}
+          <div
+            className="relative"
+            onMouseEnter={() => {
+              // Only use hover on non-touch devices
+              if (!window.matchMedia("(hover: none)").matches) {
+                setNotifPanelOpen(true);
+              }
+            }}
+            onMouseLeave={() => {
+              if (!window.matchMedia("(hover: none)").matches) {
+                setNotifPanelOpen(false);
+              }
+            }}
+          >
+            <button
+              onClick={() => {
+                // On touch devices, toggle on click
+                if (window.matchMedia("(hover: none)").matches) {
+                  setNotifPanelOpen((p) => !p);
+                }
+              }}
+              className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
+                border border-(--color-border) flex items-center justify-center text-base 
+                text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) 
+                transition-all"
+              aria-label="Notifikasi"
+              aria-expanded={notifPanelOpen}
+            >
+              🔔
+              {(unreadCount > 0 ||
+                notificationItems.some((n) => !n.isRead)) && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white animate-pulse bg-red-500" />
+              )}
+            </button>
+
+            <NotificationPanel isOpen={notifPanelOpen} />
+          </div>
+
+          {/* Chat icon — new conversation counter, no panel */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={clearUnread}
+                className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
+                  border border-(--color-border) flex items-center justify-center text-base 
+                  text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) 
+                  transition-all"
+                aria-label="Percakapan baru"
+              >
+                💬
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white animate-pulse bg-(--color-brand)" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Percakapan baru</TooltipContent>
+          </Tooltip>
 
           {/* Color picker */}
           <div className="relative">
@@ -176,10 +240,11 @@ const Topbar = () => {
                   onClick={() => setColorPanelOpen(false)}
                 />
                 <motion.div
+                  variants={dropdownVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
                   className="absolute right-0 top-[calc(100%+10px)] bg-(--color-bg-card) border border-(--color-border) rounded-[14px] p-4 shadow-lg z-50 w-[220px]"
-                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="text-[11px] font-bold tracking-[0.08em] uppercase text-(--color-text-400) mb-3">
                     Pilih Warna Brand
@@ -227,6 +292,35 @@ const Topbar = () => {
               </>
             )}
           </div>
+
+          <Separator
+            orientation="vertical"
+            className="h-7 bg-(--color-border)"
+          />
+
+          {/* WIB/WITA/WIT clock — live, updates every second, uses device timezone */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="hidden md:flex items-center gap-1.5 px-3 py-[7px] bg-(--color-bg-page) border border-(--color-border) rounded-full">
+                <span className="text-[11px]" aria-hidden="true">
+                  🕐
+                </span>
+                <span
+                  className="font-mono text-[12px] font-semibold text-(--color-text-700) tabular-nums"
+                  suppressHydrationWarning
+                >
+                  {clock}
+                </span>
+                <span
+                  className="text-[10px] font-semibold text-(--color-text-400)"
+                  suppressHydrationWarning
+                >
+                  {utcOffset}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Waktu lokal perangkat kamu</TooltipContent>
+          </Tooltip>
 
           <Separator
             orientation="vertical"

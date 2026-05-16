@@ -4,11 +4,12 @@ import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { trackEvent } from "@/lib/posthog";
-import { triggerOrgEvent } from "@/lib/pusher";
 import { sendUsageWarningEmail } from "@/lib/email";
+import { createNotification } from "@/lib/db/queries/dashboard";
 import { retrieveContext, buildSystemPrompt } from "@/lib/ai/rag";
 import { checkChatRateLimit, checkOrgMessageLimit } from "@/lib/redis";
 import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
+import { triggerOrgEvent, triggerConversationMessage } from "@/lib/pusher";
 import type { ConversationTurn } from "@/types/chat";
 
 // ─── Input validation ───
@@ -53,7 +54,10 @@ function detectInjection(message: string): boolean {
 
 // Simulates token-by-token SSE streaming without hitting OpenAI.
 // The UI streaming experience is identical — only the content differs.
-function createMockStream(encoder: TextEncoder): ReadableStream {
+function createMockStream(
+  encoder: TextEncoder,
+  conversationId: number,
+): ReadableStream {
   const mockResponse =
     "Halo! Saya adalah asisten virtual bisnis ini. " +
     "Saat ini sistem berjalan dalam mode pengembangan (mock). " +
@@ -74,7 +78,12 @@ function createMockStream(encoder: TextEncoder): ReadableStream {
         await new Promise((resolve) => setTimeout(resolve, 40));
       }
       // Signal end of stream — client uses this to know the response is complete
-      controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+      // carries conversationId so widget can filter Pusher events
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ done: true, conversationId })}\n\n`,
+        ),
+      );
       controller.close();
     },
   });
@@ -89,6 +98,7 @@ function createOpenAIStream(
   conversationHistory: ConversationTurn[],
   userMessage: string,
   encoder: TextEncoder,
+  conversationId: number,
   onComplete: (fullResponse: string) => void,
 ): ReadableStream {
   return new ReadableStream({
@@ -130,7 +140,11 @@ function createOpenAIStream(
 
         // Notify caller with the complete response text for DB storage
         onComplete(fullResponse);
-        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ done: true, conversationId })}\n\n`,
+          ),
+        );
         controller.close();
       } catch (err) {
         // Save the user's message even on failure — history shouldn't be silently lost
@@ -258,7 +272,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // ── 8. Resolve or create conversation ──
+  // ── 8a. Resolve or create conversation ──
   // sessionId is browser-generated — same session = same conversation thread
   let conversationId: number;
 
@@ -305,6 +319,81 @@ export async function POST(request: NextRequest) {
       conversationId,
       sessionId,
     }).catch(console.error); // fire-and-forget — don't block the stream
+
+    // Only notify on truly new conversations — first message in this session
+    createNotification(
+      org.id,
+      "conversation_new",
+      "Percakapan baru dimulai",
+      `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+      conversationId,
+    ).catch(console.error);
+  }
+
+  // ── 8b. Handoff check — if human has taken over, don't stream AI response ──
+  // Check handoffStatus on the existing conversation
+  if (existingConversation) {
+    const [convoStatus] = await db
+      .select({ handoffStatus: conversations.handoffStatus })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.orgId, org.id),
+        ),
+      )
+      .limit(1);
+
+    if (convoStatus?.handoffStatus === "human") {
+      // Staff is handling this — return a holding message, don't hit OpenAI
+      const holdingStream = new ReadableStream({
+        start(controller) {
+          const msg =
+            "Terima kasih, pesan kamu sudah diterima. Staff kami sedang menangani percakapan ini dan akan membalas sebentar lagi. 🙏";
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
+          );
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ done: true, conversationId })}\n\n`,
+            ),
+          );
+          controller.close();
+        },
+      });
+
+      // Still save the user's message so staff can see it in the reply box
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
+
+      // Notify staff — new customer message arrived during handoff
+      createNotification(
+        org.id,
+        "message_new",
+        "Pesan baru dari pelanggan",
+        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+        conversationId,
+      ).catch(console.error);
+
+      // Notify dashboard — staff sees new customer message appear live
+      triggerConversationMessage(org.id, {
+        conversationId,
+        role: "user",
+        content: message,
+      }).catch(console.error);
+
+      return new Response(holdingStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
   }
 
   // ── 9. Fetch last 6 messages for conversation history ──
@@ -425,12 +514,13 @@ export async function POST(request: NextRequest) {
   // Choose mock or real stream based on AI mode env var
   const stream =
     env.aiMode === "mock"
-      ? createMockStream(encoder)
+      ? createMockStream(encoder, conversationId)
       : createOpenAIStream(
           systemPrompt,
           conversationHistory,
           message,
           encoder,
+          conversationId,
           handleStreamComplete,
         );
 

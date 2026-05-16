@@ -7,6 +7,7 @@ import { WelcomeEmail } from "@/emails/WelcomeEmail";
 import { BillingReminderEmail } from "@/emails/BillingReminderEmail";
 import { UsageWarningEmail } from "@/emails/UsageWarningEmail";
 import { PastDueEmail } from "@/emails/PastDueEmail";
+import { HandoffEmail } from "@/emails/HandoffEmail";
 
 // onboarding@resend.dev — Resend's free sender, no custom domain needed
 // Switch to "Kundesk <noreply@kundesk.app>" once domain is verified
@@ -174,6 +175,32 @@ export async function sendPastDueEmail(
   await sendEmail({
     to,
     subject: `Pembayaran Kundesk kamu tertunggak — segera selesaikan`,
+    html,
+  });
+}
+
+export async function sendHandoffEmail(
+  to: string,
+  orgName: string,
+  sessionId: string,
+  lastMessage: string,
+  conversationId: number,
+  logoUrl: string,
+): Promise<void> {
+  const html = await render(
+    HandoffEmail({
+      orgName,
+      logoUrl,
+      sessionId,
+      lastMessage,
+      // Links directly to conversations page — staff clicks and sees the takeover button
+      conversationUrl: `${env.appUrl}/dashboard/conversations`,
+    }),
+  );
+
+  await sendEmail({
+    to,
+    subject: `🙋 Pelanggan ${orgName} meminta bantuan langsung`,
     html,
   });
 }

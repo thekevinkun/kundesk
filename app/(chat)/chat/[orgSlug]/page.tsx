@@ -57,5 +57,12 @@ export default async function ChatRoute({ params }: Props) {
     systemPrompt: chatbot.systemPrompt,
   };
 
-  return <ChatPage config={config} orgSlug={orgSlug} orgName={org.name} />;
+  return (
+    <ChatPage
+      config={config}
+      orgSlug={orgSlug}
+      orgName={org.name}
+      orgId={org.id}
+    />
+  );
 }

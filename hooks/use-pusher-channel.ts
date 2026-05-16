@@ -1,5 +1,5 @@
-// Subscribes to the org's Pusher channel from the browser
-// Listens for real-time events and dispatches them to Zustand stores
+// Subscribes to the org's private Pusher channel from the browser
+// Listens for real-time events and dispatches them to Zustand stores or callbacks
 // Called once in PusherProvider — lives for the entire dashboard session
 
 "use client";
@@ -7,73 +7,128 @@
 import { useEffect } from "react";
 import { useConversationStore } from "@/stores/conversation-store";
 
-// Events we listen for on the org channel — matches server-side convention
+// All events on the private-org-{orgId} channel — must match server-side convention
 const EVENTS = {
   CONVERSATION_NEW: "conversation:new",
   CONVERSATION_MESSAGE: "conversation:message",
+  CONVERSATION_TAKEOVER: "conversation:takeover",
+  CONVERSATION_RETURN: "conversation:return",
   DOCUMENT_UPDATED: "document:updated",
+  NOTIFICATION_NEW: "notification:new",
 } as const;
 
-// orgId — Clerk org ID, used to build channel name: org-{orgId}
-// Both values come from NEXT_PUBLIC_ env vars — browser-safe
-export function usePusherChannel(orgId: string): void {
+// Payloads matching server-side trigger functions in lib/pusher/index.ts
+export interface TakeoverPayload {
+  conversationId: number;
+  takenOverBy: string;
+}
+
+export interface ReturnPayload {
+  conversationId: number;
+}
+
+export interface MessagePayload {
+  conversationId: number;
+  role: "user" | "assistant" | "human_agent";
+  content: string;
+}
+
+export interface NotificationItem {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  conversationId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+// Optional callbacks — passed from pages that need to react to specific events
+export interface PusherChannelCallbacks {
+  onTakeover?: (payload: TakeoverPayload) => void;
+  onReturn?: (payload: ReturnPayload) => void;
+  onMessage?: (payload: MessagePayload) => void;
+  onDocumentUpdated?: (payload: unknown) => void;
+  onNotificationNew?: (payload: NotificationItem) => void;
+}
+
+export function usePusherChannel(
+  orgId: string,
+  callbacks?: PusherChannelCallbacks,
+): void {
   const incrementUnread = useConversationStore((s) => s.incrementUnread);
 
   useEffect(() => {
-    // Skip if credentials aren't present — happens in test environments
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
-    if (!key || !cluster) {
+    if (!orgId || !key || !cluster) {
       console.warn(
         "[Pusher] Missing NEXT_PUBLIC_PUSHER_KEY or CLUSTER — skipping",
       );
       return;
     }
 
-    // Dynamic import — Pusher client SDK is browser-only, not needed on server
     let cleanup: (() => void) | undefined;
 
     import("pusher-js").then((mod) => {
       const PusherClient = mod.default;
 
-      // Connect to Pusher — useTLS keeps traffic encrypted
       const pusher = new PusherClient(key, {
         cluster,
         forceTLS: true,
-        // Auth endpoint — Pusher calls this to verify the user has access to the channel
         channelAuthorization: {
           endpoint: "/api/pusher/auth",
           transport: "ajax",
         },
       });
 
-      // private- prefix — Pusher requires server-side auth before granting access
-      const channel = pusher.subscribe(`private-org-${orgId}`);
+      // private- prefix — server auth required before access is granted
+      const channelName = `private-org-${orgId}`;
+      const channel = pusher.subscribe(channelName);
 
-      // New conversation started — increment notification bell
+      // New conversation — increment bell
       channel.bind(EVENTS.CONVERSATION_NEW, () => {
         incrementUnread();
       });
 
-      // New message in existing conversation — also increment bell
-      channel.bind(EVENTS.CONVERSATION_MESSAGE, () => {
+      // New message — increment bell + optional callback for live reply UI
+      channel.bind(EVENTS.CONVERSATION_MESSAGE, (data: MessagePayload) => {
         incrementUnread();
+        callbacks?.onMessage?.(data);
       });
 
-      // Document processing status changed — logged for now, wired to UI in Phase 8
+      // Staff took over — optional callback so conversations page updates badge live
+      channel.bind(EVENTS.CONVERSATION_TAKEOVER, (data: TakeoverPayload) => {
+        callbacks?.onTakeover?.(data);
+      });
+
+      // AI resumed — optional callback so conversations page reverts badge
+      channel.bind(EVENTS.CONVERSATION_RETURN, (data: ReturnPayload) => {
+        callbacks?.onReturn?.(data);
+      });
+
+      // Document status changed — optional callback
       channel.bind(EVENTS.DOCUMENT_UPDATED, (data: unknown) => {
         console.log("[Pusher] document:updated", data);
+        callbacks?.onDocumentUpdated?.(data);
       });
 
-      // Cleanup — disconnect when component unmounts (user leaves dashboard)
+      // New notification — prepend to panel list live
+      channel.bind(EVENTS.NOTIFICATION_NEW, (data: NotificationItem) => {
+        incrementUnread();
+        callbacks?.onNotificationNew?.(data);
+      });
+
+      // Fix: use the same channelName variable — was previously "org-{orgId}" (wrong)
       cleanup = () => {
         channel.unbind_all();
-        pusher.unsubscribe(`org-${orgId}`);
+        pusher.unsubscribe(channelName);
         pusher.disconnect();
       };
     });
 
-    // Return cleanup function — useEffect will call this on unmount
     return () => cleanup?.();
+    // callbacks ref excluded intentionally — would cause infinite reconnects if caller
+    // passes an inline object. Callers should memoize callbacks with useCallback.
   }, [orgId, incrementUnread]);
 }
