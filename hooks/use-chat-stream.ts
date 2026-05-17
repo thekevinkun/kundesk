@@ -16,19 +16,24 @@ export function useChatStream(orgSlug: string) {
     setError,
     setErrorWithType,
     setLoading,
+    isLoading,
     isStreaming,
+    handoffStatus,
     setHandoffStatus,
   } = useChatStore();
 
   const sendMessage = useCallback(
     async (content: string) => {
       // Prevent sending while a response is already streaming
-      if (isStreaming || !content.trim()) return;
+      if (isStreaming || isLoading || !content.trim()) return;
 
       // Show user message immediately — don't wait for server
       addUserMessage(content);
 
       // Don't show loading indicator in human mode — no AI response coming
+      if (handoffStatus === "ai") {
+        setLoading(true);
+      }
 
       try {
         const response = await fetch("/api/chat", {
