@@ -268,37 +268,127 @@ export async function POST(request: NextRequest) {
     )
     .limit(1);
 
-  // ── 6b. First-message handoff request ──
-  // If this is the customer's first message and they're asking for a human,
-  // we can't create a pending_handoff conversation with no prior context.
-  // Return a gentle redirect — no conversation created, no quota consumed.
-  if (!existingConversation && detectHandoffRequest(message)) {
-    const firstMessagePendingStream = new ReadableStream({
-      start(controller) {
-        const msg =
-          "Halo! Untuk berbicara langsung dengan staff kami, " +
-          "silakan hubungi kami melalui kontak yang tersedia. " +
-          "Atau mulai dengan pertanyaan dulu — saya siap membantu! 😊";
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
-        );
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`),
-        );
-        controller.close();
-      },
-    });
+  // ── 6b. Handoff request detection — runs before conversation creation ──
+  // Handles both first-message and existing-conversation handoff requests
+  // Creates conversation immediately with pending_handoff status if needed
+  if (detectHandoffRequest(message)) {
+    // Determine current status — null means first message (no conversation yet)
+    const currentStatus = existingConversation
+      ? (
+          await db
+            .select({ handoffStatus: conversations.handoffStatus })
+            .from(conversations)
+            .where(
+              and(
+                eq(conversations.id, existingConversation.id),
+                eq(conversations.orgId, org.id),
+              ),
+            )
+            .limit(1)
+        )[0]?.handoffStatus
+      : null;
 
-    return new Response(firstMessagePendingStream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
+    // Only act if AI is currently handling — ignore if already pending or human
+    if (currentStatus === "ai" || currentStatus === null) {
+      let conversationId: number;
+      let channelToken: string;
+
+      if (existingConversation) {
+        // Existing conversation — transition to pending_handoff
+        conversationId = existingConversation.id;
+        channelToken = existingConversation.channelToken;
+
+        await db
+          .update(conversations)
+          .set({ handoffStatus: "pending_handoff" })
+          .where(
+            and(
+              eq(conversations.id, conversationId),
+              eq(conversations.orgId, org.id),
+            ),
+          );
+      } else {
+        // First message — create conversation directly as pending_handoff
+        // No quota check needed — no AI response will be generated
+        const inserted = await db
+          .insert(conversations)
+          .values({
+            orgId: org.id,
+            sessionId,
+            deliveryChannel: "web_widget",
+            handoffStatus: "pending_handoff",
+            channelToken: crypto.randomUUID(),
+          })
+          .returning({
+            id: conversations.id,
+            channelToken: conversations.channelToken,
+          });
+
+        if (!inserted[0]) {
+          return errorResponse("Failed to create conversation", 500);
+        }
+
+        conversationId = inserted[0].id;
+        channelToken = inserted[0].channelToken;
+      }
+
+      // Save customer message so staff sees what triggered the request
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
+
+      // Notify dashboard — urgent, staff needs to act
+      createNotification(
+        org.id,
+        "pending_handoff",
+        "Pelanggan meminta bantuan staff",
+        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+        conversationId,
+      ).catch(console.error);
+
+      // Pusher — dashboard updates live
+      triggerOrgEvent(org.id, "conversation:takeover", {
+        conversationId,
+        handoffStatus: "pending_handoff",
+      }).catch(console.error);
+
+      triggerConversationMessage(org.id, channelToken, {
+        conversationId,
+        role: "user",
+        content: message,
+      }).catch(console.error);
+
+      const pendingStream = new ReadableStream({
+        start(controller) {
+          const msg =
+            "Oke, saya akan menghubungkan kamu dengan staff kami. " +
+            "Mohon tunggu sebentar — staff akan segera membalas pesanmu. 🙏";
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
+          );
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ done: true, conversationId, channelToken, handoffStatus: "pending_handoff" })}\n\n`,
+            ),
+          );
+          controller.close();
+        },
+      });
+
+      return new Response(pendingStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
   }
 
-  // ── 7a. Handoff check — must run before conversation creation and quota check ──
+  // ── 7. Handoff check — must run before conversation creation and quota check ──
   // Human handoff messages bypass OpenAI entirely — no quota consumed, no phantom conversations
   if (existingConversation) {
     const [convoStatus] = await db
@@ -357,94 +447,6 @@ export async function POST(request: NextRequest) {
       });
 
       return new Response(holdingStream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      });
-    }
-  }
-
-  // ── 7b. Customer-initiated handoff request ──
-  // If customer asks to speak to a human, set pending_handoff and return holding message
-  // No OpenAI call — no quota consumed
-  if (existingConversation && detectHandoffRequest(message)) {
-    const conversationId = existingConversation.id;
-    const channelToken = existingConversation.channelToken;
-
-    // Only transition if currently in AI mode — ignore if already pending or human
-    const [convoStatus] = await db
-      .select({ handoffStatus: conversations.handoffStatus })
-      .from(conversations)
-      .where(
-        and(
-          eq(conversations.id, conversationId),
-          eq(conversations.orgId, org.id),
-        ),
-      )
-      .limit(1);
-
-    if (convoStatus?.handoffStatus === "ai") {
-      // Transition to pending_handoff — staff needs to manually take over
-      await db
-        .update(conversations)
-        .set({ handoffStatus: "pending_handoff" })
-        .where(
-          and(
-            eq(conversations.id, conversationId),
-            eq(conversations.orgId, org.id),
-          ),
-        );
-
-      // Save customer's message so staff sees what triggered the request
-      await db.insert(messages).values({
-        orgId: org.id,
-        conversationId,
-        role: "user",
-        content: message,
-      });
-
-      // Notify dashboard — urgent, staff needs to act
-      createNotification(
-        org.id,
-        "pending_handoff",
-        "Pelanggan meminta bantuan staff",
-        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
-        conversationId,
-      ).catch(console.error);
-
-      // Fire Pusher so ConversationsPage updates live
-      triggerOrgEvent(org.id, "conversation:takeover", {
-        conversationId,
-        handoffStatus: "pending_handoff",
-      }).catch(console.error);
-
-      triggerConversationMessage(org.id, channelToken, {
-        conversationId,
-        role: "user",
-        content: message,
-      }).catch(console.error);
-
-      const pendingStream = new ReadableStream({
-        start(controller) {
-          const msg =
-            "Oke, saya akan menghubungkan kamu dengan staff kami. " +
-            "Mohon tunggu sebentar — staff akan segera membalas pesanmu. 🙏";
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
-          );
-          // Signal pending_handoff to client so UI can show waiting state
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ done: true, conversationId, channelToken, handoffStatus: "pending_handoff" })}\n\n`,
-            ),
-          );
-          controller.close();
-        },
-      });
-
-      return new Response(pendingStream, {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
