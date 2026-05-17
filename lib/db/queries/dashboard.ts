@@ -259,6 +259,90 @@ export async function getRecentConversations(orgId: string): Promise<
   }));
 }
 
+// ── Single conversation by id — used for live prepend on conversation:new ──
+// Same shape as getRecentConversations rows — compatible with ConversationRowType
+export async function getConversationById(
+  conversationId: number,
+  orgId: string,
+): Promise<{
+  id: number;
+  sessionId: string;
+  handoffStatus: string;
+  deliveryChannel: string;
+  createdAt: Date;
+  lastMessage: string | null;
+  lastMessageAt: Date | null;
+  messageCount: number;
+  takenOverBy: string | null;
+  takenOverAt: Date | null;
+} | null> {
+  const result = await db.execute<{
+    id: number;
+    session_id: string;
+    handoff_status: string;
+    delivery_channel: string;
+    created_at: Date;
+    last_message: string | null;
+    last_message_at: Date | null;
+    message_count: number;
+    taken_over_by: string | null;
+    taken_over_at: Date | null;
+  }>(
+    sql`
+      SELECT
+        c.id,
+        c.session_id,
+        c.handoff_status,
+        c.delivery_channel,
+        c.created_at,
+        c.taken_over_by,
+        c.taken_over_at,
+        (
+          SELECT m.created_at
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) AS last_message_at,
+        LEFT(
+          (
+            SELECT m.content
+            FROM ${messages} m
+            WHERE m.conversation_id = c.id
+            ORDER BY m.created_at DESC
+            LIMIT 1
+          ),
+          80
+        ) AS last_message,
+        (
+          SELECT COUNT(*)::int
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+        ) AS message_count
+      FROM ${conversations} c
+      WHERE c.id = ${conversationId}
+        AND c.org_id = ${orgId}
+      LIMIT 1
+    `,
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    handoffStatus: row.handoff_status,
+    deliveryChannel: row.delivery_channel,
+    createdAt: toDateSafe(row.created_at),
+    lastMessage: row.last_message,
+    lastMessageAt: row.last_message_at ? toDateSafe(row.last_message_at) : null,
+    messageCount: row.message_count,
+    takenOverBy: row.taken_over_by,
+    takenOverAt: row.taken_over_at ? toDateSafe(row.taken_over_at) : null,
+  };
+}
+
 // ── Bot status data — chatbot config + document/chunk counts for status panel ──
 // Single query joining chatbots + aggregated document/chunk counts
 export async function getBotStatus(orgId: string): Promise<{

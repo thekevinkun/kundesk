@@ -39,21 +39,6 @@ const ConversationsPage = ({
     message: ConversationMessage;
   } | null>(null);
 
-  const onMessage = useCallback((payload: MessagePayload) => {
-    // Only staff replies need live update in the dialog — user/assistant handled by SSE
-    if (payload.role !== "human_agent") return;
-    setLatestMessage({
-      conversationId: payload.conversationId,
-      message: {
-        // No DB id available from Pusher — use timestamp as temporary key
-        id: Date.now(),
-        role: payload.role,
-        content: payload.content,
-        createdAt: new Date().toISOString(),
-      },
-    });
-  }, []);
-
   // Called by ConversationRow after successful takeover API call
   const handleTakeover = useCallback((conversationId: number) => {
     setConversations((prev) =>
@@ -77,7 +62,13 @@ const ConversationsPage = ({
   const onTakeover = useCallback((payload: TakeoverPayload) => {
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === payload.conversationId ? { ...c, handoffStatus: "human" } : c,
+        c.id === payload.conversationId
+          ? {
+              ...c,
+              // Use payload status — pending_handoff stays pending, human becomes human
+              handoffStatus: payload.handoffStatus ?? "human",
+            }
+          : c,
       ),
     );
   }, []);
@@ -89,6 +80,83 @@ const ConversationsPage = ({
       ),
     );
   }, []);
+
+  const onConversationNew = useCallback(
+    async (payload: { conversationId: number }) => {
+      try {
+        // Fetch full conversation shape — same structure as server-rendered rows
+        const res = await fetch(`/api/conversations/${payload.conversationId}`);
+        const json = (await res.json()) as {
+          ok: boolean;
+          data: ConversationRowType;
+        };
+        if (!json.ok || !json.data) return;
+
+        // Prepend — newest conversation at top, matches ORDER BY created_at DESC
+        setConversations((prev) => {
+          // Deduplicate — Pusher might fire twice in dev strict mode
+          if (prev.some((c) => c.id === json.data.id)) return prev;
+          // Keep max 10 rows — matches server query limit
+          return [json.data, ...prev].slice(0, 10);
+        });
+      } catch {
+        // Non-critical — table still shows existing rows, new one appears on refresh
+      }
+    },
+    [],
+  );
+
+  const onConversationMessage = useCallback(async (payload: MessagePayload) => {
+    if (payload.content) {
+      // Full payload — update row directly
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === payload.conversationId
+            ? {
+                ...c,
+                lastMessage: payload.content.slice(0, 80),
+                lastMessageAt: new Date(),
+                messageCount: c.messageCount + 1,
+              }
+            : c,
+        ),
+      );
+    } else {
+      // Ping-only event — refetch the row to get latest state
+      try {
+        const res = await fetch(`/api/conversations/${payload.conversationId}`);
+        const json = (await res.json()) as {
+          ok: boolean;
+          data: ConversationRowType;
+        };
+        if (!json.ok || !json.data) return;
+        setConversations((prev) =>
+          prev.map((c) => (c.id === json.data.id ? json.data : c)),
+        );
+      } catch {
+        // Non-critical — row updates on next refresh
+      }
+    }
+  }, []);
+
+  const onMessage = useCallback(
+    (payload: MessagePayload) => {
+      // Update row preview live — all roles update the last message
+      onConversationMessage(payload);
+
+      // Pass to open dialog — all roles, dedup handled inside ConversationDialog
+      setLatestMessage({
+        conversationId: payload.conversationId,
+        message: {
+          id: Date.now(),
+          role: payload.role,
+          content: payload.content,
+          createdAt: new Date().toISOString(),
+        },
+      });
+    },
+    [onConversationMessage],
+  );
 
   const onNotificationNew = useCallback(
     (item: NotificationItem) => {
@@ -104,6 +172,7 @@ const ConversationsPage = ({
     onReturn,
     onMessage,
     onNotificationNew,
+    onConversationNew,
   });
 
   return (

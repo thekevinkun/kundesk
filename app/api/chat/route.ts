@@ -14,7 +14,7 @@ import type { ConversationTurn } from "@/types/chat";
 
 // ─── Input validation ───
 const chatRequestSchema = z.object({
-  message: z.string().min(1).max(500),
+  message: z.string().min(1).max(1000),
   sessionId: z.string().min(1).max(100),
   orgSlug: z.string().min(1).max(100),
 });
@@ -420,13 +420,10 @@ export async function POST(request: NextRequest) {
         content: message,
       }).catch(console.error);
 
+      // Silent stream — no AI message, just done signal with handoff status
+      // Customer sees their bubble, nothing else — like WhatsApp human handoff
       const holdingStream = new ReadableStream({
         start(controller) {
-          const msg =
-            "Terima kasih, pesan kamu sudah diterima. Staff kami sedang menangani percakapan ini dan akan membalas sebentar lagi. 🙏";
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
-          );
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({

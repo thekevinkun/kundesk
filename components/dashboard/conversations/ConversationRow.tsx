@@ -97,8 +97,6 @@ const ConversationRow = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTakingOver, startTakeoverTransition] = useTransition();
 
-  const isHuman = handoffStatus === "human";
-
   // Expired: AI mode AND last message older than 24 hours
   const isExpired =
     convo.handoffStatus === "ai" &&
@@ -196,12 +194,12 @@ const ConversationRow = ({
             ) : (
               <>
                 <StatusPill status={handoffStatus} />
-                {!isHuman && (
+                {/* Only show Ambil Alih for AI rows — pending_handoff staff just opens dialog and replies */}
+                {handoffStatus === "ai" && (
                   <button
                     onClick={handleTakeover}
                     disabled={isTakingOver}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-semibold text-(--color-brand) hover:underline disabled:opacity-40"
-                    aria-label={`Ambil alih percakapan #${convo.sessionId.slice(0, 8)}`}
                   >
                     {isTakingOver ? "..." : "Ambil Alih"}
                   </button>

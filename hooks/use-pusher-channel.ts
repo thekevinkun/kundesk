@@ -21,6 +21,7 @@ const EVENTS = {
 export interface TakeoverPayload {
   conversationId: number;
   takenOverBy: string;
+  handoffStatus?: string;
 }
 
 export interface ReturnPayload {
@@ -50,6 +51,7 @@ export interface PusherChannelCallbacks {
   onMessage?: (payload: MessagePayload) => void;
   onDocumentUpdated?: (payload: unknown) => void;
   onNotificationNew?: (payload: NotificationItem) => void;
+  onConversationNew?: (payload: { conversationId: number }) => void;
 }
 
 export function usePusherChannel(
@@ -91,13 +93,22 @@ export function usePusherChannel(
       const channel = pusher.subscribe(channelName);
 
       // New conversation — increment bell
-      channel.bind(EVENTS.CONVERSATION_NEW, () => {
-        incrementUnread();
-      });
+      channel.bind(
+        EVENTS.CONVERSATION_NEW,
+        (data: { conversationId: number; sessionId: string }) => {
+          // Only increment for new customer conversations — not internal events
+          incrementUnread();
+          callbacks?.onConversationNew?.(data);
+        },
+      );
 
       // New message — increment bell + optional callback for live reply UI
       channel.bind(EVENTS.CONVERSATION_MESSAGE, (data: MessagePayload) => {
-        incrementUnread();
+        // Only increment unread for customer messages — not staff replies or AI responses
+        // Staff replies are staff's own action — no need to alert them about it
+        if (data.role === "user") {
+          incrementUnread();
+        }
         callbacks?.onMessage?.(data);
       });
 

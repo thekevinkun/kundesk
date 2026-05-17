@@ -16,16 +16,21 @@ export function useChatStream(orgSlug: string) {
     setErrorWithType,
     setLoading,
     isStreaming,
+    setHumanMode,
+    setHandoffStatus,
   } = useChatStore();
 
   const sendMessage = useCallback(
-    async (content: string, onPendingHandoff?: () => void) => {
+    async (content: string) => {
       // Prevent sending while a response is already streaming
       if (isStreaming || !content.trim()) return;
 
       // Show user message immediately — don't wait for server
       addUserMessage(content);
-      setLoading(true);
+
+      // Don't show loading indicator in human mode — no AI response coming
+      const { isHumanMode } = useChatStore.getState();
+      if (!isHumanMode) setLoading(true);
 
       try {
         const response = await fetch("/api/chat", {
@@ -111,9 +116,11 @@ export function useChatStream(orgSlug: string) {
               if ("done" in parsed) {
                 if (localId !== null) {
                   finalizeAssistantMessage(localId);
+                } else {
+                  // Silent response — no tokens, reset loading manually
+                  setLoading(false);
                 }
 
-                // Only set if present — absent on injection deflection responses
                 if (parsed.conversationId !== undefined) {
                   setConversationId(parsed.conversationId);
                 }
@@ -122,12 +129,18 @@ export function useChatStream(orgSlug: string) {
                   setChannelToken(parsed.channelToken);
                 }
 
-                // Signal pending_handoff to caller so ChatPage can show waiting state
-                if (
-                  parsed.handoffStatus === "pending_handoff" ||
-                  parsed.handoffStatus === "human"
-                ) {
-                  onPendingHandoff?.();
+                if (parsed.handoffStatus) {
+                  setHandoffStatus(
+                    parsed.handoffStatus as "ai" | "pending_handoff" | "human",
+                  );
+                  if (
+                    parsed.handoffStatus === "pending_handoff" ||
+                    parsed.handoffStatus === "human"
+                  ) {
+                    setHumanMode(true);
+                  } else {
+                    setHumanMode(false);
+                  }
                 }
                 return;
               }
@@ -170,6 +183,8 @@ export function useChatStream(orgSlug: string) {
       setError,
       setErrorWithType,
       setChannelToken,
+      setHumanMode,
+      setHandoffStatus,
     ],
   );
 

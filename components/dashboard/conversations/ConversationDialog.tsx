@@ -56,57 +56,36 @@ const ConversationDialog = ({
   const [isReturning, startReturnTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const isHuman = handoffStatus === "human";
-
-  // Fetch full message history on mount
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(
-          `/api/conversations/${conversationId}/messages`,
-        );
-        const json = (await res.json()) as {
-          ok: boolean;
-          data: ConversationMessage[];
-        };
-        if (json.ok) setMsgs(json.data);
-      } catch {
-        toast.error("Gagal memuat riwayat percakapan");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void load();
-  }, [conversationId]);
-
-  // Append new message from Pusher — arrives via parent prop
-  useEffect(() => {
-    if (!newMessage) return;
-    setMsgs((prev) => {
-      // Deduplicate — Pusher might fire twice in dev strict mode
-      if (prev.some((m) => m.id === newMessage.id)) return prev;
-      return [...prev, newMessage];
-    });
-  }, [newMessage]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [msgs]);
+  // Show reply box for both human and pending_handoff — staff can reply in either state
+  const isHuman =
+    handoffStatus === "human" || handoffStatus === "pending_handoff";
 
   const handleSend = () => {
     if (!replyContent.trim()) return;
+    const content = replyContent.trim();
+
+    // Optimistic update — append immediately so staff sees their own message
+    const optimisticMsg: ConversationMessage = {
+      id: Date.now(), // temporary id — Pusher dedup handles collision
+      role: "human_agent",
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    setMsgs((prev) => [...prev, optimisticMsg]);
+    setReplyContent("");
+
     startSendTransition(async () => {
       try {
         const res = await fetch(`/api/conversations/${conversationId}/reply`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: replyContent.trim() }),
+          body: JSON.stringify({ content }),
         });
-        if (!res.ok) throw new Error("Failed");
-        setReplyContent("");
-        toast.success("Pesan terkirim");
+        if (!res.ok) {
+          // Rollback optimistic message on failure
+          setMsgs((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
+          throw new Error("Failed");
+        }
       } catch {
         toast.error("Gagal mengirim pesan. Coba lagi.");
       }
@@ -134,6 +113,52 @@ const ConversationDialog = ({
       handleSend();
     }
   };
+
+  // Fetch full message history on mount
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(
+          `/api/conversations/${conversationId}/messages`,
+        );
+        const json = (await res.json()) as {
+          ok: boolean;
+          data: ConversationMessage[];
+        };
+        if (json.ok) setMsgs(json.data);
+      } catch {
+        toast.error("Gagal memuat riwayat percakapan");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void load();
+  }, [conversationId]);
+
+  // Append new message from Pusher — arrives via parent prop
+  useEffect(() => {
+    if (!newMessage) return;
+    setMsgs((prev) => {
+      // Deduplicate by content + role — optimistic message may already be showing
+      const isDuplicate = prev.some(
+        (m) =>
+          m.role === newMessage.role &&
+          m.content === newMessage.content &&
+          Math.abs(
+            new Date(m.createdAt).getTime() -
+              new Date(newMessage.createdAt).getTime(),
+          ) < 5000, // within 5 seconds = same message
+      );
+      if (isDuplicate) return prev;
+      return [...prev, newMessage];
+    });
+  }, [newMessage]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs]);
 
   return (
     <motion.div

@@ -39,7 +39,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     sessionId,
     conversationId,
     channelToken,
+    isHumanMode,
+    handoffStatus,
     setSessionId,
+    setHandoffStatus,
     clearError,
     addHumanAgentMessage,
   } = useChatStore();
@@ -48,7 +51,6 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
   const [input, setInput] = useState("");
   const [hasGreeted, setHasGreeted] = useState(false);
-  const [isPendingHandoff, setIsPendingHandoff] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -110,8 +112,6 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       const channel = pusher.subscribe(channelName);
 
       channel.bind("conversation:message", (payload: PusherMessagePayload) => {
-        // Ignore all events until this client has a concrete conversationId,
-        // then strictly match that conversation.
         if (
           conversationId === null ||
           payload.conversationId !== conversationId
@@ -119,8 +119,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
           return;
         }
         if (payload.role === "human_agent") {
-          setIsPendingHandoff(false);
           addHumanAgentMessage(payload.content);
+          // Admin replied — transition from pending_handoff to human immediately
+          // No SSE fires to customer on staff reply — Pusher is the only signal
+          setHandoffStatus("human");
         }
       });
 
@@ -139,14 +141,14 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    // In human mode — allow sending even during streaming (silent SSE, completes instantly)
+    if (!trimmed || (!isHumanMode && isStreaming)) return;
     setInput("");
-    // Pass callback — fires when server signals pending_handoff in done event
-    await sendMessage(trimmed, () => setIsPendingHandoff(true));
+    await sendMessage(trimmed);
   };
 
-  // Disabled while waiting for staff — customer can't send more until staff takes over
-  const isInputDisabled = isStreaming || isLoading || isPendingHandoff;
+  // In human mode — input stays enabled, customer can send freely
+  const isInputDisabled = isHumanMode ? false : isStreaming || isLoading;
 
   return (
     <div
@@ -204,7 +206,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
           <GenericErrorBanner error={error} onDismiss={clearError} />
         )}
 
-        {isPendingHandoff && (
+        {handoffStatus === "pending_handoff" && (
           <PendingHandoffState accentColor={config.accentColor} />
         )}
 
@@ -215,6 +217,8 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         value={input}
         disabled={isInputDisabled}
         accentColor={config.accentColor}
+        isHumanMode={isHumanMode}
+        handoffStatus={handoffStatus}
         onChange={setInput}
         onSend={handleSend}
       />

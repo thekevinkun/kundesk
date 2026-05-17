@@ -27,7 +27,8 @@ export function PostHogProvider({ children, orgId }: PostHogProviderProps) {
   }, []);
 
   useEffect(() => {
-    if (!orgId) return;
+    // Skip identify in development — posthog was never initialized
+    if (!orgId || process.env.NODE_ENV === "development") return;
     posthog.identify(orgId, { org_id: orgId });
   }, [orgId]);
 

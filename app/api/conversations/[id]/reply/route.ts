@@ -8,7 +8,7 @@ import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
 import { conversations, messages } from "@/lib/db/schema";
-import { triggerConversationMessage } from "@/lib/pusher";
+import { triggerConversationMessage, triggerOrgEvent } from "@/lib/pusher";
 import type { ApiResponse } from "@/types/api";
 
 const replySchema = z.object({
@@ -74,8 +74,29 @@ export async function POST(
       .for("update"); // ← row-level lock — blocks concurrent /return until we commit
 
     if (!convo) return { error: "not_found", channelToken: null } as const;
-    if (convo.handoffStatus !== "human")
+    // Allow reply in both human and pending_handoff — staff replying implicitly confirms handoff
+    if (
+      convo.handoffStatus !== "human" &&
+      convo.handoffStatus !== "pending_handoff"
+    )
       return { error: "not_human", channelToken: null } as const;
+
+    // If replying from pending_handoff — auto-transition to human
+    // Staff replying IS the implicit takeover — no separate click needed
+    if (convo.handoffStatus === "pending_handoff") {
+      await tx
+        .update(conversations)
+        .set({
+          handoffStatus: "human",
+          takenOverAt: new Date(),
+        })
+        .where(
+          and(
+            eq(conversations.id, conversationId),
+            eq(conversations.orgId, orgId),
+          ),
+        );
+    }
 
     await tx.insert(messages).values({
       orgId,
@@ -84,7 +105,11 @@ export async function POST(
       content,
     });
 
-    return { error: null, channelToken: convo.channelToken } as const;
+    return {
+      error: null,
+      channelToken: convo.channelToken,
+      wasTransitioned: convo.handoffStatus === "pending_handoff",
+    } as const;
   });
 
   if (result.error === "not_found") {
@@ -112,6 +137,15 @@ export async function POST(
     role: "human_agent",
     content,
   }).catch(console.error);
+
+  // If transitioned from pending_handoff — update dashboard row live
+  // Without this the row stays "Pending" until refresh
+  if (result.wasTransitioned) {
+    triggerOrgEvent(orgId, "conversation:takeover", {
+      conversationId,
+      handoffStatus: "human",
+    }).catch(console.error);
+  }
 
   return NextResponse.json<ApiResponse<{ conversationId: number }>>({
     ok: true,

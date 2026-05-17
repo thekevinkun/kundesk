@@ -120,7 +120,7 @@ export async function POST(req: Request) {
               systemPrompt: null,
               language: "id",
               tone: "friendly",
-              greetingMessage: "Halo! Ada yang bisa saya bantu?",
+              greetingMessage: `Halo! Saya adalah ${data.name}'s Assistant, asisten virtual bisnis ini. Saya siap menjawab pertanyaan seputar ${data.name} berdasarkan informasi yang telah disiapkan. Ada yang bisa saya bantu?`,
               accentColor: "#069494",
               isActive: true,
             })
