@@ -161,20 +161,26 @@ export async function getDocumentCount(): Promise<number> {
 // ── Get pending handoff count — for conversations badge ──
 // Counts conversations where human attention is needed
 export async function getPendingHandoffCount(): Promise<number> {
-  const { orgId } = await requireOrg();
+  try {
+    const { orgId } = await requireOrg();
 
-  const [result] = await db
-    .select({ total: count() })
-    .from(conversations)
-    .where(
-      and(
-        eq(conversations.orgId, orgId),
-        // Only pending_handoff — these need the owner's attention right now
-        eq(conversations.handoffStatus, "pending_handoff"),
-      ),
-    );
+    const [result] = await db
+      .select({ total: count() })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.orgId, orgId),
+          eq(conversations.handoffStatus, "pending_handoff"),
+        ),
+      );
 
-  return result?.total ?? 0;
+    // Return primitive number only — never an object or class instance
+    return result?.total ?? 0;
+  } catch {
+    // Auth failure or DB timeout — return 0 silently
+    // Badge just won't show, which is safe fallback behavior
+    return 0;
+  }
 }
 
 // ── Get widget data — org slug + chatbot config for the widget page ──

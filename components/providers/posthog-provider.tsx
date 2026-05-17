@@ -13,7 +13,9 @@ export function PostHogProvider({ children, orgId }: PostHogProviderProps) {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
-    if (!key || !host) return;
+
+    // Skip in development — network restrictions cause ETIMEDOUT noise
+    if (!key || !host || process.env.NODE_ENV === "development") return;
 
     posthog.init(key, {
       api_host: host,

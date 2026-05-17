@@ -8,7 +8,11 @@ import ChatHeader from "./ChatHeader";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import ChatInput from "./ChatInput";
-import { QuotaExceededState, GenericErrorBanner } from "./ChatErrorState";
+import {
+  QuotaExceededState,
+  GenericErrorBanner,
+  PendingHandoffState,
+} from "./ChatErrorState";
 
 interface ChatPageProps {
   config: ChatbotConfig;
@@ -44,6 +48,8 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
   const [input, setInput] = useState("");
   const [hasGreeted, setHasGreeted] = useState(false);
+  const [isPendingHandoff, setIsPendingHandoff] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Generate session ID once on mount
@@ -134,10 +140,12 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
     setInput("");
-    await sendMessage(trimmed);
+    // Pass callback — fires when server signals pending_handoff in done event
+    await sendMessage(trimmed, () => setIsPendingHandoff(true));
   };
 
-  const isInputDisabled = isStreaming || isLoading;
+  // Disabled while waiting for staff — customer can't send more until staff takes over
+  const isInputDisabled = isStreaming || isLoading || isPendingHandoff;
 
   return (
     <div
@@ -193,6 +201,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
         {error && errorType !== "quota_exceeded" && (
           <GenericErrorBanner error={error} onDismiss={clearError} />
+        )}
+
+        {isPendingHandoff && (
+          <PendingHandoffState accentColor={config.accentColor} />
         )}
 
         <div ref={messagesEndRef} aria-hidden="true" />

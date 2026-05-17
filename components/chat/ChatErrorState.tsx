@@ -60,3 +60,33 @@ export const GenericErrorBanner = ({ error, onDismiss }: GenericErrorProps) => {
     </div>
   );
 };
+
+// Pending handoff — shown while customer waits for staff to take over
+// Not an error — reassuring, not alarming
+interface PendingHandoffProps {
+  accentColor: string;
+}
+
+export const PendingHandoffState = ({ accentColor }: PendingHandoffProps) => {
+  return (
+    <div
+      className="flex flex-col items-center text-center px-6 py-6 mb-4"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-4 animate-pulse"
+        style={{ background: `${accentColor}18` }}
+        aria-hidden="true"
+      >
+        👤
+      </div>
+      <p className="text-gray-800 font-semibold text-sm mb-1">
+        Menunggu staff kami
+      </p>
+      <p className="text-gray-500 text-xs leading-relaxed max-w-[240px]">
+        Permintaanmu sudah diterima. Staff akan segera membalas pesanmu di sini.
+      </p>
+    </div>
+  );
+};

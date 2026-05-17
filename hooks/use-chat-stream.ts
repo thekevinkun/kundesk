@@ -19,7 +19,7 @@ export function useChatStream(orgSlug: string) {
   } = useChatStore();
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, onPendingHandoff?: () => void) => {
       // Prevent sending while a response is already streaming
       if (isStreaming || !content.trim()) return;
 
@@ -101,7 +101,12 @@ export function useChatStream(orgSlug: string) {
               const parsed = JSON.parse(data) as
                 | { token: string }
                 | { error: string }
-                | { done: true; conversationId: number; channelToken?: string };
+                | {
+                    done: true;
+                    conversationId?: number;
+                    channelToken?: string;
+                    handoffStatus?: string;
+                  };
 
               if ("done" in parsed) {
                 finalizeAssistantMessage(localId);
@@ -111,6 +116,10 @@ export function useChatStream(orgSlug: string) {
                 }
                 if (parsed.channelToken !== undefined) {
                   setChannelToken(parsed.channelToken);
+                }
+                // Signal pending_handoff to caller so ChatPage can show waiting state
+                if (parsed.handoffStatus === "pending_handoff") {
+                  onPendingHandoff?.();
                 }
                 return;
               }
@@ -147,6 +156,7 @@ export function useChatStream(orgSlug: string) {
       finalizeAssistantMessage,
       setError,
       setErrorWithType,
+      setChannelToken,
     ],
   );
 

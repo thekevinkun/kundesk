@@ -75,9 +75,10 @@ const ChatInput = ({
         </button>
       </div>
 
-      {/* Powered by footer */}
+      {/* Human handoff hint — subtle, doesn't distract from main chat flow */}
       <p className="text-center text-gray-400 text-[11px] mt-2">
-        Powered by{" "}
+        Ketik <span className="font-semibold text-gray-500">hubungi admin</span>{" "}
+        untuk berbicara dengan staff ·{" "}
         <span className="font-semibold" style={{ color: accentColor }}>
           Kundesk
         </span>

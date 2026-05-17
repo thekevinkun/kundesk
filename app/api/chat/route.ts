@@ -42,6 +42,23 @@ function detectInjection(message: string): boolean {
   return INJECTION_PATTERNS.some((pattern) => pattern.test(message));
 }
 
+// ─── Handoff request detection ───
+const HANDOFF_PATTERNS = [
+  /bicara\s+(sama|dengan|ke)\s+(admin|staff|manusia|orang|cs|operator)/i,
+  /hubungi\s+(admin|staff|cs|operator)/i,
+  /minta\s+(bicara|ngobrol|chat)\s+(sama|dengan|ke)\s+(manusia|orang|admin|staff)/i,
+  /tolong\s+(sambungkan|hubungkan)\s+(ke|sama|dengan)\s+(admin|staff|manusia|orang)/i,
+  /ada\s+(manusia|orang|admin|staff)\s+(nya|yang\s+bisa\s+bantu)/i,
+  /bisa\s+(bicara|ngobrol|chat)\s+(sama|dengan)\s+(manusia|orang|admin|staff)/i,
+  /speak\s+to\s+(a\s+)?(human|agent|staff|person|admin)/i,
+  /talk\s+to\s+(a\s+)?(human|agent|staff|person|admin)/i,
+  /connect\s+me\s+(to|with)\s+(a\s+)?(human|agent|staff|person)/i,
+];
+
+function detectHandoffRequest(message: string): boolean {
+  return HANDOFF_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 // ─── Mock streaming ───
 function createMockStream(
   encoder: TextEncoder,
@@ -307,6 +324,94 @@ export async function POST(request: NextRequest) {
       });
 
       return new Response(holdingStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
+  }
+
+  // ── 7b. Customer-initiated handoff request ──
+  // If customer asks to speak to a human, set pending_handoff and return holding message
+  // No OpenAI call — no quota consumed
+  if (existingConversation && detectHandoffRequest(message)) {
+    const conversationId = existingConversation.id;
+    const channelToken = existingConversation.channelToken;
+
+    // Only transition if currently in AI mode — ignore if already pending or human
+    const [convoStatus] = await db
+      .select({ handoffStatus: conversations.handoffStatus })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.orgId, org.id),
+        ),
+      )
+      .limit(1);
+
+    if (convoStatus?.handoffStatus === "ai") {
+      // Transition to pending_handoff — staff needs to manually take over
+      await db
+        .update(conversations)
+        .set({ handoffStatus: "pending_handoff" })
+        .where(
+          and(
+            eq(conversations.id, conversationId),
+            eq(conversations.orgId, org.id),
+          ),
+        );
+
+      // Save customer's message so staff sees what triggered the request
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
+
+      // Notify dashboard — urgent, staff needs to act
+      createNotification(
+        org.id,
+        "pending_handoff",
+        "Pelanggan meminta bantuan staff",
+        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+        conversationId,
+      ).catch(console.error);
+
+      // Fire Pusher so ConversationsPage updates live
+      triggerOrgEvent(org.id, "conversation:takeover", {
+        conversationId,
+        handoffStatus: "pending_handoff",
+      }).catch(console.error);
+
+      triggerConversationMessage(org.id, channelToken, {
+        conversationId,
+        role: "user",
+        content: message,
+      }).catch(console.error);
+
+      const pendingStream = new ReadableStream({
+        start(controller) {
+          const msg =
+            "Oke, saya akan menghubungkan kamu dengan staff kami. " +
+            "Mohon tunggu sebentar — staff akan segera membalas pesanmu. 🙏";
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
+          );
+          // Signal pending_handoff to client so UI can show waiting state
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ done: true, conversationId, channelToken, handoffStatus: "pending_handoff" })}\n\n`,
+            ),
+          );
+          controller.close();
+        },
+      });
+
+      return new Response(pendingStream, {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
