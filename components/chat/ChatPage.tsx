@@ -119,6 +119,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
           return;
         }
         if (payload.role === "human_agent") {
+          setIsPendingHandoff(false);
           addHumanAgentMessage(payload.content);
         }
       });

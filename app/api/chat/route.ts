@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 6. Prompt injection ──
+  // ── 6a. Prompt injection ──
   if (detectInjection(message)) {
     const deflectionStream = new ReadableStream({
       start(controller) {
@@ -268,7 +268,37 @@ export async function POST(request: NextRequest) {
     )
     .limit(1);
 
-  // ── 7. Handoff check — must run before conversation creation and quota check ──
+  // ── 6b. First-message handoff request ──
+  // If this is the customer's first message and they're asking for a human,
+  // we can't create a pending_handoff conversation with no prior context.
+  // Return a gentle redirect — no conversation created, no quota consumed.
+  if (!existingConversation && detectHandoffRequest(message)) {
+    const firstMessagePendingStream = new ReadableStream({
+      start(controller) {
+        const msg =
+          "Halo! Untuk berbicara langsung dengan staff kami, " +
+          "silakan hubungi kami melalui kontak yang tersedia. " +
+          "Atau mulai dengan pertanyaan dulu — saya siap membantu! 😊";
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
+        );
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`),
+        );
+        controller.close();
+      },
+    });
+
+    return new Response(firstMessagePendingStream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // ── 7a. Handoff check — must run before conversation creation and quota check ──
   // Human handoff messages bypass OpenAI entirely — no quota consumed, no phantom conversations
   if (existingConversation) {
     const [convoStatus] = await db
@@ -282,7 +312,10 @@ export async function POST(request: NextRequest) {
       )
       .limit(1);
 
-    if (convoStatus?.handoffStatus === "human") {
+    if (
+      convoStatus?.handoffStatus === "human" ||
+      convoStatus?.handoffStatus === "pending_handoff"
+    ) {
       const conversationId = existingConversation.id;
       const channelToken = existingConversation.channelToken;
 

@@ -386,7 +386,7 @@ export async function getAvgResponseTime(
   const avg = result?.avgMs;
 
   // No assistant messages yet — return null so UI shows fallback
-  if (!avg) return null;
+  if (avg == null) return null;
 
   // Convert ms to seconds, round to 1 decimal
   return `${(avg / 1000).toFixed(1)}s`;

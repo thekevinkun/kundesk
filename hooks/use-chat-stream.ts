@@ -72,8 +72,8 @@ export function useChatStream(orgSlug: string) {
           return;
         }
 
-        // Create an assistant message bubble and start streaming tokens into it
-        const localId = startAssistantMessage();
+        // Create assistant bubble lazily only when first token arrives
+        let localId: string | null = null;
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -109,14 +109,19 @@ export function useChatStream(orgSlug: string) {
                   };
 
               if ("done" in parsed) {
-                finalizeAssistantMessage(localId);
+                if (localId !== null) {
+                  finalizeAssistantMessage(localId);
+                }
+
                 // Only set if present — absent on injection deflection responses
                 if (parsed.conversationId !== undefined) {
                   setConversationId(parsed.conversationId);
                 }
+
                 if (parsed.channelToken !== undefined) {
                   setChannelToken(parsed.channelToken);
                 }
+
                 // Signal pending_handoff to caller so ChatPage can show waiting state
                 if (parsed.handoffStatus === "pending_handoff") {
                   onPendingHandoff?.();
@@ -130,6 +135,9 @@ export function useChatStream(orgSlug: string) {
               }
 
               if ("token" in parsed) {
+                if (localId === null) {
+                  localId = startAssistantMessage();
+                }
                 appendToken(localId, parsed.token);
               }
             } catch {
@@ -139,7 +147,9 @@ export function useChatStream(orgSlug: string) {
         }
 
         // Stream ended without [DONE] — finalize anyway
-        finalizeAssistantMessage(localId);
+        if (localId !== null) {
+          finalizeAssistantMessage(localId);
+        }
       } catch {
         setError("Koneksi terputus. Periksa internet kamu dan coba lagi.");
       }
