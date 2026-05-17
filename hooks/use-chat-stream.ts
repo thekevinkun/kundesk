@@ -123,7 +123,10 @@ export function useChatStream(orgSlug: string) {
                 }
 
                 // Signal pending_handoff to caller so ChatPage can show waiting state
-                if (parsed.handoffStatus === "pending_handoff") {
+                if (
+                  parsed.handoffStatus === "pending_handoff" ||
+                  parsed.handoffStatus === "human"
+                ) {
                   onPendingHandoff?.();
                 }
                 return;

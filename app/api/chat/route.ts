@@ -100,7 +100,7 @@ function createOpenAIStream(
   encoder: TextEncoder,
   conversationId: number,
   channelToken: string,
-  onComplete: (fullResponse: string, responseTimeMs: number) => Promise<void>,
+  onComplete: (fullResponse: string, responseTimeMs?: number) => Promise<void>,
 ): ReadableStream {
   return new ReadableStream({
     async start(controller) {
@@ -147,7 +147,7 @@ function createOpenAIStream(
         );
         controller.close();
       } catch (err) {
-        await onComplete(fullResponse, Date.now() - startTime);
+        await onComplete("", undefined);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ error: "Stream failed" })}\n\n`,
@@ -268,28 +268,29 @@ export async function POST(request: NextRequest) {
     )
     .limit(1);
 
+  // Fetch current handoff status once — reused by both 6b and 7
+  // null means no existing conversation yet
+  const currentHandoffStatus = existingConversation
+    ? ((
+        await db
+          .select({ handoffStatus: conversations.handoffStatus })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.id, existingConversation.id),
+              eq(conversations.orgId, org.id),
+            ),
+          )
+          .limit(1)
+      )[0]?.handoffStatus ?? null)
+    : null;
+
   // ── 6b. Handoff request detection — runs before conversation creation ──
   // Handles both first-message and existing-conversation handoff requests
   // Creates conversation immediately with pending_handoff status if needed
   if (detectHandoffRequest(message)) {
-    // Determine current status — null means first message (no conversation yet)
-    const currentStatus = existingConversation
-      ? (
-          await db
-            .select({ handoffStatus: conversations.handoffStatus })
-            .from(conversations)
-            .where(
-              and(
-                eq(conversations.id, existingConversation.id),
-                eq(conversations.orgId, org.id),
-              ),
-            )
-            .limit(1)
-        )[0]?.handoffStatus
-      : null;
-
-    // Only act if AI is currently handling — ignore if already pending or human
-    if (currentStatus === "ai" || currentStatus === null) {
+    // Use already-fetched status — no second DB query
+    if (currentHandoffStatus === "ai" || currentHandoffStatus === null) {
       let conversationId: number;
       let channelToken: string;
 
@@ -391,20 +392,9 @@ export async function POST(request: NextRequest) {
   // ── 7. Handoff check — must run before conversation creation and quota check ──
   // Human handoff messages bypass OpenAI entirely — no quota consumed, no phantom conversations
   if (existingConversation) {
-    const [convoStatus] = await db
-      .select({ handoffStatus: conversations.handoffStatus })
-      .from(conversations)
-      .where(
-        and(
-          eq(conversations.id, existingConversation.id),
-          eq(conversations.orgId, org.id),
-        ),
-      )
-      .limit(1);
-
     if (
-      convoStatus?.handoffStatus === "human" ||
-      convoStatus?.handoffStatus === "pending_handoff"
+      currentHandoffStatus === "human" ||
+      currentHandoffStatus === "pending_handoff"
     ) {
       const conversationId = existingConversation.id;
       const channelToken = existingConversation.channelToken;
@@ -439,7 +429,12 @@ export async function POST(request: NextRequest) {
           );
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
+              `data: ${JSON.stringify({
+                done: true,
+                conversationId,
+                channelToken,
+                handoffStatus: currentHandoffStatus,
+              })}\n\n`,
             ),
           );
           controller.close();
