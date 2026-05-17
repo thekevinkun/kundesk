@@ -104,15 +104,13 @@ export interface ChatStore {
   error: string | null;
   // Error type — distinguishes quota exhausted from generic errors for different UI treatment
   errorType: ChatErrorType | null;
-  // Whether conversation is in human handoff mode — AI silent, customer types freely
-  isHumanMode: boolean;
+  // Status control of conversation
   handoffStatus: HandoffStatus;
 
   // Actions
   setSessionId: (id: string) => void;
   setConversationId: (id: number) => void;
   setChannelToken: (token: string) => void;
-  setHumanMode: (isHumanMode: boolean) => void;
   setHandoffStatus: (status: HandoffStatus) => void;
   addUserMessage: (content: string) => void;
   addHumanAgentMessage: (content: string) => void; // Appends a staff reply directly — called when Pusher fires conversation:message with role human_agent

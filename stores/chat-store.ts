@@ -16,10 +16,6 @@ export const useChatStore = create<ChatStore>((set) => ({
   channelToken: null,
   setChannelToken: (token) => set({ channelToken: token }),
 
-  // Whether conversation is in human handoff mode — disables AI, enables free typing
-  isHumanMode: false,
-  setHumanMode: (isHumanMode) => set({ isHumanMode }),
-
   handoffStatus: "ai",
   setHandoffStatus: (handoffStatus) => set({ handoffStatus }),
 

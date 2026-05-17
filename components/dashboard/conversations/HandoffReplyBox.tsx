@@ -89,7 +89,7 @@ const HandoffReplyBox = ({
           onKeyDown={handleKeyDown}
           placeholder="Tulis balasan... (Enter untuk kirim, Shift+Enter untuk baris baru)"
           rows={2}
-          maxLength={500}
+          maxLength={1000}
           className="flex-1 input-base resize-none text-[13px] py-2 px-3 min-h-[60px]"
         />
         <button
@@ -104,7 +104,7 @@ const HandoffReplyBox = ({
 
       {/* Char counter */}
       <div className="text-[11px] text-(--color-text-400) mt-1 text-right">
-        {content.length}/500
+        {content.length}/1000
       </div>
     </div>
   );

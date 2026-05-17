@@ -39,13 +39,15 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     sessionId,
     conversationId,
     channelToken,
-    isHumanMode,
     handoffStatus,
     setSessionId,
     setHandoffStatus,
     clearError,
     addHumanAgentMessage,
   } = useChatStore();
+
+  // Derive — single source of truth
+  const isHumanMode = handoffStatus !== "ai";
 
   const { sendMessage } = useChatStream(orgSlug);
 

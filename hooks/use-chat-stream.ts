@@ -17,7 +17,6 @@ export function useChatStream(orgSlug: string) {
     setErrorWithType,
     setLoading,
     isStreaming,
-    setHumanMode,
     setHandoffStatus,
   } = useChatStore();
 
@@ -30,8 +29,6 @@ export function useChatStream(orgSlug: string) {
       addUserMessage(content);
 
       // Don't show loading indicator in human mode — no AI response coming
-      const { isHumanMode } = useChatStore.getState();
-      if (!isHumanMode) setLoading(true);
 
       try {
         const response = await fetch("/api/chat", {
@@ -139,14 +136,6 @@ export function useChatStream(orgSlug: string) {
                   if (!isValidStatus) continue;
 
                   setHandoffStatus(parsed.handoffStatus as HandoffStatus);
-                  if (
-                    parsed.handoffStatus === "pending_handoff" ||
-                    parsed.handoffStatus === "human"
-                  ) {
-                    setHumanMode(true);
-                  } else {
-                    setHumanMode(false);
-                  }
                 }
                 return;
               }
@@ -191,7 +180,6 @@ export function useChatStream(orgSlug: string) {
       setError,
       setErrorWithType,
       setChannelToken,
-      setHumanMode,
       setHandoffStatus,
     ],
   );
