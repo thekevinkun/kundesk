@@ -19,14 +19,15 @@ export async function PATCH(
   const { orgId } = await requireOrg();
 
   const { id } = await params;
-  const notificationId = parseInt(id, 10);
 
-  if (isNaN(notificationId)) {
+  if (!/^\d+$/.test(id)) {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "Invalid notification ID", status: 400 },
       { status: 400 },
     );
   }
+
+  const notificationId = Number(id);
 
   await db
     .update(notifications)

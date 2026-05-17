@@ -17,14 +17,15 @@ export async function GET(
   const { orgId } = await requireOrg();
 
   const { id } = await params;
-  const conversationId = parseInt(id, 10);
 
-  if (isNaN(conversationId)) {
+  if (!/^\d+$/.test(id)) {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "Invalid conversation ID", status: 400 },
       { status: 400 },
     );
   }
+
+  const conversationId = Number(id);
 
   const conversation = await getConversationById(conversationId, orgId);
 

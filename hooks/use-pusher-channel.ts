@@ -103,13 +103,19 @@ export function usePusherChannel(
       );
 
       // New message — increment bell + optional callback for live reply UI
-      channel.bind(EVENTS.CONVERSATION_MESSAGE, (data: MessagePayload) => {
-        // Only increment unread for customer messages — not staff replies or AI responses
-        // Staff replies are staff's own action — no need to alert them about it
-        if (data.role === "user") {
+      channel.bind(EVENTS.CONVERSATION_MESSAGE, (data: unknown) => {
+        const payload = data as Partial<MessagePayload>;
+        if (payload.role === "user") {
           incrementUnread();
         }
-        callbacks?.onMessage?.(data);
+        if (
+          typeof payload.conversationId !== "number" ||
+          typeof payload.role !== "string" ||
+          typeof payload.content !== "string"
+        ) {
+          return;
+        }
+        callbacks?.onMessage?.(payload as MessagePayload);
       });
 
       // Staff took over — optional callback so conversations page updates badge live

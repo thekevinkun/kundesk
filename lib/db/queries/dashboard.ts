@@ -14,6 +14,7 @@ import {
   notifications,
 } from "@/lib/db/schema";
 import { toDateSafe } from "@/helpers/format";
+import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 
 // ── Total messages sent to this org's chatbot ──
 // Counts ALL roles (user + assistant + human_agent) — full volume metric
@@ -176,8 +177,8 @@ export async function getRecentConversations(orgId: string): Promise<
   {
     id: number;
     sessionId: string;
-    handoffStatus: string;
-    deliveryChannel: string;
+    handoffStatus: HandoffStatus;
+    deliveryChannel: DeliveryChannel;
     createdAt: Date;
     lastMessage: string | null;
     lastMessageAt: Date | null;
@@ -191,8 +192,8 @@ export async function getRecentConversations(orgId: string): Promise<
   const result = await db.execute<{
     id: number;
     session_id: string;
-    handoff_status: string;
-    delivery_channel: string;
+    handoff_status: HandoffStatus;
+    delivery_channel: DeliveryChannel;
     created_at: Date;
     last_message: string | null;
     last_message_at: Date | null;
@@ -267,8 +268,8 @@ export async function getConversationById(
 ): Promise<{
   id: number;
   sessionId: string;
-  handoffStatus: string;
-  deliveryChannel: string;
+  handoffStatus: HandoffStatus;
+  deliveryChannel: DeliveryChannel;
   createdAt: Date;
   lastMessage: string | null;
   lastMessageAt: Date | null;
@@ -279,8 +280,8 @@ export async function getConversationById(
   const result = await db.execute<{
     id: number;
     session_id: string;
-    handoff_status: string;
-    delivery_channel: string;
+    handoff_status: HandoffStatus;
+    delivery_channel: DeliveryChannel;
     created_at: Date;
     last_message: string | null;
     last_message_at: Date | null;

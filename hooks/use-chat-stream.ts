@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useChatStore } from "@/stores/chat-store";
+import { HandoffStatus } from "@/types/chat";
 
 // Handles sending a message and consuming the SSE stream from /api/chat.
 // Separated from the component so the UI stays declarative.
@@ -130,9 +131,14 @@ export function useChatStream(orgSlug: string) {
                 }
 
                 if (parsed.handoffStatus) {
-                  setHandoffStatus(
-                    parsed.handoffStatus as "ai" | "pending_handoff" | "human",
-                  );
+                  const isValidStatus =
+                    parsed.handoffStatus === "ai" ||
+                    parsed.handoffStatus === "pending_handoff" ||
+                    parsed.handoffStatus === "human";
+
+                  if (!isValidStatus) continue;
+
+                  setHandoffStatus(parsed.handoffStatus as HandoffStatus);
                   if (
                     parsed.handoffStatus === "pending_handoff" ||
                     parsed.handoffStatus === "human"
@@ -165,6 +171,8 @@ export function useChatStream(orgSlug: string) {
         // Stream ended without [DONE] — finalize anyway
         if (localId !== null) {
           finalizeAssistantMessage(localId);
+        } else {
+          setLoading(false);
         }
       } catch {
         setError("Koneksi terputus. Periksa internet kamu dan coba lagi.");

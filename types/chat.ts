@@ -57,7 +57,7 @@ export interface ConversationSession {
 // Lean message shape for OpenAI conversation history — role + content only
 // ChatMessage has the full DB shape — this is what we pass to the API
 export type ConversationTurn = {
-  role: "user" | "assistant";
+  role: MessageRole;
   content: string;
 };
 
@@ -81,7 +81,7 @@ export interface ChatUIMessage {
   // Local-only id for React key — not the DB id
   localId: string;
   // human_agent added for staff replies during handoff
-  role: "user" | "assistant" | "human_agent";
+  role: MessageRole;
   content: string;
   // True while the assistant is still streaming this message
   isStreaming?: boolean;
@@ -106,14 +106,14 @@ export interface ChatStore {
   errorType: ChatErrorType | null;
   // Whether conversation is in human handoff mode — AI silent, customer types freely
   isHumanMode: boolean;
-  handoffStatus: "ai" | "pending_handoff" | "human";
+  handoffStatus: HandoffStatus;
 
   // Actions
   setSessionId: (id: string) => void;
   setConversationId: (id: number) => void;
   setChannelToken: (token: string) => void;
   setHumanMode: (isHumanMode: boolean) => void;
-  setHandoffStatus: (status: "ai" | "pending_handoff" | "human") => void;
+  setHandoffStatus: (status: HandoffStatus) => void;
   addUserMessage: (content: string) => void;
   addHumanAgentMessage: (content: string) => void; // Appends a staff reply directly — called when Pusher fires conversation:message with role human_agent
   startAssistantMessage: () => string; // returns localId of the new message

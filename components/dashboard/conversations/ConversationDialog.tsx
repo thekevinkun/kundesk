@@ -290,13 +290,14 @@ const ConversationDialog = ({
                 onKeyDown={handleKeyDown}
                 placeholder="Balas sebagai staff... (Enter kirim, Shift+Enter baris baru)"
                 rows={2}
-                maxLength={500}
+                maxLength={1000}
                 className="flex-1 input-base resize-none text-[13px] py-2 px-3 min-h-[60px]"
               />
               <button
                 onClick={handleSend}
                 disabled={isSending || !replyContent.trim()}
-                className="btn-brand h-[60px] px-4 text-[13px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+                className="btn-brand h-[60px] px-4 text-[13px] font-semibold disabled:opacity-50 
+                  disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
                 aria-label="Kirim balasan"
               >
                 {isSending ? (
@@ -307,7 +308,7 @@ const ConversationDialog = ({
               </button>
             </div>
             <div className="text-[11px] text-(--color-text-400) mt-1 text-right">
-              {replyContent.length}/500
+              {replyContent.length}/1000
             </div>
           </div>
         )}
