@@ -57,7 +57,7 @@ export interface ConversationSession {
 // Lean message shape for OpenAI conversation history — role + content only
 // ChatMessage has the full DB shape — this is what we pass to the API
 export type ConversationTurn = {
-  role: MessageRole;
+  role: "user" | "assistant";
   content: string;
 };
 

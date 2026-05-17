@@ -57,8 +57,10 @@ const ConversationDialog = ({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Show reply box for both human and pending_handoff — staff can reply in either state
-  const isHuman =
+  const canReply =
     handoffStatus === "human" || handoffStatus === "pending_handoff";
+
+  const canReturn = handoffStatus === "human";
 
   const handleSend = () => {
     if (!replyContent.trim()) return;
@@ -143,12 +145,17 @@ const ConversationDialog = ({
       // Deduplicate by content + role — optimistic message may already be showing
       const isDuplicate = prev.some(
         (m) =>
-          m.role === newMessage.role &&
-          m.content === newMessage.content &&
-          Math.abs(
-            new Date(m.createdAt).getTime() -
-              new Date(newMessage.createdAt).getTime(),
-          ) < 5000, // within 5 seconds = same message
+          // hard dedupe for server-confirmed duplicates
+          m.id === newMessage.id ||
+          // optimistic dedupe only for temporary local staff messages
+          (m.role === "human_agent" &&
+            newMessage.role === "human_agent" &&
+            m.id > 1_000_000_000_000 &&
+            m.content === newMessage.content &&
+            Math.abs(
+              new Date(m.createdAt).getTime() -
+                new Date(newMessage.createdAt).getTime(),
+            ) < 5000),
       );
       if (isDuplicate) return prev;
       return [...prev, newMessage];
@@ -181,7 +188,7 @@ const ConversationDialog = ({
           </div>
 
           {/* Return to AI — only shown in human mode */}
-          {isHuman && (
+          {canReturn && (
             <button
               onClick={handleReturn}
               disabled={isReturning}
@@ -281,7 +288,7 @@ const ConversationDialog = ({
         </div>
 
         {/* Reply box — only shown in human mode */}
-        {isHuman && (
+        {canReply && (
           <div className="border-t border-(--color-border-sm) px-5 py-3">
             <div className="flex gap-2 items-end">
               <textarea
