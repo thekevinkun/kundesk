@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "response_time_ms" integer;

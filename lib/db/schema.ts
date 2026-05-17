@@ -205,7 +205,7 @@ export const conversations = pgTable(
     // Random UUID — used as the public Pusher channel name for the customer widget
     // Unguessable — prevents enumeration of conversation channels by sequential ID
     channelToken: text("channel_token").notNull().default(""),
-    
+
     // Entry channel — metadata only, RAG pipeline is identical for all channels
     // "web_widget" | "qr_link" | "whatsapp"
     deliveryChannel: text("delivery_channel").notNull().default("web_widget"),
@@ -256,6 +256,10 @@ export const messages = pgTable(
 
     // OpenAI tokens consumed — used for usage tracking and billing
     tokensUsed: integer("tokens_used").notNull().default(0),
+
+    // How long the AI took to generate the response — null for user/human_agent messages
+    // Recorded in milliseconds, displayed as seconds in dashboard
+    responseTimeMs: integer("response_time_ms"),
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

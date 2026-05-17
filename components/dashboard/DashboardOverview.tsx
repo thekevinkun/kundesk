@@ -78,6 +78,7 @@ interface DashboardOverviewProps {
   orgSlug: string;
   messagesUsed: number;
   messagesLimit: number;
+  avgResponseTime: string | null;
 }
 
 // ── Card header — reused across all chart cards ──
@@ -119,6 +120,7 @@ const DashboardOverview = ({
   orgSlug,
   messagesUsed,
   messagesLimit,
+  avgResponseTime,
 }: DashboardOverviewProps) => {
   // Quota used percentage — messagesUsed / messagesLimit
   // We have totalMessages; limit comes from org — approximating with answeredRate context
@@ -186,10 +188,10 @@ const DashboardOverview = ({
           <StatCard
             icon="⚡"
             iconVariant="rose"
-            value="1.2s"
+            value={avgResponseTime ?? "—"}
             label="Avg. Response Time"
-            changeDirection="up"
-            changeLabel="Estimasi"
+            changeDirection={avgResponseTime ? "up" : "neutral"}
+            changeLabel={avgResponseTime ? "Rata-rata AI" : "Belum ada data"}
           />
         </motion.div>
       </motion.div>

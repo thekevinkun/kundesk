@@ -10,6 +10,7 @@ import {
   getWeeklyMessages,
   getBotStatus,
   getOrgData,
+  getAvgResponseTime,
 } from "@/lib/db/queries/dashboard";
 import { DashboardOverview } from "@/components/dashboard";
 
@@ -31,6 +32,7 @@ export default async function DashboardPage() {
     weeklyMessages,
     botStatus,
     orgData,
+    avgResponseTime,
   ] = await Promise.all([
     (await clerkClient()).organizations.getOrganization({
       organizationId: orgId!,
@@ -43,6 +45,7 @@ export default async function DashboardPage() {
     getWeeklyMessages(orgId!),
     getBotStatus(orgId!),
     getOrgData(orgId!),
+    getAvgResponseTime(orgId!),
   ]);
 
   const currentYear = new Date().getFullYear();
@@ -62,6 +65,7 @@ export default async function DashboardPage() {
       orgSlug={orgData?.slug ?? ""}
       messagesUsed={orgData?.messagesUsed ?? 0}
       messagesLimit={orgData?.messagesLimit ?? 100}
+      avgResponseTime={avgResponseTime}
     />
   );
 }

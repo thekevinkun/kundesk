@@ -252,9 +252,7 @@ export async function getRecentConversations(orgId: string): Promise<
     deliveryChannel: row.delivery_channel,
     createdAt: toDateSafe(row.created_at),
     lastMessage: row.last_message,
-    lastMessageAt: row.last_message_at
-      ? toDateSafe(row.last_message_at)
-      : null,
+    lastMessageAt: row.last_message_at ? toDateSafe(row.last_message_at) : null,
     messageCount: row.message_count,
     takenOverBy: row.taken_over_by,
     takenOverAt: row.taken_over_at ? toDateSafe(row.taken_over_at) : null,
@@ -362,4 +360,34 @@ export async function createNotification(
       body,
     }).catch(console.error);
   }
+}
+
+// ── Average AI response time — AVG(response_time_ms) on assistant messages ──
+// Only assistant messages have responseTimeMs — user/human_agent rows are null
+// NULL values are automatically excluded from AVG in PostgreSQL
+// Returns seconds formatted to 1 decimal — e.g. "1.4s" or null if no data yet
+export async function getAvgResponseTime(
+  orgId: string,
+): Promise<string | null> {
+  const [result] = await db
+    .select({
+      // AVG returns numeric — cast to float, divide to get seconds
+      avgMs: sql<number>`AVG(${messages.responseTimeMs})::float`,
+    })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.orgId, orgId),
+        // Only assistant messages have response time — explicit filter for clarity
+        eq(messages.role, "assistant"),
+      ),
+    );
+
+  const avg = result?.avgMs;
+
+  // No assistant messages yet — return null so UI shows fallback
+  if (!avg) return null;
+
+  // Convert ms to seconds, round to 1 decimal
+  return `${(avg / 1000).toFixed(1)}s`;
 }

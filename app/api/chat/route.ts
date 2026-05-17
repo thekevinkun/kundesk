@@ -13,7 +13,6 @@ import { triggerOrgEvent, triggerConversationMessage } from "@/lib/pusher";
 import type { ConversationTurn } from "@/types/chat";
 
 // ─── Input validation ───
-
 const chatRequestSchema = z.object({
   message: z.string().min(1).max(500),
   sessionId: z.string().min(1).max(100),
@@ -21,7 +20,6 @@ const chatRequestSchema = z.object({
 });
 
 // ─── Prompt injection detection ───
-
 const INJECTION_PATTERNS = [
   /ignore\s+(previous|prior|above|all)\s+instructions?/i,
   /forget\s+(everything|all|your|the)\s+(instructions?|rules?|context)/i,
@@ -45,7 +43,6 @@ function detectInjection(message: string): boolean {
 }
 
 // ─── Mock streaming ───
-
 function createMockStream(
   encoder: TextEncoder,
   conversationId: number,
@@ -79,7 +76,6 @@ function createMockStream(
 }
 
 // ─── Real OpenAI streaming ───
-
 function createOpenAIStream(
   systemPrompt: string,
   conversationHistory: ConversationTurn[],
@@ -87,7 +83,7 @@ function createOpenAIStream(
   encoder: TextEncoder,
   conversationId: number,
   channelToken: string,
-  onComplete: (fullResponse: string) => Promise<void>,
+  onComplete: (fullResponse: string, responseTimeMs: number) => Promise<void>,
 ): ReadableStream {
   return new ReadableStream({
     async start(controller) {
@@ -104,6 +100,8 @@ function createOpenAIStream(
       ];
 
       let fullResponse = "";
+      // Record start time — used to calculate how long OpenAI took to respond
+      const startTime = Date.now();
 
       try {
         const stream = await openai.chat.completions.create({
@@ -124,7 +122,7 @@ function createOpenAIStream(
           }
         }
 
-        await onComplete(fullResponse);
+        await onComplete(fullResponse, Date.now() - startTime);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ done: true, conversationId, channelToken })}\n\n`,
@@ -132,7 +130,7 @@ function createOpenAIStream(
         );
         controller.close();
       } catch (err) {
-        await onComplete("");
+        await onComplete(fullResponse, Date.now() - startTime);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ error: "Stream failed" })}\n\n`,
@@ -146,7 +144,6 @@ function createOpenAIStream(
 }
 
 // ─── Main handler ───
-
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
@@ -411,7 +408,10 @@ export async function POST(request: NextRequest) {
   );
 
   // ── 13. Stream ──
-  const handleStreamComplete = async (assistantResponse: string) => {
+  const handleStreamComplete = async (
+    assistantResponse: string,
+    responseTimeMs?: number,
+  ) => {
     try {
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
@@ -427,6 +427,7 @@ export async function POST(request: NextRequest) {
             conversationId,
             role: "assistant",
             content: assistantResponse,
+            responseTimeMs: responseTimeMs ?? null,
           });
         }
 
