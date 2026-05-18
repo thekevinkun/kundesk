@@ -45,7 +45,7 @@ describe("formatDate", () => {
     expect(result).toContain("1");
   });
 
-  it("accepts a string and formats it correctly", () => {
+  it("formats January dates correctly", () => {
     const result = formatDate(new Date("2026-01-15T00:00:00Z"));
     expect(result).toContain("2026");
   });

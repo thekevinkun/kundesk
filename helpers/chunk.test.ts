@@ -55,7 +55,7 @@ describe("chunkText", () => {
     const longText = sentence.repeat(100);
     const chunks = chunkText(longText);
 
-    if (chunks.length < 2) return; // skip if text too short for overlap test
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
 
     // Last 100 chars of chunk[0] should appear somewhere in chunk[1]
     const endOfFirst = chunks[0]?.content.slice(-100).trim() ?? "";

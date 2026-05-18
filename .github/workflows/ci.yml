@@ -1,5 +1,5 @@
 # CI pipeline — runs on every push and PR to master
-# Checks: TypeScript, ESLint, Vitest
+# Checks: TypeScript, ESLint, Vitest, Build
 # CodeRabbit runs separately as a GitHub App on every PR
 
 name: CI
@@ -12,8 +12,30 @@ on:
 
 jobs:
   check:
-    name: Typecheck + Lint + Test
+    name: Typecheck + Lint + Test + Build
     runs-on: ubuntu-latest
+
+    # Shared env vars — available to all steps, no duplication
+    env:
+      DATABASE_URL: postgresql://placeholder-host/placeholder-db
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_fake
+      CLERK_SECRET_KEY: sk_test_fake
+      CLERK_WEBHOOK_SECRET: whsec_fake
+      UPSTASH_REDIS_REST_URL: https://fake.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: fake_token
+      NEXT_PUBLIC_PUSHER_KEY: fake_pusher_key
+      NEXT_PUBLIC_PUSHER_CLUSTER: ap1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_POSTHOG_KEY: phc_fake
+      NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+      NEXT_PUBLIC_SENTRY_DSN: https://fake@fake.ingest.sentry.io/fake
+      LOGO_URL: https://placeholder.example.com/logo.png
+      KUNDESK_AI_MODE: mock
+      KUNDESK_EMBEDDING_MODE: mock
+      KUNDESK_STORAGE_MODE: mock
+      KUNDESK_PAYMENT_MODE: mock
+      KUNDESK_REALTIME_MODE: mock
+      KUNDESK_EMAIL_MODE: mock
 
     steps:
       # Checkout the repo
@@ -34,69 +56,15 @@ jobs:
       # TypeScript check — zero errors required
       - name: Typecheck
         run: npm run typecheck
-        env:
-          # Placeholder env vars so lib/env.ts doesn't throw during CI
-          DATABASE_URL: postgresql://placeholder
-          CLERK_SECRET_KEY: placeholder
-          CLERK_WEBHOOK_SECRET: placeholder
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          KUNDESK_AI_MODE: mock
-          KUNDESK_EMBEDDING_MODE: mock
-          KUNDESK_STORAGE_MODE: mock
-          KUNDESK_PAYMENT_MODE: mock
-          KUNDESK_REALTIME_MODE: mock
-          KUNDESK_EMAIL_MODE: mock
 
       # ESLint — zero errors required
       - name: Lint
         run: npm run lint
-        env:
-          DATABASE_URL: postgresql://placeholder
-          CLERK_SECRET_KEY: placeholder
-          CLERK_WEBHOOK_SECRET: placeholder
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          KUNDESK_AI_MODE: mock
-          KUNDESK_EMBEDDING_MODE: mock
-          KUNDESK_STORAGE_MODE: mock
-          KUNDESK_PAYMENT_MODE: mock
-          KUNDESK_REALTIME_MODE: mock
-          KUNDESK_EMAIL_MODE: mock
 
-      # Vitest — no tests yet but infrastructure is ready
-      # Vitest — 101 tests across helpers and lib/redis
+      # Vitest — all 101 tests must pass
       - name: Test
         run: npm run test -- --run
-        env:
-          DATABASE_URL: postgresql://placeholder
-          CLERK_SECRET_KEY: placeholder
-          CLERK_WEBHOOK_SECRET: placeholder
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          KUNDESK_AI_MODE: mock
-          KUNDESK_EMBEDDING_MODE: mock
-          KUNDESK_STORAGE_MODE: mock
-          KUNDESK_PAYMENT_MODE: mock
-          KUNDESK_REALTIME_MODE: mock
-          KUNDESK_EMAIL_MODE: mock
 
-      # Build — catches import errors and Next.js compilation failures
+      # Build — catches Next.js compilation failures and import errors
       - name: Build
         run: npm run build
-        env:
-          DATABASE_URL: postgresql://fake:fake@fake.neon.tech/fake
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_fake
-          CLERK_SECRET_KEY: sk_test_fake
-          CLERK_WEBHOOK_SECRET: whsec_fake
-          UPSTASH_REDIS_REST_URL: https://fake.upstash.io
-          UPSTASH_REDIS_REST_TOKEN: fake_token
-          NEXT_PUBLIC_PUSHER_KEY: fake_pusher_key
-          NEXT_PUBLIC_PUSHER_CLUSTER: ap1
-          NEXT_PUBLIC_APP_URL: https://kundesk.app
-          NEXT_PUBLIC_POSTHOG_KEY: phc_fake
-          NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
-          NEXT_PUBLIC_SENTRY_DSN: https://fake@fake.ingest.sentry.io/fake
-          KUNDESK_AI_MODE: mock
-          KUNDESK_EMBEDDING_MODE: mock
-          KUNDESK_STORAGE_MODE: mock
-          KUNDESK_PAYMENT_MODE: mock
-          KUNDESK_REALTIME_MODE: mock
-          KUNDESK_EMAIL_MODE: mock
