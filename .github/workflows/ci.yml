@@ -21,15 +21,36 @@ jobs:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_fake
       CLERK_SECRET_KEY: sk_test_fake
       CLERK_WEBHOOK_SECRET: whsec_fake
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: /dashboard
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: /dashboard
       UPSTASH_REDIS_REST_URL: https://fake.upstash.io
       UPSTASH_REDIS_REST_TOKEN: fake_token
       NEXT_PUBLIC_PUSHER_KEY: fake_pusher_key
       NEXT_PUBLIC_PUSHER_CLUSTER: ap1
+      PUSHER_APP_ID: fake_pusher_app_id
+      PUSHER_KEY: fake_pusher_key
+      PUSHER_SECRET: fake_pusher_secret
+      PUSHER_CLUSTER: ap1
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_POSTHOG_KEY: phc_fake
       NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
       NEXT_PUBLIC_SENTRY_DSN: https://fake@fake.ingest.sentry.io/fake
+      SENTRY_DSN: https://fake@fake.ingest.sentry.io/fake
+      SENTRY_ORG: fake_org
+      SENTRY_PROJECT: fake_project
       LOGO_URL: https://placeholder.example.com/logo.png
+      CRON_SECRET: fake_cron_secret
+      AWS_S3_BUCKET: fake-bucket
+      AWS_ACCESS_KEY_ID: AKIAFAKE
+      AWS_SECRET_ACCESS_KEY: fake_secret
+      AWS_REGION: ap-southeast-1
+      MIDTRANS_SERVER_KEY: Mid-server-fake
+      MIDTRANS_CLIENT_KEY: Mid-client-fake
+      MIDTRANS_IS_PRODUCTION: "false"
+      RESEND_API_KEY: re_fake
+      RESEND_TO_EMAIL: fake@example.com
       KUNDESK_AI_MODE: mock
       KUNDESK_EMBEDDING_MODE: mock
       KUNDESK_STORAGE_MODE: mock
