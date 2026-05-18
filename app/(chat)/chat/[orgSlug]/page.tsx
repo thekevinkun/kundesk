@@ -55,6 +55,16 @@ export default async function ChatRoute({ params }: Props) {
     accentColor: chatbot.accentColor,
     greetingMessage: chatbot.greetingMessage,
     systemPrompt: chatbot.systemPrompt,
+    // Parse quickReplies JSON safely — invalid JSON or null both result in null
+    quickReplies: (() => {
+      try {
+        return chatbot.quickReplies
+          ? (JSON.parse(chatbot.quickReplies) as string[])
+          : null;
+      } catch {
+        return null;
+      }
+    })(),
   };
 
   return (

@@ -121,6 +121,13 @@ export async function POST(req: Request) {
               language: "id",
               tone: "friendly",
               greetingMessage: `Halo! Saya adalah ${data.name}'s Assistant, asisten virtual bisnis ini. Saya siap menjawab pertanyaan seputar ${data.name} berdasarkan informasi yang telah disiapkan. Ada yang bisa saya bantu?`,
+              quickReplies: JSON.stringify([
+                "Jam buka hari ini sampai jam berapa?",
+                "Cara ordernya bagaimana?",
+                "Boleh lihat daftar harga atau paketnya?",
+                "Layanan apa saja yang tersedia?",
+                "Ada promo atau diskon sekarang?",
+              ]),
               accentColor: "#069494",
               isActive: true,
             })

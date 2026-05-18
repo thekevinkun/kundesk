@@ -108,11 +108,9 @@ export function usePusherChannel(
         if (payload.role === "user") {
           incrementUnread();
         }
-        if (
-          typeof payload.conversationId !== "number" ||
-          typeof payload.role !== "string" ||
-          typeof payload.content !== "string"
-        ) {
+        // content is optional — ping-only events have no content
+        // only conversationId is required to route the event
+        if (typeof payload.conversationId !== "number") {
           return;
         }
         callbacks?.onMessage?.(payload as MessagePayload);

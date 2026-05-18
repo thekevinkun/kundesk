@@ -1,0 +1,1 @@
+ALTER TABLE "chatbots" ADD COLUMN "quick_replies" text;

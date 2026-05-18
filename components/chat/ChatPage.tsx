@@ -49,6 +49,9 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
   // Derive — single source of truth
   const isHumanMode = handoffStatus !== "ai";
 
+  // Chips visible only before customer sends their first message
+  const hasUserMessage = messages.some((m) => m.role === "user");
+
   const { sendMessage } = useChatStream(orgSlug);
 
   const [input, setInput] = useState("");
@@ -149,6 +152,12 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     await sendMessage(trimmed);
   };
 
+  // Chip tap: fill input and send immediately
+  const handleQuickReply = async (text: string) => {
+    if (hasUserMessage || isStreaming || isLoading) return;
+    await sendMessage(text);
+  };
+
   // In human mode — input stays enabled, customer can send freely
   const isInputDisabled = isHumanMode ? false : isStreaming || isLoading;
 
@@ -214,6 +223,31 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
         <div ref={messagesEndRef} aria-hidden="true" />
       </main>
+
+      {/* Quick reply chips — shown only before first user message */}
+      {!hasUserMessage &&
+        config.quickReplies &&
+        config.quickReplies.length > 0 && (
+          <div
+            className="flex flex-wrap gap-2 px-4 pb-2 mt-2"
+            aria-label="Pertanyaan cepat"
+          >
+            {config.quickReplies.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => handleQuickReply(chip)}
+                className="text-sm px-4 py-2 rounded-full border font-medium transition-all active:scale-95 hover:opacity-90 bg-white"
+                style={{
+                  borderColor: config.accentColor,
+                  color: config.accentColor,
+                }}
+                aria-label={`Tanyakan: ${chip}`}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
 
       <ChatInput
         value={input}

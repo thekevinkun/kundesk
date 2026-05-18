@@ -535,6 +535,15 @@ export async function POST(request: NextRequest) {
       accentColor: chatbot.accentColor,
       greetingMessage: chatbot.greetingMessage,
       systemPrompt: chatbot.systemPrompt,
+      quickReplies: (() => {
+        try {
+          return chatbot.quickReplies
+            ? (JSON.parse(chatbot.quickReplies) as string[])
+            : null;
+        } catch {
+          return null;
+        }
+      })(),
     },
     contextChunks,
   );

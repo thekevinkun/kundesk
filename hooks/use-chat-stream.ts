@@ -174,9 +174,11 @@ export function useChatStream(orgSlug: string) {
     },
     [
       isStreaming,
+      isLoading,
       sessionId,
-      setConversationId,
       orgSlug,
+      handoffStatus,
+      setConversationId,
       addUserMessage,
       setLoading,
       startAssistantMessage,

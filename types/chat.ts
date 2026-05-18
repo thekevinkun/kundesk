@@ -32,6 +32,7 @@ export type ChatbotConfig = {
   accentColor: string;
   greetingMessage: string | null;
   systemPrompt: string | null;
+  quickReplies: string[] | null;
 };
 
 // A conversation session

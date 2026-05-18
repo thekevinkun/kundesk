@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 import { useConversationStore } from "@/stores/conversation-store";
 import { formatRelativeTime } from "@/helpers/format";
 import { dropdownVariants } from "@/lib/animations";
@@ -22,6 +23,8 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
+  const { orgId } = useAuth();
+
   const {
     notificationItems,
     setNotifications,
@@ -32,7 +35,8 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
 
   // Fetch notifications from DB when panel opens — don't auto-mark as read
   useEffect(() => {
-    if (!isOpen) return;
+    // Wait for Clerk to hydrate — orgId is null briefly on first render
+    if (!isOpen || !orgId) return;
 
     const load = async () => {
       try {
@@ -50,7 +54,7 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
     void load();
     // Bell badge clears when panel opens — user is aware of notifications now
     clearUnread();
-  }, [isOpen, setNotifications, clearUnread]);
+  }, [isOpen, orgId, setNotifications, clearUnread]);
 
   // Mark single notification as read
   const handleNotifClick = useCallback(

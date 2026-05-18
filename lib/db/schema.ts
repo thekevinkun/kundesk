@@ -107,6 +107,11 @@ export const chatbots = pgTable(
     // Whether the chatbot is currently serving customers
     isActive: boolean("is_active").notNull().default(true),
 
+    // Suggested question chips shown above input before first message
+    // Stored as JSON array string — e.g. '["Jam buka?","Menu tersedia?"]'
+    // Null = feature disabled, no chips shown
+    quickReplies: text("quick_replies"),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
