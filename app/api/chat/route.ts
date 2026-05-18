@@ -537,8 +537,11 @@ export async function POST(request: NextRequest) {
       systemPrompt: chatbot.systemPrompt,
       quickReplies: (() => {
         try {
-          return chatbot.quickReplies
-            ? (JSON.parse(chatbot.quickReplies) as string[])
+          if (!chatbot.quickReplies) return null;
+          const parsed: unknown = JSON.parse(chatbot.quickReplies);
+          return Array.isArray(parsed) &&
+            parsed.every((v) => typeof v === "string")
+            ? parsed
             : null;
         } catch {
           return null;

@@ -30,8 +30,9 @@ export interface ReturnPayload {
 
 export interface MessagePayload {
   conversationId: number;
-  role: "user" | "assistant" | "human_agent";
-  content: string;
+  // role and content are absent on ping-only events (conversation:message with no content)
+  role?: "user" | "assistant" | "human_agent";
+  content?: string;
 }
 
 export interface NotificationItem {

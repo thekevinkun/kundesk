@@ -108,13 +108,15 @@ const ConversationsPage = ({
 
   const onConversationMessage = useCallback(async (payload: MessagePayload) => {
     if (payload.content) {
+      // Narrow to local const — TypeScript loses the narrowing inside the setState callback
+      const content = payload.content;
       // Full payload — update row directly
       setConversations((prev) =>
         prev.map((c) =>
           c.id === payload.conversationId
             ? {
                 ...c,
-                lastMessage: payload.content.slice(0, 80),
+                lastMessage: content.slice(0, 80),
                 lastMessageAt: new Date(),
                 messageCount: c.messageCount + 1,
               }
@@ -141,19 +143,20 @@ const ConversationsPage = ({
 
   const onMessage = useCallback(
     (payload: MessagePayload) => {
-      // Update row preview live — all roles update the last message
       onConversationMessage(payload);
 
-      // Pass to open dialog — all roles, dedup handled inside ConversationDialog
-      setLatestMessage({
-        conversationId: payload.conversationId,
-        message: {
-          id: Date.now(),
-          role: payload.role,
-          content: payload.content,
-          createdAt: new Date().toISOString(),
-        },
-      });
+      // Only update dialog if this is a real message — pings have no role or content
+      if (payload.role && payload.content) {
+        setLatestMessage({
+          conversationId: payload.conversationId,
+          message: {
+            id: Date.now(),
+            role: payload.role,
+            content: payload.content,
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
     },
     [onConversationMessage],
   );
