@@ -3,13 +3,15 @@ const AnalyticsPreview = () => {
     <div className="bg-[#1e1e1e] border border-[#333] rounded-xl p-4 mb-6 min-h-[148px]">
       <div className="flex justify-between mb-3">
         <div>
-          <div className="text-[9.5px] text-[#555] mb-0.5">Pesan Bulan Ini</div>
+          <div className="text-[12px] text-[#9aa0a6] mb-0.5">
+            Pesan Bulan Ini
+          </div>
           <div className="text-[18px] font-extrabold text-white tracking-[-0.03em]">
             3,847
           </div>
         </div>
         <div>
-          <div className="text-[9.5px] text-[#555] mb-0.5">Terjawab Auto</div>
+          <div className="text-[12px] text-[#9aa0a6] mb-0.5">Terjawab Auto</div>
           <div
             className="text-[18px] font-extrabold tracking-[-0.03em]"
             style={{ color: "#069494" }}
@@ -18,7 +20,7 @@ const AnalyticsPreview = () => {
           </div>
         </div>
       </div>
-      <div className="text-[9.5px] text-[#555] mb-1">Total Percakapan</div>
+      <div className="text-[12px] text-[#9aa0a6] mb-1">Total Percakapan</div>
       <div className="text-[20px] font-extrabold text-white tracking-[-0.04em] mb-2">
         621
       </div>

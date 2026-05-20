@@ -2,7 +2,7 @@
 // Called in parallel from dashboard page.tsx via Promise.all
 // Never called without orgId — requireOrg() enforces this upstream
 
-import { eq, count, countDistinct, and, sql } from "drizzle-orm";
+import { eq, ne, count, countDistinct, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   orgs,
@@ -419,7 +419,10 @@ export async function getOrgData(orgId: string): Promise<{
 // No orgId scope — this is a global count for the public homepage
 // Counts all orgs that have ever been active (subscriptionStatus != cancelled)
 export async function getActiveOrgCount(): Promise<number> {
-  const [result] = await db.select({ total: count() }).from(orgs);
+  const [result] = await db
+    .select({ total: count() })
+    .from(orgs)
+    .where(ne(orgs.subscriptionStatus, "cancelled"));
 
   return result?.total ?? 0;
 }

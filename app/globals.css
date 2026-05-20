@@ -394,12 +394,23 @@
   }
 
   /* ── Marquee — infinite scroll left for trust strip ── */
+  .marquee-track {
+    animation: marquee 60s linear infinite;
+  }
+
   @keyframes marquee {
-    0% {
+    from {
       transform: translateX(0);
     }
-    100% {
+    to {
       transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+      transform: translateX(0);
     }
   }
 }

@@ -38,6 +38,8 @@ const DonutItem = ({
     const borderColor =
       style.getPropertyValue("--color-border").trim() || "#e8ecf0";
 
+    const safePercentage = Math.max(0, Math.min(100, percentage));
+
     chartRef.current?.destroy();
 
     chartRef.current = new Chart(canvas, {
@@ -45,7 +47,7 @@ const DonutItem = ({
       data: {
         datasets: [
           {
-            data: [percentage, 100 - percentage],
+            data: [safePercentage, 100 - safePercentage],
             backgroundColor: [resolvedColor, borderColor],
             borderWidth: 0,
           },

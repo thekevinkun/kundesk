@@ -32,12 +32,7 @@ const TrustStrip = () => {
           />
 
           {/* Scrolling track — CSS animation, no JS needed */}
-          <div
-            className="flex gap-0 w-max"
-            style={{
-              animation: "marquee 60s linear infinite",
-            }}
-          >
+          <div className="marquee-track flex gap-0 w-max">
             {MARQUEE_ITEMS.map((item, i) => (
               <div key={i} className="flex items-center flex-shrink-0">
                 {/* Business name */}

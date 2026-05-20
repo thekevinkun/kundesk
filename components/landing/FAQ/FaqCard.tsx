@@ -11,7 +11,7 @@ interface FaqCardItems extends FaqItems {
 const FaqCard = ({ id, question, answer, isOpen, toggle }: FaqCardItems) => {
   return (
     <motion.div
-      id={id.toString()}
+      id={`${id}`}
       variants={landingStaggerItem}
       className={cn(
         "bg-white rounded-2xl border overflow-hidden transition-colors duration-200",
@@ -20,9 +20,11 @@ const FaqCard = ({ id, question, answer, isOpen, toggle }: FaqCardItems) => {
     >
       {/* Question row — clickable */}
       <button
+        id={`faq-trigger-${id}`}
         onClick={toggle}
         className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
         aria-expanded={isOpen}
+        aria-controls={`faq-panel-${id}`}
       >
         <span
           className={cn(
@@ -53,6 +55,9 @@ const FaqCard = ({ id, question, answer, isOpen, toggle }: FaqCardItems) => {
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
+            id={`faq-panel-${id}`}
+            role="region"
+            aria-labelledby={`faq-trigger-${id}`}
             initial={{ height: 0, opacity: 0 }}
             animate={{
               height: "auto",

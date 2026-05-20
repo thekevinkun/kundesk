@@ -46,12 +46,7 @@ const FooterSection = () => {
                 <li key={label}>
                   <Link
                     href={href}
-                    className="text-[14px] transition-colors duration-200"
-                    style={{ color: "#888" }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "var(--color-brand)")
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "#888")}
+                    className="text-[14px] font-bold text-[#888] hover:text-[var(--color-brand)] transition-colors duration-200"
                   >
                     {label}
                   </Link>
@@ -68,15 +63,7 @@ const FooterSection = () => {
         style={{ borderColor: "#2a2a2a" }}
       >
         <p className="text-[13px]" style={{ color: "#555" }}>
-          © {new Date().getFullYear()} Kundesk · Bagian dari{" "}
-          <Link
-            href="#"
-            className="transition-colors duration-200"
-            style={{ color: "var(--color-brand)" }}
-          >
-            Kun Borneo
-          </Link>{" "}
-          · Dibuat dengan ❤️ di Samarinda, Indonesia
+          © {new Date().getFullYear()} Kundesk · Samarinda, Indonesia
         </p>
 
         <div className="flex items-center gap-6">
@@ -88,12 +75,7 @@ const FooterSection = () => {
             <Link
               key={label}
               href={href}
-              className="text-[13px] transition-colors duration-200"
-              style={{ color: "#555" }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--color-brand)")
-              }
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
+              className="text-[13px] text-[#555] hover:text-[var(--color-brand)] transition-colors duration-200"
             >
               {label}
             </Link>
