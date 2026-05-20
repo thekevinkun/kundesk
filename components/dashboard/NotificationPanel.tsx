@@ -83,7 +83,7 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
         >
           {/* Panel header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-(--color-border-sm)">
-            <div className="text-[13px] font-700 text-(--color-text-900)">
+            <div className="text-[13px] font-bold text-(--color-text-900)">
               Notifikasi
             </div>
             <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
                       method: "PATCH",
                     }).catch(console.error);
                   }}
-                  className="text-[11.5px] font-600 text-(--color-brand) hover:underline"
+                  className="text-[11.5px] font-semibold text-(--color-brand) hover:underline"
                 >
                   Tandai semua dibaca
                 </button>
@@ -108,7 +108,7 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
             {notificationItems.length === 0 ? (
               <div className="py-12 text-center">
                 <div className="text-3xl mb-2">🔔</div>
-                <div className="text-[13px] font-600 text-(--color-text-500)">
+                <div className="text-[13px] font-semibold text-(--color-text-500)">
                   Belum ada notifikasi
                 </div>
                 <div className="text-[11.5px] text-(--color-text-400) mt-1">
@@ -141,8 +141,8 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
                       <div
                         className={`text-[13px] leading-snug ${
                           !notif.isRead
-                            ? "font-700 text-(--color-text-900)"
-                            : "font-500 text-(--color-text-700)"
+                            ? "font-bold text-(--color-text-900)"
+                            : "font-medium text-(--color-text-700)"
                         }`}
                       >
                         {notif.title}

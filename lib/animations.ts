@@ -131,3 +131,83 @@ export const dropdownVariants = {
     transition: { duration: 0.18 },
   },
 };
+
+// ── Scroll reveal — section entrance triggered by viewport ──
+// Use on every landing page section with whileInView
+export const scrollReveal: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 40,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.65,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+};
+
+// ── Float — hero floating cards endless loop ──
+// Use with animate (not whileInView) — runs forever
+export const floatVariant = (delay: number = 0): Variants => ({
+  initial: { y: 0 },
+  animate: {
+    y: [-8, 0, -8],
+    transition: {
+      duration: 4,
+      ease: "easeInOut",
+      repeat: Infinity,
+      delay,
+    },
+  },
+});
+
+// ── Stagger container for landing sections ──
+// Slower stagger than dashboard — more cinematic
+export const landingStagger: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+// ── Landing stagger item — pairs with landingStagger ──
+export const landingStaggerItem: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 28,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.55,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+};
+
+export const testiSlideVariants = {
+  enter: (dir: number) => ({
+    x: dir > 0 ? 60 : -60,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.45,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+  exit: (dir: number) => ({
+    x: dir > 0 ? -60 : 60,
+    opacity: 0,
+    transition: { duration: 0.3 },
+  }),
+};

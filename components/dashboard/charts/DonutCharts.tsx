@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
 
-// Register only what we need — tree-shakes unused Chart.js modules
 Chart.register(DoughnutController, ArcElement, Tooltip);
 
 // ── Single donut item ──
@@ -17,18 +17,27 @@ const DonutItem = ({
   canvasId: string;
   value: string;
   label: string;
-  percentage: number; // 0–100
+  percentage: number;
   color: string;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  // resolvedTheme changes on toggle — triggers effect re-run with fresh colors
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Destroy previous instance before creating a new one
-    // Prevents "Canvas is already in use" error on re-render
+    const style = getComputedStyle(document.documentElement);
+    // "brand" sentinel — read CSS variable fresh so color picker + dark mode both work
+    const resolvedColor =
+      color === "brand"
+        ? style.getPropertyValue("--color-brand").trim() || "#069494"
+        : color;
+    const borderColor =
+      style.getPropertyValue("--color-border").trim() || "#e8ecf0";
+
     chartRef.current?.destroy();
 
     chartRef.current = new Chart(canvas, {
@@ -37,9 +46,8 @@ const DonutItem = ({
         datasets: [
           {
             data: [percentage, 100 - percentage],
-            backgroundColor: [color, "var(--color-border)"],
+            backgroundColor: [resolvedColor, borderColor],
             borderWidth: 0,
-            // Cutout percentage creates the donut hole
           },
         ],
       },
@@ -56,19 +64,17 @@ const DonutItem = ({
       },
     });
 
-    // Cleanup on unmount — prevents memory leak
     return () => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [percentage, color]);
+    // resolvedTheme in deps — chart rebuilds when dark/light toggles
+  }, [percentage, color, resolvedTheme]);
 
   return (
     <div className="flex flex-col items-center">
-      {/* Canvas wrapper — center text overlaid absolutely */}
       <div className="relative w-[110px] h-[110px] mb-2.5">
         <canvas ref={canvasRef} id={canvasId} width={110} height={110} />
-        {/* Center value — overlaid on donut hole */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[20px] font-extrabold tracking-[-0.04em] text-(--color-text-900) leading-none">
             {value}
@@ -89,12 +95,6 @@ interface DonutChartsProps {
 }
 
 const DonutCharts = ({ answeredRate, quotaUsed }: DonutChartsProps) => {
-  // Brand color from CSS variable — read at render time
-  const brandColor =
-    getComputedStyle(document.documentElement)
-      .getPropertyValue("--color-brand")
-      .trim() || "#069494";
-
   return (
     <div className="flex justify-around items-center py-4 px-2">
       <DonutItem
@@ -102,7 +102,8 @@ const DonutCharts = ({ answeredRate, quotaUsed }: DonutChartsProps) => {
         value={`${answeredRate}%`}
         label="Terjawab"
         percentage={answeredRate}
-        color={brandColor}
+        // Brand color read inside DonutItem's effect — always fresh on theme toggle
+        color="brand"
       />
       <DonutItem
         canvasId="donut-quota"
@@ -111,7 +112,6 @@ const DonutCharts = ({ answeredRate, quotaUsed }: DonutChartsProps) => {
         percentage={quotaUsed}
         color="#f59e0b"
       />
-      {/* Rating — mock until rating system exists in Phase 7 */}
       <DonutItem
         canvasId="donut-rating"
         value="4.8★"

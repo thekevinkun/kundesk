@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 import {
   Chart,
   LineController,
@@ -53,20 +54,31 @@ const LineChart = ({
 }: LineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const style = getComputedStyle(document.documentElement);
     const brandColor =
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-brand")
-        .trim() || "#069494";
+      style.getPropertyValue("--color-brand").trim() || "#069494";
+    const tooltipBg =
+      style.getPropertyValue("--color-bg-card").trim() || "#ffffff";
+    const tooltipTitle =
+      style.getPropertyValue("--color-text-900").trim() || "#1a1d23";
+    const tooltipBody =
+      style.getPropertyValue("--color-text-500").trim() || "#6b7280";
+    const borderColor =
+      style.getPropertyValue("--color-border").trim() || "#e8ecf0";
+    const gridColor =
+      style.getPropertyValue("--color-border-sm").trim() || "#f0f2f4";
+    const tickColor =
+      style.getPropertyValue("--color-text-400").trim() || "#a0aec0";
 
     chartRef.current?.destroy();
 
-    // Null out future months for current year — cleaner than showing zeros
-    const currentMonth = new Date().getMonth(); // 0-indexed
+    const currentMonth = new Date().getMonth();
     const currentData = current.map((v, i) => (i > currentMonth ? null : v));
 
     chartRef.current = new Chart(canvas, {
@@ -85,7 +97,6 @@ const LineChart = ({
             pointBackgroundColor: brandColor,
             pointBorderColor: "white",
             pointBorderWidth: 2,
-            // Null values create a gap in the line — correct for future months
             spanGaps: false,
           },
           {
@@ -104,12 +115,12 @@ const LineChart = ({
       },
       options: {
         plugins: {
-          legend: { display: false }, // Custom legend rendered in JSX below
+          legend: { display: false },
           tooltip: {
-            backgroundColor: "white",
-            titleColor: "#1a1d23",
-            bodyColor: "#6b7280",
-            borderColor: "var(--color-border)",
+            backgroundColor: tooltipBg,
+            titleColor: tooltipTitle,
+            bodyColor: tooltipBody,
+            borderColor: borderColor,
             borderWidth: 1,
             padding: 10,
             cornerRadius: 10,
@@ -120,17 +131,16 @@ const LineChart = ({
             grid: { display: false },
             border: { display: false },
             ticks: {
-              color: "var(--color-text-400)",
+              color: tickColor,
               font: { family: "var(--font-body)", size: 11 },
             },
           },
           y: {
-            grid: { color: "var(--color-border-sm)" },
+            grid: { color: gridColor },
             border: { display: false },
             ticks: {
-              color: "var(--color-text-400)",
+              color: tickColor,
               font: { family: "var(--font-body)", size: 11 },
-              // Show "1k" instead of "1000"
               callback: (v) =>
                 Number(v) >= 1000
                   ? `${(Number(v) / 1000).toFixed(0)}k`
@@ -149,11 +159,10 @@ const LineChart = ({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [current, previous, currentYear, previousYear]);
+  }, [current, previous, currentYear, previousYear, resolvedTheme]);
 
   return (
     <div>
-      {/* Custom legend — matches mockup style */}
       <div className="flex items-center gap-4 mb-3">
         <div className="flex items-center gap-1.5">
           <div

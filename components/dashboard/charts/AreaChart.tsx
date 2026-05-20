@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTheme } from "next-themes";
 import {
   Chart,
   LineController,
@@ -31,33 +32,44 @@ interface AreaChartProps {
 const AreaChart = ({ data }: AreaChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
+  // Rebuild chart when theme toggles — CSS variables change value
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Get brand color at runtime — respects color picker changes
+    const style = getComputedStyle(document.documentElement);
     const brandColor =
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--color-brand")
-        .trim() || "#069494";
+      style.getPropertyValue("--color-brand").trim() || "#069494";
+    // Read card bg for tooltip — white in light, dark card in dark mode
+    const tooltipBg =
+      style.getPropertyValue("--color-bg-card").trim() || "#ffffff";
+    const tooltipTitle =
+      style.getPropertyValue("--color-text-900").trim() || "#0f1117";
+    const tooltipBody =
+      style.getPropertyValue("--color-text-500").trim() || "#718096";
+    const borderColor =
+      style.getPropertyValue("--color-border").trim() || "#e8ecf0";
+    const gridColor =
+      style.getPropertyValue("--color-border-sm").trim() || "#f0f2f4";
+    const tickColor =
+      style.getPropertyValue("--color-text-400").trim() || "#a0aec0";
 
     chartRef.current?.destroy();
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Gradient fill — brand color at top fading to transparent at bottom
     const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    // Use CSS color-mix for format-agnostic opacity
     gradient.addColorStop(
       0,
       `color-mix(in srgb, ${brandColor} 19%, transparent)`,
-    ); // 19% opacity
+    );
     gradient.addColorStop(
       1,
       `color-mix(in srgb, ${brandColor} 1%, transparent)`,
-    ); // ~1% opacity
+    );
 
     chartRef.current = new Chart(canvas, {
       type: "line",
@@ -70,8 +82,8 @@ const AreaChart = ({ data }: AreaChartProps) => {
             borderWidth: 2.5,
             fill: true,
             backgroundColor: gradient,
-            tension: 0.45, // smooth curve
-            pointRadius: 0, // no dots on line — clean look
+            tension: 0.45,
+            pointRadius: 0,
             pointHoverRadius: 5,
             pointBackgroundColor: brandColor,
             pointBorderColor: "white",
@@ -84,13 +96,13 @@ const AreaChart = ({ data }: AreaChartProps) => {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              // Indonesian label — "142 pesan" not just "142"
               label: (ctx) => ` ${ctx.parsed.y} pesan`,
             },
-            backgroundColor: "white",
-            titleColor: "var(--color-text-900)",
-            bodyColor: "var(--color-text-500)",
-            borderColor: "var(--color-border)",
+            // Dynamic colors — correct in both light and dark
+            backgroundColor: tooltipBg,
+            titleColor: tooltipTitle,
+            bodyColor: tooltipBody,
+            borderColor: borderColor,
             borderWidth: 1,
             padding: 10,
             cornerRadius: 10,
@@ -101,17 +113,16 @@ const AreaChart = ({ data }: AreaChartProps) => {
             grid: { display: false },
             border: { display: false },
             ticks: {
-              // Show max 7 labels — avoids crowding on 30-day range
               maxTicksLimit: 7,
-              color: "var(--color-text-400)",
+              color: tickColor,
               font: { family: "var(--font-body)", size: 11 },
             },
           },
           y: {
-            grid: { color: "var(--color-border-sm)" },
+            grid: { color: gridColor },
             border: { display: false, dash: [4, 4] },
             ticks: {
-              color: "var(--color-text-400)",
+              color: tickColor,
               padding: 8,
               font: { family: "var(--font-body)", size: 11 },
             },
@@ -128,10 +139,10 @@ const AreaChart = ({ data }: AreaChartProps) => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+    // resolvedTheme in deps — rebuilds chart with fresh CSS variable values on toggle
+  }, [data, resolvedTheme]);
 
   return (
-    // Fixed height wrapper — maintainAspectRatio: false lets canvas fill it
     <div className="h-[140px]">
       <canvas ref={canvasRef} />
     </div>

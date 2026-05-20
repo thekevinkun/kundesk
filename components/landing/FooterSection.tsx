@@ -1,0 +1,107 @@
+import Link from "next/link";
+import Image from "next/image";
+import { FOOTER_COLS } from "@/lib/landing-constants";
+
+// FooterSection is a Server Component — no interactivity needed
+const FooterSection = () => {
+  return (
+    <footer
+      className="border-t px-6 lg:px-16 pt-16 pb-10"
+      style={{ background: "#111", borderColor: "#2a2a2a" }}
+    >
+      {/* Top grid */}
+      <div className="max-w-[1100px] mx-auto grid grid-cols-1 md:grid-cols-[1.8fr_1fr_1fr_1fr] gap-12 mb-16">
+        {/* Brand column */}
+        <div>
+          {/* Logo */}
+          <div className="mb-4">
+            <Image
+              src="/images/logo_kundesk_white.png"
+              alt="Kundesk"
+              width={120}
+              height={32}
+              className="w-30 h-8 object-contain"
+            />
+          </div>
+          <p
+            className="text-[13.5px] leading-[1.7] max-w-[260px]"
+            style={{ color: "#666" }}
+          >
+            Platform AI customer service untuk bisnis Indonesia. Upload dokumen,
+            aktifkan chatbot, dan layani pelanggan 24/7 — tanpa coding.
+          </p>
+        </div>
+
+        {/* Link columns */}
+        {FOOTER_COLS.map((col) => (
+          <div key={col.title}>
+            <h4
+              className="text-[12px] font-bold tracking-[0.1em] uppercase mb-5"
+              style={{ color: "#555" }}
+            >
+              {col.title}
+            </h4>
+            <ul className="flex flex-col gap-2.5">
+              {col.links.map(({ label, href }) => (
+                <li key={label}>
+                  <Link
+                    href={href}
+                    className="text-[14px] transition-colors duration-200"
+                    style={{ color: "#888" }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "var(--color-brand)")
+                    }
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "#888")}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom bar */}
+      <div
+        className="max-w-[1100px] mx-auto pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t"
+        style={{ borderColor: "#2a2a2a" }}
+      >
+        <p className="text-[13px]" style={{ color: "#555" }}>
+          © {new Date().getFullYear()} Kundesk · Bagian dari{" "}
+          <Link
+            href="#"
+            className="transition-colors duration-200"
+            style={{ color: "var(--color-brand)" }}
+          >
+            Kun Borneo
+          </Link>{" "}
+          · Dibuat dengan ❤️ di Samarinda, Indonesia
+        </p>
+
+        <div className="flex items-center gap-6">
+          {[
+            { label: "Syarat & Ketentuan", href: "#" },
+            { label: "Kebijakan Privasi", href: "#" },
+            { label: "Kebijakan Refund", href: "#" },
+          ].map(({ label, href }) => (
+            <Link
+              key={label}
+              href={href}
+              className="text-[13px] transition-colors duration-200"
+              style={{ color: "#555" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--color-brand)")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default FooterSection;

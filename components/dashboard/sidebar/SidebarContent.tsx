@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
@@ -22,9 +23,15 @@ const SidebarContent = ({
     <div className="flex flex-col h-full">
       {/* ── Logo + Org Switcher ── */}
       <div className="px-6 py-5 border-b border-(--color-border) flex-shrink-0">
-        <div className="text-[22px] font-extrabold tracking-[-0.04em] leading-none mb-3">
-          <span className="text-(--color-text-900)">Kun</span>
-          <span className="text-(--color-brand)">desk</span>
+        <div className="mb-3">
+          <Image
+            src="/images/logo_kundesk.png"
+            alt="Kundesk"
+            width={132}
+            height={40}
+            className="w-33 h-10 object-contain"
+            priority
+          />
         </div>
         <div className="text-[11px] text-(--color-text-400) mb-3">
           AI Customer Service

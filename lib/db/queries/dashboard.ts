@@ -415,6 +415,15 @@ export async function getOrgData(orgId: string): Promise<{
   return org ?? null;
 }
 
+// ── Active org count — used on landing page trust strip ──
+// No orgId scope — this is a global count for the public homepage
+// Counts all orgs that have ever been active (subscriptionStatus != cancelled)
+export async function getActiveOrgCount(): Promise<number> {
+  const [result] = await db.select({ total: count() }).from(orgs);
+
+  return result?.total ?? 0;
+}
+
 // ── Insert a notification for the org ──
 // Called when Pusher events fire — keeps notification creation co-located with event triggers
 export async function createNotification(
