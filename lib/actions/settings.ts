@@ -93,7 +93,21 @@ export async function updateOrgProfile(
     };
   }
 
-  await db.update(orgs).set({ name, slug }).where(eq(orgs.id, orgId));
+  // Final DB-level protection against race conditions
+  try {
+    await db.update(orgs).set({ name, slug }).where(eq(orgs.id, orgId));
+  } catch (error) {
+    // PostgreSQL unique violation
+    if (error instanceof Error && "code" in error && error.code === "23505") {
+      return {
+        success: false,
+        error: "Slug ini sudah digunakan oleh bisnis lain",
+      };
+    }
+
+    // Unknown DB error → rethrow
+    throw error;
+  }
 
   // Sync name change to Clerk org so org switcher stays in sync
   const client = await clerkClient();

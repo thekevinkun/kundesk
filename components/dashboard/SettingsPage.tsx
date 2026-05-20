@@ -101,6 +101,7 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
 
   // Trigger permanent organization deletion
   const handleDeleteConfirm = () => {
+    if (isDeleting || !isDeletionConfirmed) return;
     setIsDeleting(true);
 
     deleteDispatch();
