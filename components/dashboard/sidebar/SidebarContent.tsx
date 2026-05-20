@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
@@ -19,13 +21,28 @@ const SidebarContent = ({
   onNavClick,
   subscriptionStatus,
 }: SidebarContentProps) => {
+  const { resolvedTheme } = useTheme();
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
   return (
     <div className="flex flex-col h-full">
       {/* ── Logo + Org Switcher ── */}
       <div className="px-6 py-5 border-b border-(--color-border) flex-shrink-0">
         <div className="mb-3">
           <Image
-            src="/images/logo_kundesk.png"
+            // Switch logo automatically based on theme
+            src={
+              resolvedTheme === "dark"
+                ? "/images/logo_kundesk_white.png"
+                : "/images/logo_kundesk.png"
+            }
             alt="Kundesk"
             width={132}
             height={40}

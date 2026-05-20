@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { WelcomeEmail } from "@/emails/WelcomeEmail";
 import { BillingReminderEmail } from "@/emails/BillingReminderEmail";
 import { UsageWarningEmail } from "@/emails/UsageWarningEmail";
+import { OrgDeletionEmail } from "@/emails/OrgDeletionEmail";
 import { PastDueEmail } from "@/emails/PastDueEmail";
 import { HandoffEmail } from "@/emails/HandoffEmail";
 
@@ -201,6 +202,27 @@ export async function sendHandoffEmail(
   await sendEmail({
     to,
     subject: `🙋 Pelanggan ${orgName} meminta bantuan langsung`,
+    html,
+  });
+}
+
+export async function sendOrgDeletionEmail(
+  to: string,
+  orgName: string,
+  logoUrl: string,
+): Promise<void> {
+  const html = await render(
+    OrgDeletionEmail({
+      orgName,
+      logoUrl,
+      // Links to sign-up — org is deleted, dashboard is inaccessible
+      signUpUrl: `${env.appUrl}/sign-up`,
+    }),
+  );
+
+  await sendEmail({
+    to,
+    subject: `Akun ${orgName} telah dihapus dari Kundesk`,
     html,
   });
 }
