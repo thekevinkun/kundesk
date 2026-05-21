@@ -301,7 +301,11 @@ export async function POST(request: NextRequest) {
 
         await db
           .update(conversations)
-          .set({ handoffStatus: "pending_handoff" })
+          .set({
+            handoffStatus: "pending_handoff",
+            // Permanent — customer expressed dissatisfaction, record it forever
+            wasHandedOff: true,
+          })
           .where(
             and(
               eq(conversations.id, conversationId),
@@ -318,6 +322,8 @@ export async function POST(request: NextRequest) {
             sessionId,
             deliveryChannel: "web_widget",
             handoffStatus: "pending_handoff",
+            // First message is already a handoff request — flag immediately
+            wasHandedOff: true,
             channelToken: crypto.randomUUID(),
           })
           .returning({

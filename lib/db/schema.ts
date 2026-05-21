@@ -224,6 +224,11 @@ export const conversations = pgTable(
     // Clerk userId of the staff member who took over — null while AI is handling
     takenOverBy: text("taken_over_by"),
 
+    // Permanent analytics flag — set to true the moment any handoff occurs
+    // Never reset to false — even if admin returns conversation to AI
+    // handoffStatus is live operational state; wasHandedOff is permanent analytics truth
+    wasHandedOff: boolean("was_handed_off").notNull().default(false),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [

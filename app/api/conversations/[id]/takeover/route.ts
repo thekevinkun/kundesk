@@ -72,6 +72,7 @@ export async function POST(
       handoffStatus: "human",
       takenOverAt: new Date(),
       takenOverBy: userId,
+      wasHandedOff: true,
     })
     .where(
       and(

@@ -1,6 +1,7 @@
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import DashboardOverview from "./DashboardOverview";
+import AnalyticsPage from "./AnalyticsPage";
 import BillingPage from "./BillingPage";
 import DocumentsPage from "./DocumentsPage";
 import ConversationsPage from "./ConversationsPage";
@@ -14,6 +15,7 @@ export {
   Sidebar,
   Topbar,
   DashboardOverview,
+  AnalyticsPage,
   BillingPage,
   DocumentsPage,
   ConversationsPage,
