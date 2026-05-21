@@ -9,7 +9,7 @@ interface TopQuestionsCardProps {
 
 const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
   // Max count — used to calculate fill width percentage for each bar
-  const maxCount = questions[0]?.count ?? 1;
+  const maxCount = Math.max(1, ...questions.map((q) => q.count));
 
   return (
     <motion.div variants={staggerItem} className="card-base p-6">

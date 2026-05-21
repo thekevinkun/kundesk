@@ -97,7 +97,8 @@ export async function updateOrgProfile(
   try {
     await db.update(orgs).set({ name, slug }).where(eq(orgs.id, orgId));
   } catch (error) {
-    // PostgreSQL unique violation
+    // Neon/PostgreSQL unique constraint violation code is "23505"
+    // Catches the race condition where two concurrent requests pick the same slug
     if (error instanceof Error && "code" in error && error.code === "23505") {
       return {
         success: false,
@@ -125,7 +126,28 @@ export async function updateOrgProfile(
 // deletes the orgs row → cascade deletes all tenant data (chatbots, docs, chunks, etc.)
 // Client signs out after this returns success
 export async function deleteOrg(): Promise<ActionResult> {
-  const { orgId } = await requireOrg();
+  const { orgId, userId } = await requireOrg();
+
+  // Verify the user is an admin or owner — requireOrg() only checks membership
+  // Any member could otherwise delete the entire org and all its data
+  const client = await clerkClient();
+  const membershipList =
+    await client.organizations.getOrganizationMembershipList({
+      organizationId: orgId,
+    });
+
+  // Find the current user's membership in the list
+  const membership = membershipList.data.find(
+    (m) => m.publicUserData?.userId === userId,
+  );
+
+  // Clerk roles: "org:admin" or "org:member" — only admins can delete
+  if (!membership || membership.role !== "org:admin") {
+    return {
+      success: false,
+      error: "Hanya admin organisasi yang dapat menghapus akun bisnis.",
+    };
+  }
 
   // Fetch org details before deletion — needed for the farewell email
   const [org] = await db
@@ -143,7 +165,6 @@ export async function deleteOrg(): Promise<ActionResult> {
 
   // Delete from Clerk first — this fires the org.deleted webhook
   // Our webhook handler will delete the orgs row and all cascaded data
-  const client = await clerkClient();
   await client.organizations.deleteOrganization(orgId);
 
   // Send farewell email — best-effort, don't fail the action if email fails

@@ -79,7 +79,7 @@ interface AnalyticsPageProps {
   // Handoff insight
   aiCount: number;
   handoffCount: number;
-  handoffTrend: { date: string; avgMs: number }[];
+  handoffTrend: { date: string; count: number }[];
   // Top questions
   topQuestions: { question: string; count: number }[];
   // Channel breakdown
@@ -107,11 +107,7 @@ const AnalyticsPage = ({
   responseTrend,
 }: AnalyticsPageProps) => {
   return (
-    <motion.div
-      variants={fadeUp}
-      initial="hidden"
-      animate="visible"
-    >
+    <motion.div variants={fadeUp} initial="hidden" animate="visible">
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
@@ -137,8 +133,8 @@ const AnalyticsPage = ({
         />
 
         {/* ── Row 2: Handoff insight (wide) + Channel breakdown ── */}
-        <div className="grid grid-cols-3 gap-5">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="col-span-1 lg:col-span-2">
             <HandoffInsightCard
               aiCount={aiCount}
               handoffCount={handoffCount}
@@ -150,13 +146,13 @@ const AnalyticsPage = ({
         </div>
 
         {/* ── Row 3: Top questions + Peak hours ── */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <TopQuestionsCard questions={topQuestions} />
           <PeakHoursCard data={peakHours} />
         </div>
 
         {/* ── Row 4: Message volume trend + Response time trend ── */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Message volume */}
           <div className="card-base p-6">
             <div className="mb-4">

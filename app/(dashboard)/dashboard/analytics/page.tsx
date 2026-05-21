@@ -58,7 +58,7 @@ export default async function AnalyticsRoute() {
       avgResponseTime={avgResponseTime}
       aiCount={aiVsHandoff.aiCount}
       handoffCount={aiVsHandoff.handoffCount}
-      handoffTrend={handoffTrend.map((d) => ({ date: d.date, avgMs: d.count }))}
+      handoffTrend={handoffTrend}
       topQuestions={topQuestions}
       channelBreakdown={channelBreakdown}
       peakHours={peakHours}

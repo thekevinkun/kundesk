@@ -8,9 +8,9 @@ import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
 import { staggerItem } from "@/lib/animations";
 import { getHandoffInsightCopy, SENTIMENT_COLORS } from "./constants";
 
-// ResponseTrendChart pattern reused for the handoff trend line
+// HandoffTrendChart pattern reused for the handoff trend line
 const HandoffTrendLine = dynamic(
-  () => import("@/components/dashboard/charts/ResponseTrendChart"),
+  () => import("@/components/dashboard/charts/HandoffTrendChart"),
   { ssr: false },
 );
 
@@ -20,9 +20,7 @@ interface HandoffInsightCardProps {
   aiCount: number;
   handoffCount: number;
   handoffRate: number;
-  // { date: "DD/MM", avgMs: number }[] — reusing ResponseTrendChart shape
-  // We pass handoff count as avgMs — chart just renders the line, doesn't care about unit
-  trend: { date: string; avgMs: number }[];
+  trend: { date: string; count: number }[];
 }
 
 // ── Inner donut — AI vs Handoff split ──

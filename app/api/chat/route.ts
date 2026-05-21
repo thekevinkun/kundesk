@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -310,6 +310,7 @@ export async function POST(request: NextRequest) {
             and(
               eq(conversations.id, conversationId),
               eq(conversations.orgId, org.id),
+              inArray(conversations.handoffStatus, ["ai", "pending_handoff"]),
             ),
           );
       } else {
