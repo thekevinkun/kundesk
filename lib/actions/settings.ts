@@ -131,15 +131,13 @@ export async function deleteOrg(): Promise<ActionResult> {
   // Verify the user is an admin or owner — requireOrg() only checks membership
   // Any member could otherwise delete the entire org and all its data
   const client = await clerkClient();
-  const membershipList =
-    await client.organizations.getOrganizationMembershipList({
-      organizationId: orgId,
-    });
+  const { data } = await client.organizations.getOrganizationMembershipList({
+    organizationId: orgId,
+    userId: [userId],
+    limit: 1,
+  });
 
-  // Find the current user's membership in the list
-  const membership = membershipList.data.find(
-    (m) => m.publicUserData?.userId === userId,
-  );
+  const membership = data[0];
 
   // Clerk roles: "org:admin" or "org:member" — only admins can delete
   if (!membership || membership.role !== "org:admin") {
