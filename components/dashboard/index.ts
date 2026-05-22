@@ -8,6 +8,7 @@ import ConversationsPage from "./ConversationsPage";
 import ChatbotConfigPage from "./ChatbotConfigPage";
 import SettingsPage from "./SettingsPage";
 import WidgetPage from "./WidgetPage";
+import TeamPage from "./TeamPage";
 import StatCard, { StatCardSkeleton } from "./StatCard";
 import NotificationPanel from "./NotificationPanel";
 
@@ -22,6 +23,7 @@ export {
   ChatbotConfigPage,
   SettingsPage,
   WidgetPage,
+  TeamPage,
   StatCard,
   StatCardSkeleton,
   NotificationPanel,
