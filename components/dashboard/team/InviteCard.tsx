@@ -25,19 +25,24 @@ const InviteCard = ({ onInvited }: InviteCardProps) => {
     if (!trimmedEmail) return;
 
     startTransition(async () => {
-      const result = await inviteMember({ email: trimmedEmail, role });
-
-      if (result.success) {
-        toast.success("Undangan terkirim", {
-          description: `${trimmedEmail} akan mendapat email undangan.`,
-        });
-        // Reset form after success
-        setEmail("");
-        setRole("org:member");
-        onInvited();
-      } else {
+      try {
+        const result = await inviteMember({ email: trimmedEmail, role });
+        if (result.success) {
+          toast.success("Undangan terkirim", {
+            description: `${trimmedEmail} akan mendapat email undangan.`,
+          });
+          // Reset form after success
+          setEmail("");
+          setRole("org:member");
+          onInvited();
+          return;
+        }
         toast.error("Gagal mengirim undangan", {
           description: result.error,
+        });
+      } catch {
+        toast.error("Gagal mengirim undangan", {
+          description: "Terjadi kesalahan tak terduga. Coba lagi.",
         });
       }
     });

@@ -40,17 +40,22 @@ const RemoveMemberDialog = ({
 
   const handleConfirm = () => {
     startTransition(async () => {
-      const result = await removeMember({ userId: member.userId });
-
-      if (result.success) {
-        toast.success("Anggota dihapus", {
-          description: `${displayName} telah dihapus dari tim.`,
-        });
-        onOpenChange(false);
-        onRemoved();
-      } else {
+      try {
+        const result = await removeMember({ userId: member.userId });
+        if (result.success) {
+          toast.success("Anggota dihapus", {
+            description: `${displayName} telah dihapus dari tim.`,
+          });
+          onOpenChange(false);
+          onRemoved();
+          return;
+        }
         toast.error("Gagal menghapus anggota", {
           description: result.error,
+        });
+      } catch {
+        toast.error("Gagal menghapus anggota", {
+          description: "Terjadi kesalahan tak terduga. Coba lagi.",
         });
       }
     });

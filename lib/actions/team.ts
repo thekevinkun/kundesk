@@ -86,6 +86,14 @@ export async function inviteMember(rawInput: unknown): Promise<ActionResult> {
   }
 
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      return {
+        success: false,
+        error: "Konfigurasi URL aplikasi belum lengkap.",
+      };
+    }
+
     await client.organizations.createOrganizationInvitation({
       organizationId: orgId,
       // The user who is sending the invitation
@@ -93,7 +101,7 @@ export async function inviteMember(rawInput: unknown): Promise<ActionResult> {
       emailAddress: email,
       role: role as TeamRole,
       // Redirect after accepting invite
-      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      redirectUrl: `${appUrl}/dashboard`,
     });
 
     return { success: true, data: undefined };
@@ -127,12 +135,13 @@ export async function changeMemberRole(
     typeof rawInput !== "object" ||
     rawInput === null ||
     typeof (rawInput as Record<string, unknown>).membershipId !== "string" ||
-    typeof (rawInput as Record<string, unknown>).role !== "string"
+    typeof (rawInput as Record<string, unknown>).role !== "string" ||
+    typeof (rawInput as Record<string, unknown>).targetUserId !== "string"
   ) {
     return { success: false, error: "Input tidak valid." };
   }
 
-  const { membershipId, role, targetUserId } = rawInput as {
+  const { role, targetUserId } = rawInput as {
     membershipId: string;
     role: string;
     targetUserId: string;
@@ -143,7 +152,7 @@ export async function changeMemberRole(
   }
 
   // Prevent self-demotion — org needs at least one admin
-  if (membershipData[0].id === membershipId && role === "org:member") {
+  if (targetUserId === userId && role === "org:member") {
     return {
       success: false,
       error: "Kamu tidak bisa menurunkan role diri sendiri.",

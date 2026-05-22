@@ -47,25 +47,31 @@ const RoleChangeDialog = ({
   const isUnchanged = selectedRole === member.role;
 
   const handleConfirm = () => {
-    if (isUnchanged) return;
+    if (isUnchanged || !selectedRole) return;
 
     startTransition(async () => {
-      const result = await changeMemberRole({
-        membershipId: member.membershipId,
-        targetUserId: member.userId,
-        role: selectedRole,
-      });
-
-      if (result.success) {
-        const newRoleLabel = ROLE_CONFIG[selectedRole]?.label ?? selectedRole;
-        toast.success("Role diperbarui", {
-          description: `${displayName} sekarang menjadi ${newRoleLabel}.`,
+      try {
+        const result = await changeMemberRole({
+          membershipId: member.membershipId,
+          targetUserId: member.userId,
+          role: selectedRole,
         });
-        onOpenChange(false);
-        onChanged();
-      } else {
+
+        if (result.success) {
+          const newRoleLabel = ROLE_CONFIG[selectedRole]?.label ?? selectedRole;
+          toast.success("Role diperbarui", {
+            description: `${displayName} sekarang menjadi ${newRoleLabel}.`,
+          });
+          onOpenChange(false);
+          onChanged();
+          return;
+        }
         toast.error("Gagal mengubah role", {
           description: result.error,
+        });
+      } catch {
+        toast.error("Gagal mengubah role", {
+          description: "Terjadi kesalahan tak terduga. Coba lagi.",
         });
       }
     });

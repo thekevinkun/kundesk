@@ -93,7 +93,7 @@ export function getInitials(
   }
 
   // Fall back to first two chars of email prefix
-  return (email.split("@")[0] ?? email.slice(0, 2)).toUpperCase();
+  return (email.split("@")[0] ?? email).slice(0, 2).toUpperCase();
 }
 
 // ── Helper — get avatar color by member index ──
