@@ -14,7 +14,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { NotificationPanel } from "@/components/dashboard";
+import { NotificationPanel, GlobalSearch } from "@/components/dashboard";
 import { COLOR_PRESETS } from "@/helpers/chatbot";
 import { cn } from "@/lib/utils";
 import { fadeIn, dropdownVariants } from "@/lib/animations";
@@ -38,6 +38,9 @@ const Topbar = () => {
 
   const { toggleMobile } = useSidebarStore();
 
+  // Defer Clerk UserButton render until after hydration — prevents mismatch
+  const [mounted, setMounted] = useState(false);
+
   // useTheme from next-themes — reads current theme, setTheme toggles .dark on <html>
   const { theme, setTheme } = useTheme();
 
@@ -51,6 +54,20 @@ const Topbar = () => {
   // Live clock — update every second
   const [clock, setClock] = useState("");
   const [utcOffset, setUtcOffset] = useState("");
+
+  // Apply color live + persist to DB via Server Action
+  const applyColor = (hex: string) => {
+    // Update CSS variable immediately — no wait for server
+    document.documentElement.style.setProperty("--color-brand", hex);
+    setActiveColor(hex);
+
+    // Persist in background — useTransition keeps UI non-blocking
+    startTransition(() => {
+      void saveAccentColor(hex);
+    });
+  };
+
+  useEffect(() => setMounted(true), []);
 
   // Fetch unread count on mount — persists red dot across page refreshes
   useEffect(() => {
@@ -125,18 +142,6 @@ const Topbar = () => {
     void loadColor();
   }, []);
 
-  // Apply color live + persist to DB via Server Action
-  const applyColor = (hex: string) => {
-    // Update CSS variable immediately — no wait for server
-    document.documentElement.style.setProperty("--color-brand", hex);
-    setActiveColor(hex);
-
-    // Persist in background — useTransition keeps UI non-blocking
-    startTransition(() => {
-      void saveAccentColor(hex);
-    });
-  };
-
   return (
     <TooltipProvider>
       <motion.header
@@ -154,17 +159,8 @@ const Topbar = () => {
           ☰
         </button>
 
-        {/* Search */}
-        <div className="flex-1 max-w-[400px] relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-(--color-text-400) text-sm">
-            🔍
-          </span>
-          <input
-            type="search"
-            placeholder="Cari percakapan, dokumen..."
-            className="w-full bg-(--color-bg-page) border border-(--color-border) rounded-full py-2 pl-9 pr-4 text-[13px] text-(--color-text-700) placeholder:text-(--color-text-400) outline-none focus:border-(--color-brand) focus:bg-(--color-bg-card) focus:ring-2 focus:ring-(--color-brand-light) transition-all"
-          />
-        </div>
+        {/* Global search — conversations + documents */}
+        <GlobalSearch />
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
@@ -413,13 +409,15 @@ const Topbar = () => {
           />
 
           {/* Clerk UserButton — handles sign out, profile */}
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: "w-[30px] h-[30px]",
-              },
-            }}
-          />
+          {mounted && (
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "w-[30px] h-[30px]",
+                },
+              }}
+            />
+          )}
         </div>
       </motion.header>
     </TooltipProvider>
