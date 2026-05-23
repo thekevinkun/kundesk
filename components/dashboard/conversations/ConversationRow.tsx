@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -87,6 +87,7 @@ interface ConversationRowProps {
   onReturn: (conversationId: number) => void;
   // New message from Pusher — passed down from ConversationsPage
   newMessage: ConversationMessage | null;
+  isHighlighted?: boolean;
 }
 
 const ConversationRow = ({
@@ -94,12 +95,9 @@ const ConversationRow = ({
   onTakeover,
   onReturn,
   newMessage,
+  isHighlighted,
 }: ConversationRowProps) => {
   const queryClient = useQueryClient();
-
-  const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isTakingOver, startTakeoverTransition] = useTransition();
 
   // Read unread state + clear actions from store
   const { unreadConversationIds, clearUnreadConversation, setPendingHandoff } =
@@ -107,6 +105,16 @@ const ConversationRow = ({
 
   // This row has unread customer messages waiting for staff response
   const hasUnread = unreadConversationIds.has(convo.id);
+
+  const [isTakingOver, startTakeoverTransition] = useTransition();
+  const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
+
+  // Auto-open when navigated from search — isHighlighted means this row was the target
+  const [isExpanded, setIsExpanded] = useState(isHighlighted ?? false);
+
+  const rowRef = useRef<HTMLTableRowElement>(null);
+
+  const dialogRowRef = useRef<HTMLTableRowElement>(null);
 
   // Expired: all statuses expire after 24h of inactivity
   const isExpired =
@@ -159,6 +167,19 @@ const ConversationRow = ({
     setHandoffStatus(convo.handoffStatus);
   }, [convo.handoffStatus]);
 
+  // Scroll into view + flash highlight when navigated from search
+  useEffect(() => {
+    if (!isHighlighted) return;
+    // Wait for dialog to fully expand before scrolling
+    const timer = setTimeout(() => {
+      dialogRowRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isHighlighted]);
+
   // When a conversation expires — clean up all its signals from the store
   // Runs once when isExpired flips true — no cleanup needed on unmount
   useEffect(() => {
@@ -184,6 +205,7 @@ const ConversationRow = ({
     <>
       {/* Main row — click anywhere to expand/collapse dialog */}
       <motion.tr
+        ref={rowRef}
         variants={staggerItem}
         onClick={() => {
           if (isExpired) return;
@@ -290,7 +312,7 @@ const ConversationRow = ({
       </motion.tr>
 
       {/* Inline conversation dialog — slides open below the row */}
-      <tr>
+      <tr ref={dialogRowRef}>
         <td colSpan={6} className="p-0">
           <AnimatePresence>
             {isExpanded && (

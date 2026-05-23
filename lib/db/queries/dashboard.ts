@@ -260,6 +260,112 @@ export async function getRecentConversations(orgId: string): Promise<
   }));
 }
 
+// ── Paginated conversations — for the conversations dashboard page ──
+// Separate from getRecentConversations (overview widget) which stays at LIMIT 10
+// Returns rows + total count so the page can render pagination controls
+export async function getPaginatedConversations(
+  orgId: string,
+  page: number = 1,
+  limit: number = 20,
+): Promise<{
+  rows: {
+    id: number;
+    sessionId: string;
+    handoffStatus: HandoffStatus;
+    deliveryChannel: DeliveryChannel;
+    createdAt: Date;
+    lastMessage: string | null;
+    lastMessageAt: Date | null;
+    messageCount: number;
+    takenOverBy: string | null;
+    takenOverAt: Date | null;
+  }[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const offset = (page - 1) * limit;
+
+  // Run data query and count query in parallel
+  const [result, countResult] = await Promise.all([
+    db.execute<{
+      id: number;
+      session_id: string;
+      handoff_status: HandoffStatus;
+      delivery_channel: DeliveryChannel;
+      created_at: Date;
+      last_message: string | null;
+      last_message_at: Date | null;
+      message_count: number;
+      taken_over_by: string | null;
+      taken_over_at: Date | null;
+    }>(
+      sql`
+        SELECT
+          c.id,
+          c.session_id,
+          c.handoff_status,
+          c.delivery_channel,
+          c.created_at,
+          c.taken_over_by,
+          c.taken_over_at,
+          (
+            SELECT m.created_at
+            FROM ${messages} m
+            WHERE m.conversation_id = c.id
+            ORDER BY m.created_at DESC
+            LIMIT 1
+          ) AS last_message_at,
+          LEFT(
+            (
+              SELECT m.content
+              FROM ${messages} m
+              WHERE m.conversation_id = c.id
+              ORDER BY m.created_at DESC
+              LIMIT 1
+            ),
+            80
+          ) AS last_message,
+          (
+            SELECT COUNT(*)::int
+            FROM ${messages} m
+            WHERE m.conversation_id = c.id
+          ) AS message_count
+        FROM ${conversations} c
+        WHERE c.org_id = ${orgId}
+        ORDER BY c.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `,
+    ),
+    db
+      .select({ total: count() })
+      .from(conversations)
+      .where(eq(conversations.orgId, orgId)),
+  ]);
+
+  const total = countResult[0]?.total ?? 0;
+
+  return {
+    rows: result.rows.map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      handoffStatus: row.handoff_status,
+      deliveryChannel: row.delivery_channel,
+      createdAt: toDateSafe(row.created_at),
+      lastMessage: row.last_message,
+      lastMessageAt: row.last_message_at
+        ? toDateSafe(row.last_message_at)
+        : null,
+      messageCount: row.message_count,
+      takenOverBy: row.taken_over_by,
+      takenOverAt: row.taken_over_at ? toDateSafe(row.taken_over_at) : null,
+    })),
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
 // ── Single conversation by id — used for live prepend on conversation:new ──
 // Same shape as getRecentConversations rows — compatible with ConversationRowType
 export async function getConversationById(

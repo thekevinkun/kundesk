@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
 import { ConversationRow, ConversationEmptyState } from "./conversations";
@@ -20,11 +21,21 @@ import type {
 
 interface ConversationsPageProps {
   conversations: ConversationRowType[];
+  total: number;
+  page: number;
+  totalPages: number;
+  highlightId: number | null;
 }
 
 const ConversationsPage = ({
   conversations: initialConversations,
+  total,
+  page,
+  totalPages,
+  highlightId,
 }: ConversationsPageProps) => {
+  const router = useRouter();
+
   const { orgId } = useAuth();
   const { prependNotification } = useConversationStore();
 
@@ -199,8 +210,8 @@ const ConversationsPage = ({
               Percakapan Terbaru
             </div>
             <div className="text-[11.5px] text-(--color-text-400) mt-0.5">
-              {conversations.length > 0
-                ? `${conversations.length} percakapan terakhir`
+              {total > 0
+                ? `${total} percakapan · halaman ${page} dari ${totalPages}`
                 : "Belum ada percakapan"}
             </div>
           </div>
@@ -242,12 +253,100 @@ const ConversationsPage = ({
                         ? latestMessage.message
                         : null
                     }
+                    isHighlighted={highlightId === convo.id}
                   />
                 ))
               )}
             </motion.tbody>
           </table>
         </div>
+
+        {/* ── Pagination controls ── */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-4 border-t border-(--color-border-sm)">
+            {/* Result count */}
+            <div className="text-[12.5px] text-(--color-text-400)">
+              Menampilkan{" "}
+              <span className="font-semibold text-(--color-text-700)">
+                {(page - 1) * 20 + 1}–{Math.min(page * 20, total)}
+              </span>{" "}
+              dari{" "}
+              <span className="font-semibold text-(--color-text-700)">
+                {total}
+              </span>{" "}
+              percakapan
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              {/* Previous */}
+              <button
+                onClick={() =>
+                  router.push(`/dashboard/conversations?page=${page - 1}`)
+                }
+                disabled={page <= 1}
+                className="w-8 h-8 rounded-[8px] flex items-center justify-center text-[13px] text-(--color-text-500) border border-(--color-border) bg-(--color-bg-page) hover:border-(--color-brand) hover:text-(--color-brand) disabled:opacity-40 disabled:pointer-events-none transition-all"
+                aria-label="Halaman sebelumnya"
+              >
+                ‹
+              </button>
+
+              {/* Page number pills */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => {
+                  // Show: first, last, current, and 1 page either side of current
+                  return p === 1 || p === totalPages || Math.abs(p - page) <= 1;
+                })
+                .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                  // Insert ellipsis where pages are non-consecutive
+                  if (idx > 0) {
+                    const prev = arr[idx - 1]!;
+                    if (p - prev > 1) acc.push("...");
+                  }
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === "..." ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      className="w-8 h-8 flex items-center justify-center text-[12px] text-(--color-text-400)"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() =>
+                        router.push(`/dashboard/conversations?page=${p}`)
+                      }
+                      className={`w-8 h-8 rounded-[8px] flex items-center justify-center text-[12.5px] font-semibold border transition-all ${
+                        p === page
+                          ? "bg-(--color-brand) text-white border-(--color-brand)"
+                          : "text-(--color-text-500) border-(--color-border) bg-(--color-bg-page) hover:border-(--color-brand) hover:text-(--color-brand)"
+                      }`}
+                      aria-label={`Halaman ${p}`}
+                      aria-current={p === page ? "page" : undefined}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+
+              {/* Next */}
+              <button
+                onClick={() =>
+                  router.push(`/dashboard/conversations?page=${page + 1}`)
+                }
+                disabled={page >= totalPages}
+                className="w-8 h-8 rounded-[8px] flex items-center justify-center text-[13px] text-(--color-text-500) border border-(--color-border) bg-(--color-bg-page) hover:border-(--color-brand) hover:text-(--color-brand) disabled:opacity-40 disabled:pointer-events-none transition-all"
+                aria-label="Halaman berikutnya"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

@@ -24,27 +24,28 @@ export default async function DashboardPage() {
   // All queries in parallel — 8 round trips become 1 wait
   const [
     organization,
-    totalMessages,
-    answeredRate,
-    uniqueVisitors,
     dailyTrend,
     monthlyComparison,
     weeklyMessages,
     botStatus,
     orgData,
-    avgResponseTime,
+    // Stats now fetched client-side via TanStack — only initial values needed here
+    initialTotalMessages,
+    initialAnsweredRate,
+    initialUniqueVisitors,
+    initialAvgResponseTime,
   ] = await Promise.all([
     (await clerkClient()).organizations.getOrganization({
       organizationId: orgId!,
     }),
-    getTotalMessages(orgId!),
-    getAnsweredRate(orgId!),
-    getUniqueVisitors(orgId!),
     getDailyMessageTrend(orgId!),
     getMonthlyMessageComparison(orgId!),
     getWeeklyMessages(orgId!),
     getBotStatus(orgId!),
     getOrgData(orgId!),
+    getTotalMessages(orgId!),
+    getAnsweredRate(orgId!),
+    getUniqueVisitors(orgId!),
     getAvgResponseTime(orgId!),
   ]);
 
@@ -52,9 +53,13 @@ export default async function DashboardPage() {
 
   return (
     <DashboardOverview
-      totalMessages={totalMessages}
-      answeredRate={answeredRate}
-      uniqueVisitors={uniqueVisitors}
+      orgId={orgId!}
+      initialStats={{
+        totalMessages: initialTotalMessages,
+        answeredRate: initialAnsweredRate,
+        uniqueVisitors: initialUniqueVisitors,
+        avgResponseTime: initialAvgResponseTime,
+      }}
       orgName={organization.name}
       dailyTrend={dailyTrend}
       monthlyCurrent={monthlyComparison.current}
@@ -63,9 +68,8 @@ export default async function DashboardPage() {
       currentYear={currentYear}
       botStatus={botStatus}
       orgSlug={orgData?.slug ?? ""}
-      messagesUsed={orgData?.messagesUsed ?? 0}
-      messagesLimit={orgData?.messagesLimit ?? 100}
-      avgResponseTime={avgResponseTime}
+      initialMessagesUsed={orgData?.messagesUsed ?? 0}
+      initialMessagesLimit={orgData?.messagesLimit ?? 100}
     />
   );
 }

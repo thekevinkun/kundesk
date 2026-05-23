@@ -1,5 +1,6 @@
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import GlobalSearch from "./GlobalSearch";
 import DashboardOverview from "./DashboardOverview";
 import AnalyticsPage from "./AnalyticsPage";
 import BillingPage from "./BillingPage";
@@ -15,6 +16,7 @@ import NotificationPanel from "./NotificationPanel";
 export {
   Sidebar,
   Topbar,
+  GlobalSearch,
   DashboardOverview,
   AnalyticsPage,
   BillingPage,

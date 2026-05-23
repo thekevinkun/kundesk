@@ -3,11 +3,11 @@
 import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Channel } from "pusher-js";
 import { useDocumentStore } from "@/stores/document-store";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { toast } from "sonner";
 import { fadeUp, staggerContainer } from "@/lib/animations";
+import type { Channel } from "pusher-js";
 import type { DocumentSelect } from "@/types/db";
 import type { ApiResponse } from "@/types/api";
 import type { DocumentUpdatedPayload } from "@/lib/pusher";
