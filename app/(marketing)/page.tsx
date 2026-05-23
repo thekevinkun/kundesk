@@ -10,7 +10,6 @@ export const metadata: Metadata = {
     title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
     description:
       "Upload dokumen bisnis kamu — menu, FAQ, harga. Kundesk membangun chatbot AI yang menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
-    url: "https://kundesk.vercel.app",
     type: "website",
   },
   twitter: {
