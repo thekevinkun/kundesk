@@ -145,6 +145,10 @@ const ConversationRow = ({
   const handleStaffReplied = () => {
     // Clear this row's unread dot
     clearUnreadConversation(convo.id);
+
+    // Pending handoff resolved after staff reply
+    setPendingHandoff(false);
+
     // Refetch pending count — DB now shows human instead of pending_handoff
     void queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],

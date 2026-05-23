@@ -367,6 +367,7 @@ export async function POST(request: NextRequest) {
         conversationId,
         role: "user",
         content: message,
+        handoffStatus: "pending_handoff",
       }).catch(console.error);
 
       const pendingStream = new ReadableStream({

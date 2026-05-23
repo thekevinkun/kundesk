@@ -145,12 +145,22 @@ export function usePusherChannel(
           void queryClient.invalidateQueries({
             queryKey: ["conversations", "pending-count"],
           });
+        } else if (
+          data.handoffStatus === "human" ||
+          data.handoffStatus === "ai"
+        ) {
+          // Pending is resolved for this event stream
+          setPendingHandoff(false);
         }
         callbacks?.onTakeover?.(data);
       });
 
       // AI resumed — optional callback so conversations page reverts badge
       channel.bind(EVENTS.CONVERSATION_RETURN, (data: ReturnPayload) => {
+        setPendingHandoff(false);
+        void queryClient.invalidateQueries({
+          queryKey: ["conversations", "pending-count"],
+        });
         callbacks?.onReturn?.(data);
       });
 
