@@ -13,13 +13,6 @@ export interface PlanUIConfig {
   unavailable: string[];
 }
 
-// Maps plan name to display label — consistent with PLAN_CONFIG in constants.ts
-export const PLAN_LABEL: Record<PlanName, string> = {
-  free: "Free",
-  starter: "Starter",
-  pro: "Pro",
-};
-
 export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
   free: {
     label: "Free",

@@ -1,5 +1,5 @@
 import { formatRupiah, formatDate } from "@/helpers/format";
-import { PLAN_LABEL, formatPaymentMethod } from "./constants";
+import { PLAN_CONFIG, formatPaymentMethod } from "./constants";
 import type { PaymentHistoryItem } from "@/types/billing";
 
 interface PaymentHistoryCardProps {
@@ -82,7 +82,7 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
                 {/* Plan badge */}
                 <td className="px-5 py-3.5">
                   <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-(--color-brand) bg-(--color-brand-light) px-2.5 py-1 rounded-full">
-                    {PLAN_LABEL[item.plan]}
+                    {PLAN_CONFIG[item.plan].label}
                   </span>
                 </td>
 

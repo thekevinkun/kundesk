@@ -333,7 +333,7 @@ export async function getPaginatedConversations(
           ) AS message_count
         FROM ${conversations} c
         WHERE c.org_id = ${orgId}
-        ORDER BY c.created_at DESC
+        ORDER BY c.created_at DESC, c.id DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
     ),
@@ -603,10 +603,14 @@ export async function findConversationPage(
   orgId: string,
   limit: number = 20,
 ): Promise<number> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("limit must be a positive integer");
+  }
+
   // Count how many conversations in this org are newer than the target
   // In DESC sort, newer conversations appear first — so position = count of newer rows
-  const subquery = sql`(
-    SELECT created_at FROM ${conversations}
+  const target = sql`(
+    SELECT id, created_at FROM ${conversations}
     WHERE id = ${conversationId} AND org_id = ${orgId}
     LIMIT 1
   )`;
@@ -616,10 +620,16 @@ export async function findConversationPage(
     .from(conversations)
     .where(
       and(
-        // Always scope to org — tenant isolation + IDOR protection
+        // Always scope to org — tenant isolation  IDOR protection
         eq(conversations.orgId, orgId),
         // Newer than target = appears before it in DESC sort
-        sql`${conversations.createdAt} > ${subquery}`,
+        sql`(
+          ${conversations.createdAt} > (SELECT created_at FROM ${target})
+          OR (
+            ${conversations.createdAt} = (SELECT created_at FROM ${target})
+            AND ${conversations.id} > (SELECT id FROM ${target})
+          )
+        )`,
       ),
     );
 

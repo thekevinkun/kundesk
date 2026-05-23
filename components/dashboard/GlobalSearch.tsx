@@ -99,11 +99,16 @@ const GlobalSearch = () => {
   const handleConversationClick = async (conversationId: number) => {
     setIsOpen(false);
     setQuery("");
+
     // Find which page this conversation is on — prevents highlight landing on wrong page
-    const page = await getConversationPageAction(conversationId);
-    router.push(
-      `/dashboard/conversations?page=${page}&highlight=${conversationId}`,
-    );
+    try {
+      const page = await getConversationPageAction(conversationId);
+      router.push(
+        `/dashboard/conversations?page=${page}&highlight=${conversationId}`,
+      );
+    } catch {
+      router.push(`/dashboard/conversations?highlight=${conversationId}`);
+    }
   };
 
   const handleDocumentClick = () => {
