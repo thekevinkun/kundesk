@@ -229,8 +229,9 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         config.quickReplies &&
         config.quickReplies.length > 0 && (
           <div
-            className="flex flex-wrap gap-2 px-4 pb-2 mt-2"
+            role="group"
             aria-label="Pertanyaan cepat"
+            className="flex flex-wrap gap-2 px-4 pb-2 mt-2"
           >
             {config.quickReplies.map((chip) => (
               <button

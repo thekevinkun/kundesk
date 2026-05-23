@@ -67,6 +67,7 @@ const ChatInput = ({
             className="w-8 h-8 rounded-xl flex items-center justify-center text-white transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
             style={{ background: accentColor }}
             aria-label="Kirim pesan"
+            aria-busy={isDisabled}
           >
             <svg
               width="14"
@@ -87,7 +88,10 @@ const ChatInput = ({
 
         {/* Footer hint — shows admin tip in AI mode, human warning in human mode */}
         {isHumanMode ? (
-          <p className="text-center text-[11px] mt-2 font-medium text-amber-600">
+          <p
+            className="text-center text-[11px] mt-2 font-medium text-amber-600"
+            aria-live="polite"
+          >
             👤{" "}
             {handoffStatus === "pending_handoff"
               ? "Menunggu staff kami"

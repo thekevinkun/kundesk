@@ -16,10 +16,10 @@ const ChatHeader = ({ name, orgName, accentColor }: ChatHeaderProps) => {
       </div>
 
       <div>
-        <div className="text-white text-sm font-semibold leading-tight">
+        <h1 className="text-white text-sm font-semibold leading-tight">
           {name}
-        </div>
-        <div className="text-white/75 text-xs">{orgName}</div>
+        </h1>
+        <p className="text-white/75 text-xs">{orgName}</p>
       </div>
 
       {/* Live indicator — always shown, bot is always online */}

@@ -208,7 +208,13 @@ const Topbar = () => {
                   border border-(--color-border) flex items-center justify-center text-base 
                   text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) 
                   transition-all"
-                aria-label="Pesan pelanggan belum dibalas"
+                aria-label={
+                  hasPendingHandoff
+                    ? "Ada pelanggan menunggu staff"
+                    : unreadHumanCount > 0
+                      ? `${unreadHumanCount} percakapan belum dibalas`
+                      : "Pesan pelanggan"
+                }
               >
                 💬
                 {/* Single brand dot — appears when anything needs attention */}
@@ -382,7 +388,11 @@ const Topbar = () => {
           {/* WIB/WITA/WIT clock — live, updates every second, uses device timezone */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="hidden md:flex items-center gap-1.5 px-3 py-[7px] bg-(--color-bg-page) border border-(--color-border) rounded-full">
+              <div
+                aria-label={`Waktu lokal: ${clock} ${utcOffset}`}
+                className="hidden md:flex items-center gap-1.5 px-3 py-[7px] bg-(--color-bg-page) 
+                  border border-(--color-border) rounded-full"
+              >
                 <span className="text-[11px]" aria-hidden="true">
                   🕐
                 </span>

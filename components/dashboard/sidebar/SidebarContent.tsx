@@ -7,9 +7,9 @@ import { useTheme } from "next-themes";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
-import { staggerContainer, staggerItem } from "@/lib/animations";
-import { NAV_SECTIONS } from "./constants";
 import NavItemRow from "./NavItemRow";
+import { NAV_SECTIONS } from "./constants";
+import { staggerContainer, staggerItem } from "@/lib/animations";
 import type { SubscriptionStatus } from "@/types/billing";
 
 interface SidebarContentProps {
@@ -78,12 +78,18 @@ const SidebarContent = ({
         {NAV_SECTIONS.map((section) => (
           <div key={section.label} className="mb-4">
             {/* Section label */}
-            <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-(--color-text-400) px-2.5 mb-1">
+            <p
+              id={`nav-section-${section.label}`}
+              className="text-[10px] font-bold tracking-[0.1em] uppercase text-(--color-text-400) px-2.5 mb-1"
+            >
               {section.label}
-            </div>
+            </p>
+
             <motion.div
               variants={staggerContainer}
               className="flex flex-col gap-0.5"
+              role="group"
+              aria-labelledby={`nav-section-${section.label}`}
             >
               {section.items.map((item) => (
                 <motion.div key={item.href} variants={staggerItem}>
@@ -125,7 +131,8 @@ const SidebarContent = ({
           </div>
           <Link
             href="/dashboard/billing"
-            className="inline-block bg-white text-[12px] font-bold px-4 py-2 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg"
+            className="inline-block bg-white text-[12px] font-bold px-4 py-2 rounded-full 
+              transition-all hover:-translate-y-0.5 hover:shadow-lg"
             style={{ color: "var(--color-brand-dark)" }}
           >
             Lihat Plan

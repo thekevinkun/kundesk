@@ -36,6 +36,15 @@ export default async function DashboardLayout({
     <QueryProvider>
       <PostHogProvider orgId={orgId}>
         <PusherProvider orgId={orgId} />
+        {/* Skip link — keyboard users jump past sidebar directly to main content */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4
+            focus:z-[9999] focus:px-4 focus:py-2 focus:bg-(--color-brand) 
+            focus:text-white focus:rounded-[10px] focus:font-semibold focus:text-sm"
+        >
+          Lewati navigasi
+        </a>
 
         <div className="min-h-screen bg-(--color-bg-page) flex">
           {/* Pass subscriptionStatus so Sidebar can show billing warning badge */}
@@ -43,7 +52,9 @@ export default async function DashboardLayout({
 
           <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
             <Topbar />
-            <main className="flex-1 p-4 md:p-6 lg:p-7">{children}</main>
+            <main id="main-content" className="flex-1 p-4 md:p-6 lg:p-7">
+              {children}
+            </main>
           </div>
         </div>
         <Toaster
