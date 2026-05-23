@@ -3,14 +3,15 @@
 // Called by the client immediately after the presigned URL PUT completes
 
 import { type NextRequest, NextResponse } from "next/server";
-import { requireOrg } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { documents, chunks } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { downloadFromS3 } from "@/lib/aws/s3";
-import { chunkText } from "@/helpers/chunk";
-import { embedText } from "@/lib/ai/embed";
+import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { requireOrg } from "@/lib/auth";
+import { embedText } from "@/lib/ai/embed";
+import { chunkText } from "@/helpers/chunk";
+import { downloadFromS3 } from "@/lib/aws/s3";
+import { checkUploadRateLimit } from "@/lib/redis";
+import { documents, chunks } from "@/lib/db/schema";
 import { triggerDocumentUpdated } from "@/lib/pusher";
 import type { ApiResponse } from "@/types/api";
 
@@ -24,6 +25,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Guard — requireOrg() also protects against IDOR via orgId scoping below
   const { orgId } = await requireOrg();
 
+  const processLimit = await checkUploadRateLimit(orgId);
+  if (!processLimit.success) {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Terlalu banyak request pemrosesan.", status: 429 },
+      { status: 429 },
+    );
+  }
+
   const body = (await request.json()) as ProcessRequestBody;
   const { documentId, s3Key } = body;
 
@@ -31,6 +40,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (typeof documentId !== "number" || typeof s3Key !== "string" || !s3Key) {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "documentId and s3Key are required", status: 400 },
+      { status: 400 },
+    );
+  }
+
+  // validated s3Key for length or path traversal
+  if (s3Key.length > 500 || s3Key.includes("..")) {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Invalid s3Key", status: 400 },
       { status: 400 },
     );
   }

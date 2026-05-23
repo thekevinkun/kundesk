@@ -2,14 +2,20 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { ilike, eq, and, sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { checkOrgMessageLimit } from "@/lib/redis";
 import { messages, conversations, documents } from "@/lib/db/schema";
 
 export async function GET(request: NextRequest) {
   const { orgId } = await auth();
   if (!orgId) return Response.json({ ok: false }, { status: 401 });
 
+  const searchLimit = await checkOrgMessageLimit(orgId);
+  if (!searchLimit.success) {
+    return Response.json({ ok: false }, { status: 429 });
+  }
+
   const raw = request.nextUrl.searchParams.get("q")?.trim();
-  if (!raw || raw.length < 2) {
+  if (!raw || raw.length < 2 || raw.length > 200) {
     return Response.json({
       ok: true,
       data: { conversations: [], documents: [] },
