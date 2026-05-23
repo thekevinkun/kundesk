@@ -22,8 +22,20 @@ import { saveAccentColor, getChatbotConfig } from "@/lib/actions/chatbot";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 const Topbar = () => {
-  const { unreadCount, clearUnread, notificationItems, setNotifications } =
-    useConversationStore();
+  const {
+    unreadCount,
+    notificationItems,
+    setNotifications,
+    unreadConversationIds,
+    hasPendingHandoff,
+  } = useConversationStore();
+
+  // Derive counts from store — no separate counters needed
+  const unreadHumanCount = unreadConversationIds.size;
+
+  // Show chat dot if anything needs attention
+  const hasChatActivity = hasPendingHandoff || unreadHumanCount > 0;
+
   const { toggleMobile } = useSidebarStore();
 
   // useTheme from next-themes — reads current theme, setTheme toggles .dark on <html>
@@ -192,26 +204,36 @@ const Topbar = () => {
             <NotificationPanel isOpen={notifPanelOpen} />
           </div>
 
-          {/* Chat icon — new conversation counter, no panel */}
+          {/* Chat icon — red dot for pending handoff, brand dot for unread human messages */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={clearUnread}
                 className="relative w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
                   border border-(--color-border) flex items-center justify-center text-base 
                   text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) 
                   transition-all"
-                aria-label="Percakapan baru"
+                aria-label="Pesan pelanggan belum dibalas"
               >
                 💬
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white animate-pulse bg-(--color-brand)" />
+                {/* Single brand dot — appears when anything needs attention */}
+                {hasChatActivity && (
+                  <span
+                    className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full 
+                    border-2 border-white animate-pulse bg-(--color-brand)"
+                  />
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent>Percakapan baru</TooltipContent>
+            <TooltipContent>
+              {/* Show both lines when both conditions are true */}
+              {!hasChatActivity && <span>Pesan pelanggan</span>}
+              {hasPendingHandoff && <div>Ada pelanggan menunggu staff</div>}
+              {unreadHumanCount > 0 && (
+                <div>{unreadHumanCount} percakapan belum dibalas</div>
+              )}
+            </TooltipContent>
           </Tooltip>
-          
+
           <Separator
             orientation="vertical"
             className="h-7! bg-(--color-border)!"

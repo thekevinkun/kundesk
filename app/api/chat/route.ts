@@ -413,18 +413,13 @@ export async function POST(request: NextRequest) {
         content: message,
       });
 
-      createNotification(
-        org.id,
-        "message_new",
-        "Pesan baru dari pelanggan",
-        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
-        conversationId,
-      ).catch(console.error);
-
       triggerConversationMessage(org.id, channelToken, {
         conversationId,
         role: "user",
         content: message,
+        // Tells the dashboard Pusher hook this is a human-mode message
+        // Routes to chat icon dot, not bell panel
+        handoffStatus: currentHandoffStatus ?? "human",
       }).catch(console.error);
 
       // Silent stream — no AI message, just done signal with handoff status

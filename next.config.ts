@@ -3,6 +3,24 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@napi-rs/canvas", "@napi-rs/canvas-linux-x64-gnu"],
+  images: {
+    // Allow next/image to serve QR codes from our own API route with query strings
+    localPatterns: [
+      {
+        pathname: "/api/qr/**",
+      },
+      {
+        pathname: "/images/**",
+      },
+    ],
+    remotePatterns: [
+      {
+        // CloudFront CDN for S3 document thumbnails
+        protocol: "https",
+        hostname: "*.cloudfront.net",
+      },
+    ],
+  },
 };
 
 export default withSentryConfig(nextConfig, {

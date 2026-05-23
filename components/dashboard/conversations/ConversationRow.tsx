@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useConversationStore } from "@/stores/conversation-store";
 import { ConversationDialog } from "@/components/dashboard/conversations";
 import { staggerItem } from "@/lib/animations";
 import { formatRelativeTime } from "@/helpers/format";
@@ -93,13 +95,21 @@ const ConversationRow = ({
   onReturn,
   newMessage,
 }: ConversationRowProps) => {
+  const queryClient = useQueryClient();
+
   const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTakingOver, startTakeoverTransition] = useTransition();
 
-  // Expired: AI mode AND last message older than 24 hours
+  // Read unread state + clear actions from store
+  const { unreadConversationIds, clearUnreadConversation, setPendingHandoff } =
+    useConversationStore();
+
+  // This row has unread customer messages waiting for staff response
+  const hasUnread = unreadConversationIds.has(convo.id);
+
+  // Expired: all statuses expire after 24h of inactivity
   const isExpired =
-    convo.handoffStatus === "ai" &&
     convo.lastMessageAt !== null &&
     Date.now() - new Date(convo.lastMessageAt).getTime() > 24 * 60 * 60 * 1000;
 
@@ -129,31 +139,89 @@ const ConversationRow = ({
     onReturn(convo.id);
   };
 
+  // Called by ConversationDialog after staff sends a reply
+  // For pending rows: this is the moment signs clear (not on expand)
+  // For human rows: clears the unread dot for this conversation
+  const handleStaffReplied = () => {
+    // Clear this row's unread dot
+    clearUnreadConversation(convo.id);
+    // Refetch pending count — DB now shows human instead of pending_handoff
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "pending-count"],
+    });
+  };
+
   useEffect(() => {
     setHandoffStatus(convo.handoffStatus);
   }, [convo.handoffStatus]);
+
+  // When a conversation expires — clean up all its signals from the store
+  // Runs once when isExpired flips true — no cleanup needed on unmount
+  useEffect(() => {
+    if (!isExpired) return;
+
+    // Remove from unread set — clears row dot, brand badge, chat icon dot
+    clearUnreadConversation(convo.id);
+
+    // Clear pending handoff flag if this was the pending conversation
+    if (
+      convo.handoffStatus === "pending_handoff" ||
+      handoffStatus === "pending_handoff"
+    ) {
+      setPendingHandoff(false);
+      // Refetch — DB still has pending_handoff but we want badge to reflect reality
+      void queryClient.invalidateQueries({
+        queryKey: ["conversations", "pending-count"],
+      });
+    }
+  }, [isExpired]);
 
   return (
     <>
       {/* Main row — click anywhere to expand/collapse dialog */}
       <motion.tr
         variants={staggerItem}
-        onClick={() => !isExpired && setIsExpanded((p) => !p)}
+        onClick={() => {
+          if (isExpired) return;
+
+          if (!isExpanded) {
+            const isPending =
+              convo.handoffStatus === "pending_handoff" ||
+              handoffStatus === "pending_handoff";
+
+            if (isPending) {
+              // Pending row — do NOT clear any signs on expand
+              // Signs only clear when staff actually sends a reply (onStaffReplied)
+              // Just expand the dialog so staff can see and respond
+            } else {
+              // Non-pending row — clear unread dot immediately on expand
+              if (hasUnread) clearUnreadConversation(convo.id);
+            }
+          }
+
+          setIsExpanded((p) => !p);
+        }}
         className={`group transition-colors ${
           isExpired
             ? "opacity-40 pointer-events-none"
             : "cursor-pointer hover:bg-(--color-bg-page)"
         } ${isExpanded ? "bg-(--color-bg-page)" : ""}`}
       >
-        {/* Expand chevron */}
+        {/* Expand chevron + unread dot */}
         <td className="pl-4 pr-1 py-3.5 border-b border-(--color-border-sm) w-8">
-          <span
-            className={`text-xl text-(--color-brand) transition-transform inline-block ${
-              isExpanded ? "rotate-90" : ""
-            }`}
-          >
-            ›
-          </span>
+          <div className="relative inline-flex items-center justify-center">
+            <span
+              className={`text-xl text-(--color-brand) transition-transform inline-block ${
+                isExpanded ? "rotate-90" : ""
+              }`}
+            >
+              ›
+            </span>
+            {/* Unread dot — customer replied in human mode, staff hasn't seen it yet */}
+            {hasUnread && !isExpanded && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-(--color-brand) animate-pulse" />
+            )}
+          </div>
         </td>
 
         {/* Last message preview */}
@@ -227,6 +295,7 @@ const ConversationRow = ({
                 handoffStatus={handoffStatus}
                 sessionId={convo.sessionId}
                 onReturn={handleReturn}
+                onStaffReplied={handleStaffReplied}
                 newMessage={newMessage}
               />
             )}

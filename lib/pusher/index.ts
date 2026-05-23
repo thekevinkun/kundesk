@@ -3,6 +3,7 @@
 // Channel naming convention: private-org-{orgId} — never deviate from this
 
 import { env } from "@/lib/env";
+import { MessageRole, HandoffStatus } from "@/types/chat";
 
 // ── Event payload types ──
 
@@ -117,8 +118,10 @@ export interface ConversationReturnPayload {
 // Fired when a new message arrives in any conversation (user, assistant, or human_agent)
 export interface ConversationMessagePayload {
   conversationId: number;
-  role: "user" | "assistant" | "human_agent";
+  role: MessageRole;
   content: string;
+  // Present when message arrives in human/pending_handoff mode — drives chat icon dot
+  handoffStatus?: HandoffStatus;
 }
 
 // Fires when a staff member takes over a conversation

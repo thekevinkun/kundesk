@@ -5,7 +5,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConversationStore } from "@/stores/conversation-store";
+import { MessageRole, HandoffStatus } from "@/types/chat";
 
 // All events on the private-org-{orgId} channel — must match server-side convention
 const EVENTS = {
@@ -21,7 +23,7 @@ const EVENTS = {
 export interface TakeoverPayload {
   conversationId: number;
   takenOverBy: string;
-  handoffStatus?: string;
+  handoffStatus?: HandoffStatus;
 }
 
 export interface ReturnPayload {
@@ -30,9 +32,10 @@ export interface ReturnPayload {
 
 export interface MessagePayload {
   conversationId: number;
-  // role and content are absent on ping-only events (conversation:message with no content)
-  role?: "user" | "assistant" | "human_agent";
+  role?: MessageRole;
   content?: string;
+  // Set by server when message arrives in human/pending_handoff mode
+  handoffStatus?: HandoffStatus;
 }
 
 export interface NotificationItem {
@@ -60,6 +63,13 @@ export function usePusherChannel(
   callbacks?: PusherChannelCallbacks,
 ): void {
   const incrementUnread = useConversationStore((s) => s.incrementUnread);
+  const addUnreadConversation = useConversationStore(
+    (s) => s.addUnreadConversation,
+  );
+  const setPendingHandoff = useConversationStore((s) => s.setPendingHandoff);
+
+  // queryClient at hook top level — invalidates sidebar badge immediately on pending_handoff
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let cancelled = false;
@@ -103,22 +113,39 @@ export function usePusherChannel(
         },
       );
 
-      // New message — increment bell + optional callback for live reply UI
+      // New message — route to correct signal based on handoff status
       channel.bind(EVENTS.CONVERSATION_MESSAGE, (data: unknown) => {
         const payload = data as Partial<MessagePayload>;
+        if (typeof payload.conversationId !== "number") return;
+
         if (payload.role === "user") {
-          incrementUnread();
+          const isHumanMode =
+            payload.handoffStatus === "human" ||
+            payload.handoffStatus === "pending_handoff";
+
+          if (isHumanMode) {
+            // Human mode — add conversation to unread set (drives row dot + chat icon)
+            // unreadConversationIds.size is the source of truth, no separate counter
+            addUnreadConversation(payload.conversationId);
+          } else {
+            // AI mode customer message — bell counter as before
+            incrementUnread();
+          }
         }
-        // content is optional — ping-only events have no content
-        // only conversationId is required to route the event
-        if (typeof payload.conversationId !== "number") {
-          return;
-        }
+
         callbacks?.onMessage?.(payload as MessagePayload);
       });
 
-      // Staff took over — optional callback so conversations page updates badge live
+      // Staff took over OR customer requested handoff — update pending flag + sidebar badge
       channel.bind(EVENTS.CONVERSATION_TAKEOVER, (data: TakeoverPayload) => {
+        if (data.handoffStatus === "pending_handoff") {
+          // Red dot on chat icon — customer waiting for staff
+          setPendingHandoff(true);
+          // Invalidate sidebar badge immediately — don't wait for 30s poll
+          void queryClient.invalidateQueries({
+            queryKey: ["conversations", "pending-count"],
+          });
+        }
         callbacks?.onTakeover?.(data);
       });
 

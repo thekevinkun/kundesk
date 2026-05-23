@@ -115,6 +115,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                       width={160}
                       height={160}
                       className="w-full h-full object-contain p-2"
+                      unoptimized
                     />
                   </div>
                   {/* Download PNG button */}

@@ -39,6 +39,8 @@ interface ConversationDialogProps {
   sessionId: string;
   // Called after successful return-to-AI
   onReturn: () => void;
+  // Called after staff sends first reply in pending mode — clears unread signs
+  onStaffReplied?: () => void;
   // Called when new message arrives via Pusher — parent passes it down
   newMessage: ConversationMessage | null;
 }
@@ -47,6 +49,7 @@ const ConversationDialog = ({
   conversationId,
   handoffStatus,
   onReturn,
+  onStaffReplied,
   newMessage,
 }: ConversationDialogProps) => {
   const [msgs, setMsgs] = useState<ConversationMessage[]>([]);
@@ -54,7 +57,9 @@ const ConversationDialog = ({
   const [replyContent, setReplyContent] = useState("");
   const [isSending, startSendTransition] = useTransition();
   const [isReturning, startReturnTransition] = useTransition();
-  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Ref for the scrollable message container — we scroll this directly, not the page
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Show reply box for both human and pending_handoff — staff can reply in either state
   const canReply =
@@ -88,6 +93,10 @@ const ConversationDialog = ({
           setMsgs((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
           throw new Error("Failed");
         }
+        // Staff replied successfully — notify parent to clear pending unread signs
+        // onStaffReplied is only meaningful on first reply in pending mode
+        // calling it on every reply is safe — clearUnreadConversation is idempotent
+        onStaffReplied?.();
       } catch {
         toast.error("Gagal mengirim pesan. Coba lagi.");
       }
@@ -162,9 +171,11 @@ const ConversationDialog = ({
     });
   }, [newMessage]);
 
-  // Auto-scroll to bottom when messages change
+  // Scroll message container to bottom — scrollIntoView scrolls the page body, avoid it
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [msgs]);
 
   return (
@@ -204,7 +215,10 @@ const ConversationDialog = ({
         </div>
 
         {/* Message list */}
-        <div className="max-h-[320px] overflow-y-auto px-5 py-4 space-y-3">
+        <div
+          ref={scrollContainerRef}
+          className="max-h-[320px] overflow-y-auto px-5 py-4 space-y-3"
+        >
           {isLoading ? (
             // Skeleton loading — 3 placeholder bubbles
             <div className="space-y-3">
@@ -284,7 +298,6 @@ const ConversationDialog = ({
               })}
             </AnimatePresence>
           )}
-          <div ref={bottomRef} />
         </div>
 
         {/* Reply box — only shown in human mode */}

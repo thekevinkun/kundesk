@@ -77,7 +77,7 @@ const NotificationPanel = ({ isOpen }: NotificationPanelProps) => {
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="absolute right-0 top-[calc(100%+10px)] w-[360px] 
+          className="absolute right-0 top-[calc(100%+3px)] w-[360px] 
             bg-(--color-bg-card) border border-(--color-border) rounded-[16px] 
             shadow-lg z-80 overflow-hidden"
         >

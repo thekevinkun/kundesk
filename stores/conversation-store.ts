@@ -5,12 +5,22 @@ import { create } from "zustand";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 interface ConversationStore {
-  // Unread notification count — badge on bell icon
+  // ── Bell icon counter — notifications only (new convo, takeover, return) ──
   unreadCount: number;
   incrementUnread: () => void;
   clearUnread: () => void;
 
-  // In-memory notification list — populated on panel open + live via Pusher
+  // ── Pending handoff flag — drives red dot on chat icon ──
+  // Set when any conversation enters pending_handoff, cleared when that row is clicked
+  hasPendingHandoff: boolean;
+  setPendingHandoff: (value: boolean) => void;
+  // ── Unread conversation IDs — drives the dot on ConversationRow ──
+  // Added when customer sends message in human mode, cleared when row is expanded
+  unreadConversationIds: Set<number>;
+  addUnreadConversation: (id: number) => void;
+  clearUnreadConversation: (id: number) => void;
+
+  // ── In-memory notification list — bell panel ──
   notificationItems: NotificationItem[];
   setNotifications: (items: NotificationItem[]) => void;
   prependNotification: (item: NotificationItem) => void;
@@ -19,31 +29,46 @@ interface ConversationStore {
 }
 
 export const useConversationStore = create<ConversationStore>((set) => ({
+  // Bell
   unreadCount: 0,
   incrementUnread: () =>
     set((state) => ({ unreadCount: state.unreadCount + 1 })),
   clearUnread: () => set({ unreadCount: 0 }),
 
+  // Pending handoff flag — red dot on chat icon
+  hasPendingHandoff: false,
+  setPendingHandoff: (value) => set({ hasPendingHandoff: value }),
+
+  // Unread conversation IDs — row dot indicator
+  unreadConversationIds: new Set<number>(),
+  addUnreadConversation: (id) =>
+    set((state) => ({
+      // Set is immutable in Zustand — must create new Set
+      unreadConversationIds: new Set([...state.unreadConversationIds, id]),
+    })),
+  clearUnreadConversation: (id) =>
+    set((state) => {
+      const next = new Set(state.unreadConversationIds);
+      next.delete(id);
+      return { unreadConversationIds: next };
+    }),
+
+  // Bell panel notifications
   notificationItems: [],
-  // Called when panel opens — replaces list with fresh DB data
   setNotifications: (items) => set({ notificationItems: items }),
-  // Called when Pusher fires notification:new — prepends to list live
   prependNotification: (item) =>
     set((state) => ({
       notificationItems: [
         item,
-        // Deduplicate by id — StrictMode double-fires effects in dev
         ...state.notificationItems.filter((n) => n.id !== item.id),
       ].slice(0, 20),
     })),
-  // Called when owner clicks a notification
   markNotificationRead: (id) =>
     set((state) => ({
       notificationItems: state.notificationItems.map((n) =>
         n.id === id ? { ...n, isRead: true } : n,
       ),
     })),
-  // Called when owner clicks "Tandai semua dibaca"
   markAllRead: () =>
     set((state) => ({
       notificationItems: state.notificationItems.map((n) => ({
