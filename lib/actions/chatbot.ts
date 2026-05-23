@@ -109,6 +109,39 @@ export async function saveAccentColor(
   return { ok: true };
 }
 
+// ── Save quick replies only ──
+// Called immediately when chips are added or removed — no form submit needed
+export async function saveQuickReplies(
+  quickReplies: string[],
+): Promise<ActionResult> {
+  const { orgId } = await requireOrg();
+
+  // Validate array shape — same rules as full config
+  const result = z
+    .array(z.string().min(1).max(80))
+    .max(5, "Maksimal 5 quick reply")
+    .safeParse(quickReplies);
+
+  if (!result.success) {
+    return {
+      ok: false,
+      error: result.error.issues[0]?.message ?? "Input tidak valid",
+    };
+  }
+
+  await db
+    .update(chatbots)
+    .set({
+      // Empty array → null — keeps DB clean, widget shows no chips
+      quickReplies: result.data.length > 0 ? JSON.stringify(result.data) : null,
+    })
+    .where(eq(chatbots.orgId, orgId));
+
+  revalidatePath("/dashboard/chatbot");
+
+  return { ok: true };
+}
+
 // ── Get current chatbot config ──
 // Called by the chatbot config page Server Component
 export async function getChatbotConfig(): Promise<{
@@ -119,6 +152,7 @@ export async function getChatbotConfig(): Promise<{
   systemPrompt: string | null;
   accentColor: string;
   isActive: boolean;
+  quickReplies: string | null;
 } | null> {
   const { orgId } = await requireOrg();
 
@@ -131,6 +165,7 @@ export async function getChatbotConfig(): Promise<{
       systemPrompt: chatbots.systemPrompt,
       accentColor: chatbots.accentColor,
       isActive: chatbots.isActive,
+      quickReplies: chatbots.quickReplies,
     })
     .from(chatbots)
     .where(eq(chatbots.orgId, orgId))
