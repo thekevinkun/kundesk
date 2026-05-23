@@ -594,3 +594,37 @@ export async function getAvgResponseTime(
   // Convert ms to seconds, round to 1 decimal
   return `${(avg / 1000).toFixed(1)}s`;
 }
+
+// ── Find which page a conversation is on — for search deep links ──
+// Counts conversations newer than the target (sort order is DESC by createdAt)
+// Returns the 1-indexed page number using the same limit as getPaginatedConversations
+export async function findConversationPage(
+  conversationId: number,
+  orgId: string,
+  limit: number = 20,
+): Promise<number> {
+  // Count how many conversations in this org are newer than the target
+  // In DESC sort, newer conversations appear first — so position = count of newer rows
+  const subquery = sql`(
+    SELECT created_at FROM ${conversations}
+    WHERE id = ${conversationId} AND org_id = ${orgId}
+    LIMIT 1
+  )`;
+
+  const [result] = await db
+    .select({ position: count() })
+    .from(conversations)
+    .where(
+      and(
+        // Always scope to org — tenant isolation + IDOR protection
+        eq(conversations.orgId, orgId),
+        // Newer than target = appears before it in DESC sort
+        sql`${conversations.createdAt} > ${subquery}`,
+      ),
+    );
+
+  const position = result?.position ?? 0;
+  // position 0 → target is newest → page 1
+  // position 20 with limit 20 → target is first item on page 2
+  return Math.ceil((position + 1) / limit);
+}

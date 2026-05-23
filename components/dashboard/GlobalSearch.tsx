@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { getConversationPageAction } from "@/lib/actions/dashboard";
 import { dropdownVariants } from "@/lib/animations";
 import { formatRelativeTime } from "@/helpers/format";
 
@@ -95,11 +96,14 @@ const GlobalSearch = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleConversationClick = (conversationId: number) => {
+  const handleConversationClick = async (conversationId: number) => {
     setIsOpen(false);
     setQuery("");
-    // Navigate with highlight param — ConversationsPage reads this
-    router.push(`/dashboard/conversations?highlight=${conversationId}`);
+    // Find which page this conversation is on — prevents highlight landing on wrong page
+    const page = await getConversationPageAction(conversationId);
+    router.push(
+      `/dashboard/conversations?page=${page}&highlight=${conversationId}`,
+    );
   };
 
   const handleDocumentClick = () => {

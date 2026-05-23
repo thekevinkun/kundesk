@@ -9,7 +9,7 @@ import { processedWebhooks } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { orgs } from "@/lib/db/schema";
 import { verifyMidtransSignature } from "@/lib/midtrans";
-import { activateSubscription } from "@/lib/db/queries/billing";
+import { activateSubscription, insertPayment } from "@/lib/db/queries/billing";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 
 // Midtrans sends POST — no auth header, verified via signature instead
@@ -143,12 +143,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const org = matchingOrgs[0]!;
 
-  // ── Layer 7: Activate subscription ──
-  await activateSubscription(org.id, plan, payment_type, order_id);
+  // ── Layer 7: Activate subscription + record payment ──
+  // Both run before marking processed — if either throws, Midtrans retries
+  // activateSubscription is idempotent (SET) — safe to retry
+  // insertPayment has unique constraint on orderId — second attempt throws, caught by idempotency check above
+  await activateSubscription(org.id, plan, payment_type);
+  await insertPayment(
+    org.id,
+    order_id,
+    plan,
+    parseInt(notification.gross_amount, 10),
+    payment_type,
+  );
 
   // ── Layer 8: Mark as processed ──
-  // Insert AFTER activating — if activation throws, we haven't marked it done
-  // On retry: activation runs again — activateSubscription is idempotent (SET, not INSERT)
+  // Insert AFTER both writes succeed — guarantees retry-safety
   await db.insert(processedWebhooks).values({
     externalId: order_id,
     source: "midtrans",

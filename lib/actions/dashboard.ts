@@ -10,6 +10,7 @@ import {
   getAnsweredRate,
   getUniqueVisitors,
   getAvgResponseTime,
+  findConversationPage,
 } from "@/lib/db/queries/dashboard";
 
 export interface DashboardStats {
@@ -33,4 +34,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     ]);
 
   return { totalMessages, answeredRate, uniqueVisitors, avgResponseTime };
+}
+
+// ── Find which page a conversation lives on — called by GlobalSearch before navigating ──
+// Prevents ?highlight landing on page 1 when the conversation is on page 2+
+export async function getConversationPageAction(
+  conversationId: number,
+): Promise<number> {
+  // orgId from server session — never from client input
+  const { orgId } = await requireOrg();
+  return findConversationPage(conversationId, orgId);
 }

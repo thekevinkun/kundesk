@@ -1,15 +1,15 @@
 // All billing-related DB queries — imported by Server Actions and webhook handler
 // Every query scopes to orgId first — never query by id alone
 
+import { and, eq, gte, lt, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orgs } from "@/lib/db/schema";
-import { and, eq, gte, lt } from "drizzle-orm";
+import { orgs, payments } from "@/lib/db/schema";
 import type {
   BillingPageData,
   PlanName,
   SubscriptionStatus,
 } from "@/types/billing";
-import { PLAN_LIMITS } from "@/types/billing";
+import { PLAN_LIMITS, PaymentHistoryItem } from "@/types/billing";
 
 // Fetches all billing data the billing page needs in one query
 // Called in /dashboard/billing/page.tsx via Promise.all alongside other fetches
@@ -38,8 +38,7 @@ export async function getBillingData(orgId: string): Promise<BillingPageData> {
     currentPeriodEnd: org.currentPeriodEnd,
     nextBillingDate: org.nextBillingDate,
     lastPaymentMethod: org.lastPaymentMethod,
-    // Phase 6: empty array — real Midtrans transaction history in Phase 7
-    paymentHistory: [],
+    paymentHistory: await getPaymentHistory(orgId),
   };
 }
 
@@ -49,7 +48,6 @@ export async function activateSubscription(
   orgId: string,
   plan: PlanName,
   paymentMethod: string,
-  _orderId: string,
 ): Promise<void> {
   const now = new Date();
 
@@ -150,5 +148,59 @@ export async function getOrgsDueForRenewal(): Promise<
     plan: org.plan as PlanName,
     subscriptionStatus: org.subscriptionStatus as SubscriptionStatus,
     nextBillingDate: org.nextBillingDate,
+  }));
+}
+
+// Inserts a payment record after successful Midtrans settlement
+// Called exclusively from the webhook handler — after activateSubscription succeeds
+// Never called directly — billing history must only reflect confirmed payments
+export async function insertPayment(
+  orgId: string,
+  orderId: string,
+  plan: PlanName,
+  amount: number,
+  paymentMethod: string,
+): Promise<void> {
+  await db.insert(payments).values({
+    orgId,
+    orderId,
+    plan,
+    amount,
+    paymentMethod,
+    // paidAt defaults to now() — matches when webhook was processed
+    status: "success",
+  });
+}
+
+// Fetches payment history for an org — newest first, max 12 records
+// Used by the billing page PaymentHistoryCard
+// Scoped to orgId — tenant isolation + IDOR protection
+export async function getPaymentHistory(
+  orgId: string,
+): Promise<PaymentHistoryItem[]> {
+  const rows = await db
+    .select({
+      orderId: payments.orderId,
+      plan: payments.plan,
+      amount: payments.amount,
+      paymentMethod: payments.paymentMethod,
+      paidAt: payments.paidAt,
+      status: payments.status,
+    })
+    .from(payments)
+    .where(
+      // Always scope to org — never fetch payments without orgId
+      eq(payments.orgId, orgId),
+    )
+    .orderBy(desc(payments.paidAt))
+    .limit(12);
+
+  return rows.map((row) => ({
+    orderId: row.orderId,
+    plan: row.plan as PlanName,
+    amount: row.amount,
+    paymentMethod: row.paymentMethod,
+    paidAt: row.paidAt,
+    status: row.status as PaymentHistoryItem["status"],
   }));
 }

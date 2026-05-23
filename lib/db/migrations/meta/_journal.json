@@ -57,6 +57,20 @@
       "when": 1779106629099,
       "tag": "0007_lean_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779539891448,
+      "tag": "0008_organic_namora",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779541668365,
+      "tag": "0009_left_iron_lad",
+      "breakpoints": true
     }
   ]
 }

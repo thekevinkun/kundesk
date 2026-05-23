@@ -1,7 +1,12 @@
 "use client";
 
 import type { BillingPageData, PlanName } from "@/types/billing";
-import { CurrentPlanCard, PlanCard, CancelDialog } from "./billing";
+import {
+  CurrentPlanCard,
+  PlanCard,
+  CancelDialog,
+  PaymentHistoryCard,
+} from "./billing";
 
 interface BillingPageProps {
   data: BillingPageData;
@@ -53,7 +58,7 @@ const BillingPage = ({ data }: BillingPageProps) => {
         )}
 
       {/* Payment security note */}
-      <div className="p-4 rounded-(--radius-sm) bg-(--color-bg-page) border border-(--color-border-sm) flex items-start gap-3">
+      <div className="py-4 rounded-(--radius-sm) bg-(--color-bg-page) border border-(--color-border-sm) flex items-start gap-3">
         <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">
           🔒
         </span>
@@ -67,6 +72,9 @@ const BillingPage = ({ data }: BillingPageProps) => {
           </p>
         </div>
       </div>
+
+      {/* Payment history — real data from payments table */}
+      <PaymentHistoryCard history={data.paymentHistory} />
     </div>
   );
 };

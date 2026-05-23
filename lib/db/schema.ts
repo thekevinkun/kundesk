@@ -27,7 +27,6 @@ const vector = (name: string, dimensions: number) =>
 // ─── ORGS ───
 // Synced from Clerk webhooks — created when a Clerk Organization is created
 // This is the root tenant record — everything else belongs to an org
-
 export const orgs = pgTable("orgs", {
   // Clerk's org ID — used as PK so we never have a separate mapping table
   id: text("id").primaryKey(),
@@ -75,7 +74,6 @@ export const orgs = pgTable("orgs", {
 // ─── CHATBOTS ───
 // One chatbot per org (Pro allows 3 — enforced at creation time)
 // Stores all customization options the business owner configures
-
 export const chatbots = pgTable(
   "chatbots",
   {
@@ -123,7 +121,6 @@ export const chatbots = pgTable(
 // ─── DOCUMENTS ───
 // Files uploaded by business owners — PDFs, TXTs
 // After upload: parsed → chunked → embedded → stored in chunks table
-
 export const documents = pgTable(
   "documents",
   {
@@ -157,7 +154,6 @@ export const documents = pgTable(
 // ─── CHUNKS ───
 // The RAG knowledge base — most queried table in the entire app
 // HNSW index on embedding column for fast cosine similarity search
-
 export const chunks = pgTable(
   "chunks",
   {
@@ -193,7 +189,6 @@ export const chunks = pgTable(
 // ─── CONVERSATIONS ───
 // One conversation per customer session
 // Handoff fields included from day one — adding later = migrating live data
-
 export const conversations = pgTable(
   "conversations",
   {
@@ -232,17 +227,25 @@ export const conversations = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    // Index on orgId — all conversation queries are scoped to org
     index("conversations_org_id_idx").on(table.orgId),
-    // Index on sessionId — looked up on every chat message
     index("conversations_session_id_idx").on(table.sessionId),
+    // Composite — analytics queries filter wasHandedOff + createdAt scoped to org
+    index("conversations_org_handoff_created_idx").on(
+      table.orgId,
+      table.wasHandedOff,
+      table.createdAt,
+    ),
+    // Composite — delivery channel breakdown filter
+    index("conversations_org_channel_idx").on(
+      table.orgId,
+      table.deliveryChannel,
+    ),
   ],
 );
 
 // ─── MESSAGES ───
 // Every message in every conversation
 // orgId stamped directly — avoids JOIN to conversations for tenant isolation
-
 export const messages = pgTable(
   "messages",
   {
@@ -274,17 +277,20 @@ export const messages = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    // Index on orgId — tenant isolation filter
     index("messages_org_id_idx").on(table.orgId),
-    // Index on conversationId — all message queries filter by conversation
     index("messages_conversation_id_idx").on(table.conversationId),
+    // Composite — answered rate + response time queries filter orgId + role
+    index("messages_org_role_created_idx").on(
+      table.orgId,
+      table.role,
+      table.createdAt,
+    ),
   ],
 );
 
 // ─── PROCESSED WEBHOOKS ───
 // Idempotency table — prevents double-processing on webhook retries
 // Midtrans retries notifications multiple times — we check this before processing
-
 export const processedWebhooks = pgTable(
   "processed_webhooks",
   {
@@ -312,7 +318,6 @@ export const processedWebhooks = pgTable(
 // Dashboard notifications for business owners — new conversations, handoffs, etc.
 // Scoped to org — each owner only sees their own notifications
 // In-app only for now — email notifications handled separately
-
 export const notifications = pgTable(
   "notifications",
   {
@@ -349,5 +354,46 @@ export const notifications = pgTable(
     index("notifications_org_id_idx").on(table.orgId),
     // Index on isRead — for unread count queries
     index("notifications_is_read_idx").on(table.isRead),
+  ],
+);
+
+// ─── PAYMENTS ───
+// Permanent record of every successful payment — source of truth for billing history
+// Inserted by the Midtrans webhook handler after activateSubscription succeeds
+// Never deleted — billing history must be immutable for accounting purposes
+export const payments = pgTable(
+  "payments",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+
+    // Tenant isolation — always filter by orgId first
+    orgId: text("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+
+    // Full Midtrans order ID — e.g. KUNDESK-org_3DZH-STARTER-1234567890
+    orderId: text("order_id").notNull().unique(),
+
+    // Plan that was paid for — derived from order_id but stored explicitly for fast reads
+    plan: text("plan").notNull(),
+
+    // Amount paid in Rupiah — stored as integer (no decimals in IDR)
+    amount: integer("amount").notNull(),
+
+    // Midtrans payment_type — "bank_transfer" | "gopay" | "qris" | "ovo" | "dana"
+    paymentMethod: text("payment_method").notNull(),
+
+    // When Midtrans confirmed the payment — from webhook processedAt timestamp
+    paidAt: timestamp("paid_at").notNull().defaultNow(),
+
+    // Always "success" for now — we only insert on settlement + fraud_status=accept
+    // "failed" reserved for future partial failure tracking
+    status: text("status").notNull().default("success"),
+  },
+  (table) => [
+    // Index on orgId — all payment history queries are scoped to org
+    index("payments_org_id_idx").on(table.orgId),
+    // Index on paidAt DESC — history is always shown newest first
+    index("payments_paid_at_idx").on(table.paidAt),
   ],
 );

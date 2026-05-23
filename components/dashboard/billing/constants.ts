@@ -13,6 +13,13 @@ export interface PlanUIConfig {
   unavailable: string[];
 }
 
+// Maps plan name to display label — consistent with PLAN_CONFIG in constants.ts
+export const PLAN_LABEL: Record<PlanName, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+};
+
 export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
   free: {
     label: "Free",
@@ -65,6 +72,26 @@ export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
     unavailable: [],
   },
 };
+
+// Maps Midtrans payment_type to a human-readable Indonesian label
+export function formatPaymentMethod(method: string): string {
+  switch (method) {
+    case "bank_transfer":
+      return "Transfer Bank";
+    case "gopay":
+      return "GoPay";
+    case "qris":
+      return "QRIS";
+    case "ovo":
+      return "OVO";
+    case "dana":
+      return "DANA";
+    case "credit_card":
+      return "Kartu Kredit";
+    default:
+      return method;
+  }
+}
 
 // Maps subscriptionStatus to display label + badge class
 export function getStatusDisplay(status: SubscriptionStatus): {
