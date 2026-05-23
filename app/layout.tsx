@@ -1,8 +1,3 @@
-// Root layout — wraps every page in the app
-// Loads fonts via next/font (never <link> tags — causes FOUT)
-// ThemeProvider from next-themes lives here so dark mode works from day one
-// TooltipProvider from shadcn — required for all Tooltip components to work
-
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, DM_Mono, Instrument_Serif } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -37,19 +32,79 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: {
-    default: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
+    default: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
     template: "%s | Kundesk",
   },
   description:
     "Upload dokumen bisnis kamu, aktifkan chatbot AI, dan layani pelanggan 24/7 — tanpa coding. Dibangun untuk UMKM Indonesia.",
   keywords: [
-    "AI chatbot",
-    "customer service",
-    "UMKM Indonesia",
-    "chatbot Indonesia",
+    "AI chatbot Indonesia",
+    "customer service otomatis",
+    "chatbot UMKM",
+    "chatbot WhatsApp",
+    "AI customer service",
+    "chatbot Bahasa Indonesia",
+    "kundesk",
   ],
-  authors: [{ name: "Kun Borneo" }],
+  authors: [{ name: "Kun Borneo", url: "https://kundesk.vercel.app" }],
   creator: "Kun Borneo",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://kundesk.vercel.app",
+  ),
+
+  // ── Favicon + PWA icons ──
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+  },
+  manifest: "/site.webmanifest",
+
+  // ── OpenGraph defaults — overridden per page ──
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    siteName: "Kundesk",
+    title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    description:
+      "Upload dokumen bisnis kamu, aktifkan chatbot AI, dan layani pelanggan 24/7 — tanpa coding. Dibangun untuk UMKM Indonesia.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+      },
+    ],
+  },
+
+  // ── Twitter/X card ──
+  twitter: {
+    card: "summary_large_image",
+    title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    description:
+      "Upload dokumen bisnis kamu, aktifkan chatbot AI, dan layani pelanggan 24/7 — tanpa coding.",
+    images: ["/og-image.png"],
+    creator: "@kunborneo",
+  },
+
+  // ── Robots ──
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({
