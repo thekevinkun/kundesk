@@ -1,16 +1,19 @@
 "use client";
 
+import { useCallback } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatCard } from "@/components/dashboard";
 import { staggerContainer, staggerItem } from "@/lib/animations";
+import { usePusherChannel } from "@/hooks/use-pusher-channel";
+import { getDashboardStats } from "@/lib/actions/dashboard";
+import type { DashboardStats } from "@/lib/actions/dashboard";
 
 // ── Dynamic imports — Chart.js only loads after shell renders ──
-// Each chart is its own file so code splitting works correctly
 const DonutCharts = dynamic(
   () => import("@/components/dashboard/charts/DonutCharts"),
   {
-    // Skeleton shown while Chart.js bundle loads
     loading: () => (
       <div className="flex justify-around items-center py-4 px-2">
         {[0, 1, 2].map((i) => (
@@ -21,7 +24,7 @@ const DonutCharts = dynamic(
         ))}
       </div>
     ),
-    ssr: false, // Chart.js uses browser APIs — must be client-only
+    ssr: false,
   },
 );
 
@@ -54,18 +57,16 @@ const BotStatusPanel = dynamic(
   { ssr: false },
 );
 
-// ── Props — all pre-fetched on server ──
+// ── Props ──
 interface DashboardOverviewProps {
-  totalMessages: number;
-  answeredRate: number;
-  uniqueVisitors: number;
+  orgId: string;
+  initialStats: DashboardStats; // seeded from server — no loading flash on first render
   orgName: string;
   dailyTrend: { date: string; count: number }[];
   monthlyCurrent: number[];
   monthlyPrevious: number[];
   weeklyMessages: number[];
   currentYear: number;
-  // Bot status panel props
   botStatus: {
     name: string;
     language: string;
@@ -76,9 +77,9 @@ interface DashboardOverviewProps {
     totalChunks: number;
   } | null;
   orgSlug: string;
-  messagesUsed: number;
-  messagesLimit: number;
-  avgResponseTime: string | null;
+  // messagesUsed/Limit come from org table — separate from stats, updated via usage:updated
+  initialMessagesUsed: number;
+  initialMessagesLimit: number;
 }
 
 // ── Card header — reused across all chart cards ──
@@ -107,9 +108,8 @@ const CardHeader = ({
 );
 
 const DashboardOverview = ({
-  totalMessages,
-  answeredRate,
-  uniqueVisitors,
+  orgId,
+  initialStats,
   orgName,
   dailyTrend,
   monthlyCurrent,
@@ -118,14 +118,57 @@ const DashboardOverview = ({
   currentYear,
   botStatus,
   orgSlug,
-  messagesUsed,
-  messagesLimit,
-  avgResponseTime,
+  initialMessagesUsed,
+  initialMessagesLimit,
 }: DashboardOverviewProps) => {
-  // Quota used percentage — messagesUsed / messagesLimit
-  // We have totalMessages; limit comes from org — approximating with answeredRate context
-  // TODO: pass messagesLimit from org query in Phase 6 when billing is built
-  const quotaUsed = Math.min((totalMessages / 1000) * 100, 100);
+  const queryClient = useQueryClient();
+
+  // ── Stats query — seeded with server data, refetches when usage:updated fires ──
+  // initialData means no loading state on first render — all four cards show immediately
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard", "stats"],
+    queryFn: getDashboardStats,
+    initialData: initialStats,
+    // staleTime inherited from QueryProvider (30s) — background refetch after that
+  });
+
+  // ── Usage bar state — also lives in a query so it updates live ──
+  // Separate from stats query because messagesUsed comes from orgs table, not messages
+  const { data: usageData } = useQuery({
+    queryKey: ["dashboard", "usage"],
+    queryFn: async () => ({
+      messagesUsed: initialMessagesUsed,
+      messagesLimit: initialMessagesLimit,
+    }),
+    initialData: {
+      messagesUsed: initialMessagesUsed,
+      messagesLimit: initialMessagesLimit,
+    },
+  });
+
+  // ── Pusher: invalidate both queries when a message is processed ──
+  // All four stat cards + usage bar update in one shot
+  const handleUsageUpdated = useCallback(
+    (payload: { messagesUsed: number; messagesLimit: number }) => {
+      // Invalidate stats — triggers refetch of all four stat values
+      void queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      // Update usage bar directly with the payload — no extra DB round trip needed
+      queryClient.setQueryData(["dashboard", "usage"], {
+        messagesUsed: payload.messagesUsed,
+        messagesLimit: payload.messagesLimit,
+      });
+    },
+    [queryClient],
+  );
+
+  // Subscribe to org channel — Pusher reuses existing WebSocket, no second connection
+  usePusherChannel(orgId, { onUsageUpdated: handleUsageUpdated });
+
+  // Quota percentage for donut chart — derived from live usage data
+  const quotaUsed = Math.min(
+    ((usageData.messagesUsed ?? 0) / (usageData.messagesLimit || 1)) * 100,
+    100,
+  );
 
   const formatCount = (n: number): string => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
@@ -144,7 +187,7 @@ const DashboardOverview = ({
         </p>
       </div>
 
-      {/* ── Stat cards row ── */}
+      {/* ── Stat cards row — all four update live via stats query ── */}
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5"
         variants={staggerContainer}
@@ -155,7 +198,7 @@ const DashboardOverview = ({
           <StatCard
             icon="💬"
             iconVariant="brand"
-            value={formatCount(totalMessages)}
+            value={formatCount(stats.totalMessages)}
             label="Total Pesan"
             changeDirection="up"
             changeLabel="Semua waktu"
@@ -165,11 +208,11 @@ const DashboardOverview = ({
           <StatCard
             icon="✅"
             iconVariant="teal"
-            value={`${answeredRate}%`}
+            value={`${stats.answeredRate}%`}
             label="Terjawab Otomatis"
-            changeDirection={answeredRate >= 90 ? "up" : "down"}
+            changeDirection={stats.answeredRate >= 90 ? "up" : "down"}
             changeLabel={
-              answeredRate >= 90 ? "Sangat baik" : "Perlu ditingkatkan"
+              stats.answeredRate >= 90 ? "Sangat baik" : "Perlu ditingkatkan"
             }
           />
         </motion.div>
@@ -177,37 +220,41 @@ const DashboardOverview = ({
           <StatCard
             icon="👥"
             iconVariant="amber"
-            value={formatCount(uniqueVisitors)}
+            value={formatCount(stats.uniqueVisitors)}
             label="Pengunjung Unik"
             changeDirection="neutral"
             changeLabel="Semua sesi"
           />
         </motion.div>
-        {/* Response time — mock until timing column added in Phase 7 */}
         <motion.div variants={staggerItem}>
           <StatCard
             icon="⚡"
             iconVariant="rose"
-            value={avgResponseTime ?? "—"}
+            value={stats.avgResponseTime ?? "—"}
             label="Avg. Response Time"
-            changeDirection={avgResponseTime ? "up" : "neutral"}
-            changeLabel={avgResponseTime ? "Rata-rata AI" : "Belum ada data"}
+            changeDirection={stats.avgResponseTime ? "up" : "neutral"}
+            changeLabel={
+              stats.avgResponseTime ? "Rata-rata AI" : "Belum ada data"
+            }
           />
         </motion.div>
       </motion.div>
 
       {/* ── Charts row 1: Donuts + Area ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 mb-4">
-        {/* Performance summary — 3 donut charts */}
+        {/* Performance summary — answeredRate and quotaUsed both live-updated */}
         <div className="card-base">
           <CardHeader
             title="Ringkasan Performa"
             subtitle={`Bulan ${new Date().toLocaleString("id-ID", { month: "long" })} ${currentYear}`}
           />
-          <DonutCharts answeredRate={answeredRate} quotaUsed={quotaUsed} />
+          <DonutCharts
+            answeredRate={stats.answeredRate}
+            quotaUsed={quotaUsed}
+          />
         </div>
 
-        {/* Daily trend — area chart */}
+        {/* Daily trend — server-fetched, not live (chart data is historical) */}
         <div className="card-base">
           <CardHeader
             title="Tren Percakapan"
@@ -226,7 +273,6 @@ const DashboardOverview = ({
 
       {/* ── Charts row 2: Line + Bar ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
-        {/* Monthly comparison — dual line chart */}
         <div className="card-base">
           <CardHeader title="Total Pesan Bulanan" />
           <div className="px-5 pt-3 pb-5">
@@ -239,7 +285,6 @@ const DashboardOverview = ({
           </div>
         </div>
 
-        {/* Weekly breakdown — bar chart */}
         <div className="card-base">
           <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
           <div className="px-5 pt-3 pb-5">
@@ -248,7 +293,7 @@ const DashboardOverview = ({
         </div>
       </div>
 
-      {/* ── Bot status panel ── */}
+      {/* ── Bot status panel — usage bar uses live usageData ── */}
       {botStatus && (
         <div className="mt-4">
           <BotStatusPanel
@@ -260,8 +305,8 @@ const DashboardOverview = ({
             accentColor={botStatus.accentColor}
             documentCount={botStatus.documentCount}
             totalChunks={botStatus.totalChunks}
-            messagesUsed={messagesUsed}
-            messagesLimit={messagesLimit}
+            messagesUsed={usageData.messagesUsed}
+            messagesLimit={usageData.messagesLimit}
           />
         </div>
       )}

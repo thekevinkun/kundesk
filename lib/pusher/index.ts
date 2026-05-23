@@ -91,8 +91,6 @@ export async function triggerPublicConversationEvent(
   await pusher.trigger(channel, event, payload);
 }
 
-// ── Typed event helpers ──
-
 // Fires when a document's processing status changes
 // Called by the processing pipeline after each status transition
 export async function triggerDocumentUpdated(
@@ -164,4 +162,17 @@ export async function triggerNotificationNew(
   payload: { id: number; type: string; title: string; body: string },
 ): Promise<void> {
   await triggerOrgEvent(orgId, "notification:new", payload);
+}
+
+// Fired after each successful AI response — live stat card updates on dashboard
+export interface UsageUpdatedPayload {
+  messagesUsed: number; // new count post-increment
+  messagesLimit: number; // unchanged — included so BotStatusPanel can update too
+}
+
+export async function triggerUsageUpdated(
+  orgId: string,
+  payload: UsageUpdatedPayload,
+): Promise<void> {
+  await triggerOrgEvent(orgId, "usage:updated", payload);
 }

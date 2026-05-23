@@ -17,6 +17,7 @@ const EVENTS = {
   CONVERSATION_RETURN: "conversation:return",
   DOCUMENT_UPDATED: "document:updated",
   NOTIFICATION_NEW: "notification:new",
+  USAGE_UPDATED: "usage:updated",
 } as const;
 
 // Payloads matching server-side trigger functions in lib/pusher/index.ts
@@ -56,6 +57,10 @@ export interface PusherChannelCallbacks {
   onDocumentUpdated?: (payload: unknown) => void;
   onNotificationNew?: (payload: NotificationItem) => void;
   onConversationNew?: (payload: { conversationId: number }) => void;
+  onUsageUpdated?: (payload: {
+    messagesUsed: number;
+    messagesLimit: number;
+  }) => void;
 }
 
 export function usePusherChannel(
@@ -174,6 +179,12 @@ export function usePusherChannel(
       channel.bind(EVENTS.NOTIFICATION_NEW, (data: NotificationItem) => {
         incrementUnread();
         callbacks?.onNotificationNew?.(data);
+      });
+
+      // Usage updated — fires after every successful AI response
+      channel.bind(EVENTS.USAGE_UPDATED, (data: unknown) => {
+        const payload = data as { messagesUsed: number; messagesLimit: number };
+        callbacks?.onUsageUpdated?.(payload);
       });
 
       // Fix: use the same channelName variable — was previously "org-{orgId}" (wrong)

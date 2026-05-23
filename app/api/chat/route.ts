@@ -9,7 +9,11 @@ import { createNotification } from "@/lib/db/queries/dashboard";
 import { retrieveContext, buildSystemPrompt } from "@/lib/ai/rag";
 import { checkChatRateLimit, checkOrgMessageLimit } from "@/lib/redis";
 import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
-import { triggerOrgEvent, triggerConversationMessage } from "@/lib/pusher";
+import {
+  triggerOrgEvent,
+  triggerConversationMessage,
+  triggerUsageUpdated,
+} from "@/lib/pusher";
 import type { ConversationTurn } from "@/types/chat";
 
 // ─── Input validation ───
@@ -622,6 +626,12 @@ export async function POST(request: NextRequest) {
             console.error("[chat] Failed to send usage warning email:", err),
           );
         }
+
+        // Fire usage:updated — dashboard stat cards and usage bar update live
+        triggerUsageUpdated(org.id, {
+          messagesUsed: updatedOrg[0].messagesUsed,
+          messagesLimit: updatedOrg[0].messagesLimit,
+        }).catch(console.error);
       }
     } catch (err) {
       console.error("[chat] Failed to save messages after stream:", err);
