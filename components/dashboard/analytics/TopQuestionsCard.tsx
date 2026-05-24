@@ -52,11 +52,16 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
             const hasExamples = item.examples.length > 0;
 
             return (
-              <li key={item.topic}>
+              <li key={`${item.topic}-${index}`}>
                 {/* Cluster row — clickable if has examples */}
-                <div
+                <button
+                  type="button"
                   onClick={() =>
                     hasExamples && setExpandedIndex(isExpanded ? null : index)
+                  }
+                  aria-expanded={hasExamples ? isExpanded : undefined}
+                  aria-controls={
+                    hasExamples ? `cluster-examples-${index}` : undefined
                   }
                   className={`relative rounded-[10px] overflow-hidden transition-all duration-200 ${
                     hasExamples
@@ -99,12 +104,13 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
                       )}
                     </div>
                   </div>
-                </div>
+                </button>
 
                 {/* Expanded examples — slide open */}
                 <AnimatePresence initial={false}>
                   {isExpanded && hasExamples && (
                     <motion.div
+                      id={`cluster-examples-${index}`}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{
                         height: "auto",
