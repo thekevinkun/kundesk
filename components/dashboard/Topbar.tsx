@@ -423,7 +423,7 @@ const Topbar = () => {
             <UserButton
               appearance={{
                 elements: {
-                  avatarBox: "w-[30px] h-[30px]",
+                  avatarBox: "!w-[28px] !h-[28px]",
                 },
               }}
             />

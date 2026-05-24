@@ -3,9 +3,13 @@
 import { motion } from "framer-motion";
 import PricingCard from "./Pricing/PricingCard";
 import { scrollReveal, landingStagger } from "@/lib/animations";
-import { PRICING_PLANS } from "@/lib/landing-constants";
+import type { PlanName } from "@/types/billing";
 
-const PricingSection = () => {
+interface PricingSectionProps {
+  currentPlan: PlanName | null;
+}
+
+const PricingSection = ({ currentPlan }: PricingSectionProps) => {
   return (
     <section id="pricing" className="py-24 px-6 lg:px-16 bg-white">
       {/* Section header */}
@@ -46,19 +50,8 @@ const PricingSection = () => {
         viewport={{ once: true, amount: 0.1 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1000px] mx-auto items-start"
       >
-        {PRICING_PLANS.map((plan) => (
-          <PricingCard
-            key={plan.id}
-            id={plan.id}
-            name={plan.name}
-            desc={plan.desc}
-            price={plan.price}
-            period={plan.period}
-            cta={plan.cta}
-            ctaVariant={plan.ctaVariant}
-            featured={plan.featured}
-            features={plan.features}
-          />
+        {(["free", "starter", "pro"] as PlanName[]).map((plan) => (
+          <PricingCard key={plan} plan={plan} currentPlan={currentPlan} />
         ))}
       </motion.div>
     </section>

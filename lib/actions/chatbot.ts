@@ -5,11 +5,17 @@
 "use server";
 
 import { z } from "zod/v4";
-import { eq, and, count } from "drizzle-orm";
+import { eq, gt, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireOrg } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { chatbots, conversations, documents, orgs } from "@/lib/db/schema";
+import {
+  chatbots,
+  conversations,
+  messages,
+  documents,
+  orgs,
+} from "@/lib/db/schema";
 
 // ── Validation schema — matches chatbots table constraints ──
 const chatbotConfigSchema = z.object({
@@ -199,21 +205,26 @@ export async function getPendingHandoffCount(): Promise<number> {
   try {
     const { orgId } = await requireOrg();
 
-    const [result] = await db
-      .select({ total: count() })
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Fetch pending conversations that have had message activity within 24h
+    // groupBy + having filters out expired ones (no recent messages)
+    const rows = await db
+      .selectDistinct({ id: conversations.id })
       .from(conversations)
+      .innerJoin(messages, eq(messages.conversationId, conversations.id))
       .where(
         and(
           eq(conversations.orgId, orgId),
           eq(conversations.handoffStatus, "pending_handoff"),
+          // Only include conversations with at least one message after cutoff
+          gt(messages.createdAt, cutoff),
         ),
       );
 
-    // Return primitive number only — never an object or class instance
-    return result?.total ?? 0;
+    // Count distinct conversation IDs — selectDistinct handles dedup at DB level
+    return rows.length;
   } catch {
-    // Auth failure or DB timeout — return 0 silently
-    // Badge just won't show, which is safe fallback behavior
     return 0;
   }
 }

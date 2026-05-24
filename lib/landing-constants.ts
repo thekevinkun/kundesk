@@ -2,6 +2,17 @@
 // All copy in Bahasa Indonesia
 // Import into Server Components — no client bundle cost
 
+import type { PlanName } from "@/types/billing";
+
+export interface PlanUIConfig {
+  label: string;
+  desc: string;
+  color: string;
+  icon: string;
+  features: string[];
+  unavailable: string[];
+}
+
 // ── Nav links ──
 export const NAV_LINKS = [
   { label: "Beranda", href: "#home" },
@@ -11,84 +22,59 @@ export const NAV_LINKS = [
   { label: "FAQ", href: "#faq" },
 ] as const;
 
-export interface PricingPlansItems {
-  id: string;
-  name: string;
-  desc: string;
-  price: string;
-  period: string;
-  cta: string;
-  ctaVariant: string;
-  featured: boolean;
-  features: {
-    text: string;
-    included: boolean;
-  }[];
-}
-
 // ── Pricing plans ──
-export const PRICING_PLANS: PricingPlansItems[] = [
-  {
-    id: "free",
-    name: "Free",
+export const PRICING_PLANS: Record<PlanName, PlanUIConfig> = {
+  free: {
+    label: "Free",
     desc: "Untuk bisnis yang baru mulai menjajal AI",
-    price: "Rp 0",
-    period: "selamanya gratis",
-    cta: "Mulai Gratis",
-    ctaVariant: "dark" as const,
-    featured: false,
+    color: "bg-(--color-bg-page)",
+    icon: "🌱",
     features: [
-      { text: "100 pesan / bulan", included: true },
-      { text: "3 dokumen upload", included: true },
-      { text: "1 chatbot", included: true },
-      { text: "QR code + public link", included: true },
-      { text: "Analytics dashboard", included: false },
-      { text: "Embed widget", included: false },
-      { text: "Custom branding", included: false },
-      { text: "API access", included: false },
+      "100 pesan / bulan",
+      "3 dokumen upload",
+      "1 chatbot",
+      "QR Code + link publik",
+    ],
+    unavailable: [
+      "Embed widget",
+      "Analytics dashboard",
+      "Custom branding",
+      "API access",
     ],
   },
-  {
-    id: "starter",
-    name: "Starter",
+  starter: {
+    label: "Starter",
     desc: "Untuk bisnis yang sudah aktif melayani pelanggan",
-    price: "Rp 149k",
-    period: "per bulan",
-    cta: "Pilih Starter",
-    ctaVariant: "brand" as const,
-    featured: true,
+    color: "bg-(--color-brand-light)",
+    icon: "⚡",
     features: [
-      { text: "1.000 pesan / bulan", included: true },
-      { text: "20 dokumen upload", included: true },
-      { text: "1 chatbot", included: true },
-      { text: "QR code + public link", included: true },
-      { text: "Analytics dasar", included: true },
-      { text: "Embed widget", included: true },
-      { text: "Custom branding", included: false },
-      { text: "API access", included: false },
+      "1.000 pesan / bulan",
+      "20 dokumen upload",
+      "1 chatbot",
+      "QR Code + link publik",
+      "Embed widget",
+      "Analytics dasar",
     ],
+    unavailable: ["Custom branding", "API access"],
   },
-  {
-    id: "pro",
-    name: "Pro",
+  pro: {
+    label: "Pro",
     desc: "Untuk bisnis besar atau agensi yang kelola banyak klien",
-    price: "Rp 399k",
-    period: "per bulan",
-    cta: "Pilih Pro",
-    ctaVariant: "dark" as const,
-    featured: false,
+    color: "bg-(--color-brand-light)",
+    icon: "🚀",
     features: [
-      { text: "10.000 pesan / bulan", included: true },
-      { text: "Dokumen unlimited", included: true },
-      { text: "3 chatbot", included: true },
-      { text: "QR code + public link", included: true },
-      { text: "Analytics lengkap", included: true },
-      { text: "Embed widget", included: true },
-      { text: "Custom branding", included: true },
-      { text: "API access", included: true },
+      "10.000 pesan / bulan",
+      "Dokumen unlimited",
+      "3 chatbot",
+      "QR Code + link publik",
+      "Embed widget",
+      "Analytics lengkap",
+      "Custom branding",
+      "API access",
     ],
+    unavailable: [],
   },
-] as const;
+};
 
 // ── Features section — dark bg cards ──
 export const FEATURES = [

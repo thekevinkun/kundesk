@@ -38,13 +38,17 @@ const FaqCard = ({ id, question, answer, isOpen, toggle }: FaqCardItems) => {
         {/* +/× icon circle */}
         <div
           className={cn(
-            "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border transition-all duration-300 text-[16px]",
+            "w-7 h-7 rounded-full flex justify-center flex-shrink-0 border transition-all duration-300 leading-none select-none",
             isOpen
-              ? "bg-(--color-brand-light) border-(--color-brand-mid) text-(--color-brand) rotate-45"
+              ? "bg-(--color-brand-light) border-(--color-brand-mid) text-(--color-brand)"
               : "bg-(--color-bg-input) border-(--color-border) text-(--color-text-500)",
           )}
           style={{
             transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
+            transition:
+              "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s, border-color 0.2s, color 0.2s",
+            fontSize: "18px",
+            fontWeight: 300,
           }}
         >
           +

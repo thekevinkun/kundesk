@@ -18,7 +18,7 @@ interface OrgDeletionEmailProps {
   signUpUrl: string;
 }
 
-export function OrgDeletionEmail({
+export default function OrgDeletionEmail({
   orgName,
   logoUrl,
   signUpUrl,
@@ -32,17 +32,17 @@ export function OrgDeletionEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={120}
+            width={140}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
 
-          <Heading style={styles.heading}>Akun {orgName} telah dihapus</Heading>
+          <Heading style={styles.heading}>Akun telah dihapus</Heading>
 
           <Text style={styles.text}>
             Kami mengkonfirmasi bahwa akun bisnis <strong>{orgName}</strong> dan
-            seluruh datanya — dokumen, percakapan, konfigurasi chatbot — telah
-            dihapus secara permanen dari sistem Kundesk.
+            seluruh data dokumen, percakapan, serta konfigurasi chatbot, telah
+            dihapus secara permanen dari sistem <strong>Kundesk</strong>.
           </Text>
 
           <Text style={styles.text}>
@@ -51,8 +51,8 @@ export function OrgDeletionEmail({
           </Text>
 
           <Text style={styles.text}>
-            Ingin mulai lagi dari awal? Kamu bisa membuat akun baru kapan saja —
-            gratis, tanpa kartu kredit.
+            Ingin mulai lagi dari awal? Kamu bisa membuat akun baru kapan saja.
+            Gratis, tanpa kartu kredit.
           </Text>
 
           <Section style={styles.btnSection}>
@@ -62,14 +62,14 @@ export function OrgDeletionEmail({
           </Section>
 
           <Text style={styles.text}>
-            Terima kasih sudah menggunakan Kundesk. Semoga bisnis kamu terus
+            Terima kasih sudah menggunakan <strong>Kundesk</strong>. Semoga bisnis kamu terus
             berkembang. 🙏
           </Text>
 
           <Text style={styles.text}>
             Salam,
             <br />
-            Tim Kundesk
+            <strong>Tim Kundesk</strong>
           </Text>
 
           <Hr style={styles.hr} />
@@ -100,18 +100,18 @@ const styles = {
     border: "1px solid #e8ecf0",
   },
   heading: {
-    fontSize: "22px",
+    fontSize: "20px",
     fontWeight: 700,
     color: "#0f1117",
     letterSpacing: "-0.02em",
-    margin: "0 0 16px 0",
+    margin: "0 0 20px 0",
     lineHeight: "1.3",
   },
   text: {
     fontSize: "15px",
     color: "#2d3748",
     lineHeight: "1.7",
-    margin: "0 0 16px 0",
+    margin: "0 0 12px 0",
   },
   btnSection: {
     margin: "28px 0",
@@ -137,3 +137,10 @@ const styles = {
     lineHeight: "1.6",
   },
 } as const;
+
+OrgDeletionEmail.PreviewProps = {
+  orgName: "Kun Borneo",
+  logoUrl:
+    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  signUpUrl: "http://localhost:3000/signup",
+};

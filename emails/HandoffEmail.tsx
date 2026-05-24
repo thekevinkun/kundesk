@@ -21,7 +21,7 @@ interface HandoffEmailProps {
   conversationUrl: string;
 }
 
-export function HandoffEmail({
+export default function HandoffEmail({
   orgName,
   logoUrl,
   sessionId,
@@ -34,11 +34,13 @@ export function HandoffEmail({
       <Body style={body}>
         <Container style={container}>
           {/* Logo */}
-          <Section style={logoSection}>
-            <Img src={logoUrl} width={120} height={32} alt="Kundesk" />
-          </Section>
-
-          <Hr style={divider} />
+          <Img
+            src={logoUrl}
+            alt="Kundesk"
+            width={140}
+            height="auto"
+            style={{ marginBottom: "32px", display: "block" }}
+          />
 
           {/* Alert header */}
           <Section style={content}>
@@ -97,7 +99,6 @@ const container = {
   overflow: "hidden" as const,
   border: "1px solid #e8ecf0",
 };
-const logoSection = { padding: "24px 32px 16px" };
 const divider = { borderColor: "#e8ecf0", margin: "0" };
 const content = { padding: "32px" };
 const alertBadge = {
@@ -160,4 +161,13 @@ const footer_text = {
   color: "#a0aec0",
   margin: "0 0 4px",
   textAlign: "center" as const,
+};
+
+HandoffEmail.preview = {
+  orgName: "Kun Borneo",
+  logoUrl:
+    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  sessionId: "12345",
+  lastMessage: "Saya butuh bantuan dengan pesanan saya.",
+  conversationUrl: "https://app.kundesk.com/dashboard/conversations/12345",
 };

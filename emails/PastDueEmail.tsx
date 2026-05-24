@@ -19,7 +19,7 @@ interface PastDueEmailProps {
   logoUrl: string;
 }
 
-export function PastDueEmail({
+export default function PastDueEmail({
   orgName,
   amount,
   billingUrl,
@@ -34,14 +34,14 @@ export function PastDueEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={120}
+            width={140}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
 
           <Heading style={styles.heading}>Pembayaran Tertunggak</Heading>
 
-          <Text style={styles.text}>Halo {orgName},</Text>
+          <Text style={styles.text}>Halo <strong>{orgName}</strong>,</Text>
 
           <Text style={styles.text}>
             Pembayaran Kundesk sebesar <strong>{amount}</strong> belum kami
@@ -68,7 +68,7 @@ export function PastDueEmail({
           <Text style={styles.text}>
             Salam,
             <br />
-            Tim Kundesk
+            <strong>Tim Kundesk</strong>
           </Text>
 
           <Hr style={styles.hr} />
@@ -105,18 +105,18 @@ const styles = {
     margin: "0 0 32px 0",
   },
   heading: {
-    fontSize: "22px",
+    fontSize: "20px",
     fontWeight: 700,
     color: "#0f1117",
     letterSpacing: "-0.02em",
-    margin: "0 0 16px 0",
+    margin: "0 0 20px 0",
     lineHeight: "1.3",
   },
   text: {
     fontSize: "15px",
     color: "#2d3748",
     lineHeight: "1.7",
-    margin: "0 0 16px 0",
+    margin: "0 0 12px 0",
   },
   btnSection: { margin: "28px 0" },
   // Urgent CTA uses darker teal to signal importance without being alarming
@@ -133,3 +133,11 @@ const styles = {
   hr: { borderColor: "#e8ecf0", margin: "32px 0 20px 0" },
   footer: { fontSize: "12px", color: "#a0aec0", margin: 0, lineHeight: "1.6" },
 } as const;
+
+PastDueEmail.PreviewProps = {
+  orgName: "Kun Borneo",
+  amount: "Rp149.000",
+  billingUrl: "http://localhost:3000/dashboard/billing",
+  logoUrl:
+    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+};

@@ -29,7 +29,7 @@ const BillingPage = ({ data }: BillingPageProps) => {
       <CurrentPlanCard data={data} />
 
       {/* Plan selection grid */}
-      <div>
+      <div className="mb-16">
         <h2 className="text-base font-semibold text-(--color-text-900) mb-1">
           Pilih Plan
         </h2>
@@ -37,6 +37,24 @@ const BillingPage = ({ data }: BillingPageProps) => {
           Upgrade atau ganti plan kapan saja. Berlaku langsung setelah
           pembayaran.
         </p>
+
+        {/* Payment security note */}
+        <div className="mb-9 px-2 py-3 rounded-(--radius-sm) bg-gray-400/15
+          border border-(--color-border-sm) flex items-start gap-3">
+          <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">
+            🔒
+          </span>
+          <div>
+            <p className="text-xs font-semibold text-(--color-text-700) mb-1">
+              Pembayaran aman via Midtrans
+            </p>
+            <p className="text-xs text-(--color-text-500) leading-relaxed">
+              Kami mendukung Transfer Bank (BCA, Mandiri, BNI, BRI), GoPay, QRIS,
+              OVO, dan DANA. Tidak ada biaya tersembunyi. Tagihan dalam Rupiah.
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
           {(["free", "starter", "pro"] as PlanName[]).map((plan) => (
             <PlanCard
@@ -56,22 +74,6 @@ const BillingPage = ({ data }: BillingPageProps) => {
             <CancelDialog currentPlan={data.currentPlan} />
           </div>
         )}
-
-      {/* Payment security note */}
-      <div className="py-4 rounded-(--radius-sm) bg-(--color-bg-page) border border-(--color-border-sm) flex items-start gap-3">
-        <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">
-          🔒
-        </span>
-        <div>
-          <p className="text-xs font-semibold text-(--color-text-700) mb-1">
-            Pembayaran aman via Midtrans
-          </p>
-          <p className="text-xs text-(--color-text-400) leading-relaxed">
-            Kami mendukung Transfer Bank (BCA, Mandiri, BNI, BRI), GoPay, QRIS,
-            OVO, dan DANA. Tidak ada biaya tersembunyi. Tagihan dalam Rupiah.
-          </p>
-        </div>
-      </div>
 
       {/* Payment history — real data from payments table */}
       <PaymentHistoryCard history={data.paymentHistory} />

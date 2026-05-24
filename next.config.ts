@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.cloudfront.net",
       },
+      // Clerk organization/user avatars
+      {
+        protocol: "https",
+        hostname: "img.clerk.com",
+      },
     ],
   },
   async headers() {

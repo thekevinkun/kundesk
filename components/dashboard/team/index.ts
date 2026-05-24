@@ -1,13 +1,5 @@
-import MemberRow from "./MemberRow";
-import MemberList from "./MemberList";
-import InviteCard from "./InviteCard";
-import RoleChangeDialog from "./RoleChangeDialog";
-import RemoveMemberDialog from "./RemoveMemberDialog";
-
-export {
-  MemberRow,
-  MemberList,
-  InviteCard,
-  RoleChangeDialog,
-  RemoveMemberDialog,
-};
+export { default as MemberRow } from "./MemberRow";
+export { default as MemberList } from "./MemberList";
+export { default as InviteCard } from "./InviteCard";
+export { default as RoleChangeDialog } from "./RoleChangeDialog";
+export { default as RemoveMemberDialog } from "./RemoveMemberDialog";

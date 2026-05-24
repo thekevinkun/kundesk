@@ -5,11 +5,12 @@ import { useConversationStore } from "@/stores/conversation-store";
 import { getPendingHandoffCount } from "@/lib/actions/chatbot";
 
 const ConversationCountBadge = () => {
-  // Pending handoffs from DB — polled every 30s, invalidated immediately on staff reply
+  // Pending handoffs from DB — polled every 60s, invalidated immediately on staff reply
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ["conversations", "pending-count"],
+    // 60s — Pusher handles real-time, this is just a missed-event safety net
     queryFn: () => getPendingHandoffCount(),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     placeholderData: (prev) => prev,
   });
 

@@ -208,29 +208,24 @@ const ConversationRow = ({
         ref={rowRef}
         variants={staggerItem}
         onClick={() => {
-          if (isExpired) return;
-
           if (!isExpanded) {
             const isPending =
               convo.handoffStatus === "pending_handoff" ||
               handoffStatus === "pending_handoff";
 
-            if (isPending) {
-              // Pending row — do NOT clear any signs on expand
-              // Signs only clear when staff actually sends a reply (onStaffReplied)
-              // Just expand the dialog so staff can see and respond
-            } else {
-              // Non-pending row — clear unread dot immediately on expand
+            if (!isPending && !isExpired) {
+              // Non-pending, non-expired — clear unread dot on expand
               if (hasUnread) clearUnreadConversation(convo.id);
             }
+            // Expired and pending: no sign clearing on expand
           }
 
           setIsExpanded((p) => !p);
         }}
-        className={`group transition-colors ${
+        className={`group transition-colors cursor-pointer ${
           isExpired
-            ? "opacity-40 pointer-events-none"
-            : "cursor-pointer hover:bg-(--color-bg-page)"
+            ? "opacity-50 hover:opacity-70"
+            : "hover:bg-(--color-bg-page)"
         } ${isExpanded ? "bg-(--color-bg-page)" : ""}`}
       >
         {/* Expand chevron + unread dot */}
@@ -323,6 +318,7 @@ const ConversationRow = ({
                 onReturn={handleReturn}
                 onStaffReplied={handleStaffReplied}
                 newMessage={newMessage}
+                isExpired={isExpired}
               />
             )}
           </AnimatePresence>

@@ -8,9 +8,8 @@ const DocCountBadge = () => {
   const { data: count } = useQuery({
     queryKey: ["documents", "count"],
     queryFn: () => getDocumentCount(),
-    // Refetch every 30s in background — stays fresh without hammering the server
-    refetchInterval: 30_000,
-    // Don't show stale flash on first load — keep previous value until new one arrives
+    // No refetchInterval — count only changes on upload or delete
+    // Those actions invalidate this query key directly
     placeholderData: (prev) => prev,
   });
 

@@ -1,6 +1,4 @@
-import RagPreview from "./RagPreview";
-import TenantPreview from "./TenantPreview";
-import SecurityPreview from "./SecurityPreview";
-import AnalyticsPreview from "./AnalyticsPreview";
-
-export { RagPreview, TenantPreview, SecurityPreview, AnalyticsPreview };
+export { default as RagPreview } from "./RagPreview";
+export { default as TenantPreview } from "./TenantPreview";
+export { default as SecurityPreview } from "./SecurityPreview";
+export { default as AnalyticsPreview } from "./AnalyticsPreview";

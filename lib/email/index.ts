@@ -3,12 +3,14 @@
 
 import { render } from "@react-email/render";
 import { env } from "@/lib/env";
-import { WelcomeEmail } from "@/emails/WelcomeEmail";
-import { BillingReminderEmail } from "@/emails/BillingReminderEmail";
-import { UsageWarningEmail } from "@/emails/UsageWarningEmail";
-import { OrgDeletionEmail } from "@/emails/OrgDeletionEmail";
-import { PastDueEmail } from "@/emails/PastDueEmail";
-import { HandoffEmail } from "@/emails/HandoffEmail";
+import {
+  WelcomeEmail,
+  BillingReminderEmail,
+  UsageWarningEmail,
+  PastDueEmail,
+  OrgDeletionEmail,
+  HandoffEmail,
+} from "@/emails";
 
 // onboarding@resend.dev — Resend's free sender, no custom domain needed
 // Switch to "Kundesk <noreply@kundesk.app>" once domain is verified

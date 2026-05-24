@@ -1,32 +1,15 @@
-import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
-import GlobalSearch from "./GlobalSearch";
-import DashboardOverview from "./DashboardOverview";
-import AnalyticsPage from "./AnalyticsPage";
-import BillingPage from "./BillingPage";
-import DocumentsPage from "./DocumentsPage";
-import ConversationsPage from "./ConversationsPage";
-import ChatbotConfigPage from "./ChatbotConfigPage";
-import SettingsPage from "./SettingsPage";
-import WidgetPage from "./WidgetPage";
-import TeamPage from "./TeamPage";
-import StatCard, { StatCardSkeleton } from "./StatCard";
-import NotificationPanel from "./NotificationPanel";
-
-export {
-  Sidebar,
-  Topbar,
-  GlobalSearch,
-  DashboardOverview,
-  AnalyticsPage,
-  BillingPage,
-  DocumentsPage,
-  ConversationsPage,
-  ChatbotConfigPage,
-  SettingsPage,
-  WidgetPage,
-  TeamPage,
-  StatCard,
-  StatCardSkeleton,
-  NotificationPanel,
-};
+export { default as Sidebar } from "./Sidebar";
+export { default as Topbar } from "./Topbar";
+export { default as GlobalSearch } from "./GlobalSearch";
+export { default as DashboardOverview } from "./DashboardOverview";
+export { default as AnalyticsPage } from "./AnalyticsPage";
+export { default as BillingPage } from "./BillingPage";
+export { default as DocumentsPage } from "./DocumentsPage";
+export { default as ConversationsPage } from "./ConversationsPage";
+export { default as ChatbotConfigPage } from "./ChatbotConfigPage";
+export { default as SettingsPage } from "./SettingsPage";
+export { default as WidgetPage } from "./WidgetPage";
+export { default as TeamPage } from "./TeamPage";
+export { default as StatCard } from "./StatCard";
+export { StatCardSkeleton } from "./StatCard";
+export { default as NotificationPanel } from "./NotificationPanel";

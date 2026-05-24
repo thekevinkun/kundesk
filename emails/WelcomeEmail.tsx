@@ -18,7 +18,7 @@ interface WelcomeEmailProps {
   logoUrl: string;
 }
 
-export function WelcomeEmail({
+export default function WelcomeEmail({
   orgName,
   dashboardUrl,
   logoUrl,
@@ -32,7 +32,7 @@ export function WelcomeEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={120}
+            width={140}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
@@ -42,9 +42,9 @@ export function WelcomeEmail({
           </Heading>
 
           <Text style={styles.text}>
-            Akun bisnis kamu sudah aktif. Sekarang kamu bisa mulai upload
-            dokumen — menu, FAQ, daftar harga — dan chatbot AI kamu akan siap
-            menjawab pelanggan dalam hitungan menit.
+            Akun bisnis kamu sudah aktif. Sekarang kamu bisa mulai upload dokumen 
+            seperti <strong>menu,</strong> <strong>FAQ,</strong> dan <strong>daftar harga. </strong> 
+            Chatbot AI kamu akan siap membantu menjawab pelanggan dalam hitungan menit.
           </Text>
 
           <Text style={styles.text}>
@@ -64,7 +64,7 @@ export function WelcomeEmail({
           <Text style={styles.text}>
             Salam,
             <br />
-            Tim Kundesk
+            <strong>Tim Kundesk</strong>
           </Text>
 
           <Hr style={styles.hr} />
@@ -103,7 +103,7 @@ const styles = {
     margin: "0 0 32px 0",
   },
   heading: {
-    fontSize: "22px",
+    fontSize: "20px",
     fontWeight: 700,
     color: "#0f1117",
     letterSpacing: "-0.02em",
@@ -140,3 +140,10 @@ const styles = {
     lineHeight: "1.6",
   },
 } as const;
+
+WelcomeEmail.PreviewProps = {
+  orgName: "Kun Borneo",
+  dashboardUrl: "http://localhost:3000/dashboard",
+  logoUrl:
+    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+};

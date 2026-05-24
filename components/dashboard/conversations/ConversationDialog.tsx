@@ -43,6 +43,7 @@ interface ConversationDialogProps {
   onStaffReplied?: () => void;
   // Called when new message arrives via Pusher — parent passes it down
   newMessage: ConversationMessage | null;
+  isExpired?: boolean;
 }
 
 const ConversationDialog = ({
@@ -51,6 +52,7 @@ const ConversationDialog = ({
   onReturn,
   onStaffReplied,
   newMessage,
+  isExpired = false,
 }: ConversationDialogProps) => {
   const [msgs, setMsgs] = useState<ConversationMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,11 +63,12 @@ const ConversationDialog = ({
   // Ref for the scrollable message container — we scroll this directly, not the page
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Show reply box for both human and pending_handoff — staff can reply in either state
+  // Read-only when expired — no replies, no actions, just history
   const canReply =
-    handoffStatus === "human" || handoffStatus === "pending_handoff";
+    !isExpired &&
+    (handoffStatus === "human" || handoffStatus === "pending_handoff");
 
-  const canReturn = handoffStatus === "human";
+  const canReturn = !isExpired && handoffStatus === "human";
 
   const handleSend = () => {
     if (!replyContent.trim()) return;
@@ -300,7 +303,7 @@ const ConversationDialog = ({
           )}
         </div>
 
-        {/* Reply box — only shown in human mode */}
+        {/* Reply box — only shown in active human mode */}
         {canReply && (
           <div className="border-t border-(--color-border-sm) px-5 py-3">
             <div className="flex gap-2 items-end">
@@ -317,7 +320,7 @@ const ConversationDialog = ({
                 onClick={handleSend}
                 disabled={isSending || !replyContent.trim()}
                 className="btn-brand h-[60px] px-4 text-[13px] font-semibold disabled:opacity-50 
-                  disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+          disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
                 aria-label="Kirim balasan"
               >
                 {isSending ? (
@@ -330,6 +333,16 @@ const ConversationDialog = ({
             <div className="text-[11px] text-(--color-text-400) mt-1 text-right">
               {replyContent.length}/1000
             </div>
+          </div>
+        )}
+
+        {/* Read-only notice — shown when conversation has expired */}
+        {isExpired && (
+          <div className="border-t border-(--color-border-sm) px-5 py-3">
+            <p className="text-[12px] text-(--color-text-400) text-center italic">
+              Percakapan ini sudah kedaluwarsa — hanya dapat dilihat, tidak
+              dapat dibalas.
+            </p>
           </div>
         )}
       </div>

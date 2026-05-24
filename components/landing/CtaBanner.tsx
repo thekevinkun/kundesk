@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { scrollReveal } from "@/lib/animations";
 
 const CtaBanner = () => {
+  const { isSignedIn } = useAuth();
+
   return (
-    <section className="py-12 px-6 lg:px-16 bg-(--color-bg-input)">
+    <section className="pt-12 px-6 lg:px-16 bg-(--color-bg-input)">
       <motion.div
         variants={scrollReveal}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
-        className="relative max-w-[1100px] mx-auto bg-white border border-(--color-border) rounded-[28px] px-8 py-20 text-center overflow-hidden shadow-[var(--shadow-sm)]"
+        className="relative max-w-[1100px] mx-auto bg-white border border-(--color-border) 
+          rounded-t-[28px] px-8 py-20 text-center overflow-hidden shadow-[var(--shadow-sm)]"
       >
         {/* Subtle radial glow */}
         <div
@@ -25,7 +29,8 @@ const CtaBanner = () => {
 
         {/* Decorative serif watermark — top right */}
         <div
-          className="absolute -top-4 right-10 text-[220px] leading-none pointer-events-none select-none opacity-[0.04] text-(--color-brand)"
+          className="absolute -top-4 right-10 text-[220px] text-(--color-brand)  
+            leading-none pointer-events-none select-none opacity-[0.04]"
           style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}
         >
           K
@@ -55,9 +60,21 @@ const CtaBanner = () => {
           </p>
 
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Link href="/sign-up" className="btn-brand text-[15px] py-3.5 px-8">
-              Daftar Gratis Sekarang →
-            </Link>
+            {isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="btn-brand text-[15px] py-3.5 px-8"
+              >
+                Buka Dashboard →
+              </Link>
+            ) : (
+              <Link
+                href="/sign-up"
+                className="btn-brand text-[15px] py-3.5 px-8"
+              >
+                Daftar Gratis Sekarang →
+              </Link>
+            )}
             <Link
               href="#how-it-works"
               onClick={(e) => {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 import { DashboardCard, FloatCard } from "@/components/landing/Hero";
 import { fadeUp, landingStagger, landingStaggerItem } from "@/lib/animations";
 
@@ -10,6 +11,8 @@ interface HeroSectionProps {
 }
 
 const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
+  const { isSignedIn } = useAuth();
+
   // Format org count — show real number or "1.200+" style
   const formattedCount =
     activeOrgCount >= 1000
@@ -75,9 +78,21 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           variants={landingStaggerItem}
           className="flex items-center justify-center gap-3 mb-4 flex-wrap"
         >
-          <Link href="/sign-up" className="btn-brand text-[15px] py-3.5 px-8">
-            Coba Gratis Sekarang →
-          </Link>
+          {!isSignedIn && (
+            <Link href="/sign-up" className="btn-brand text-[15px] py-3.5 px-8">
+              Coba Gratis Sekarang →
+            </Link>
+          )}
+
+          {isSignedIn && (
+            <Link
+              href="/dashboard"
+              className="btn-brand text-[15px] py-3.5 px-8"
+            >
+              Buka Dashboard →
+            </Link>
+          )}
+
           <Link
             href="#how-it-works"
             onClick={(e) => {

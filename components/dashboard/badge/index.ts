@@ -1,4 +1,2 @@
-import ConversationCountBadge from "./ConversationCountBadge";
-import DocCountBadge from "./DocCountBadge";
-
-export { ConversationCountBadge, DocCountBadge };
+export { default as ConversationCountBadge } from "./ConversationCountBadge";
+export { default as DocCountBadge } from "./DocCountBadge";

@@ -4,14 +4,24 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { fadeIn } from "@/lib/animations";
 import { NAV_LINKS } from "@/lib/landing-constants";
 
 const Navbar = () => {
+  const { isSignedIn } = useAuth();
+
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleNavClick = (href: string) => {
+    setMobileOpen(false);
+    // Smooth scroll to section
+    const id = href.replace("#", "");
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // Add shadow + border when user scrolls past 20px
   useEffect(() => {
@@ -36,13 +46,6 @@ const Navbar = () => {
     sections.forEach((s) => observer.observe(s));
     return () => observer.disconnect();
   }, []);
-
-  const handleNavClick = (href: string) => {
-    setMobileOpen(false);
-    // Smooth scroll to section
-    const id = href.replace("#", "");
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
 
   return (
     <motion.nav
@@ -95,16 +98,42 @@ const Navbar = () => {
       </div>
 
       {/* CTA — desktop */}
-      <div className="hidden lg:flex items-center gap-2">
-        <Link
-          href="/sign-in"
-          className="text-[13.5px] font-semibold text-(--color-text-700) px-4 py-2 rounded-full border border-transparent hover:border-(--color-border) hover:bg-(--color-bg-input) transition-all"
-        >
-          Masuk
-        </Link>
-        <Link href="/sign-up" className="btn-brand text-[13.5px] py-2.5 px-5">
-          Daftar Gratis →
-        </Link>
+      <div className="hidden lg:flex items-center gap-3">
+        {!isSignedIn && (
+          <>
+            <Link
+              href="/sign-in"
+              className="text-[13.5px] font-semibold text-(--color-text-700) px-4 py-2 rounded-full border border-transparent hover:border-(--color-border) hover:bg-(--color-bg-input) transition-all"
+            >
+              Masuk
+            </Link>
+            <Link
+              href="/sign-up"
+              className="btn-brand text-[13.5px] py-2.5 px-5"
+            >
+              Daftar Gratis →
+            </Link>
+          </>
+        )}
+
+        {isSignedIn && (
+          <>
+            <Link
+              href="/dashboard"
+              className="btn-brand text-[12.5px] py-2.5 px-5"
+            >
+              Buka Dashboard →
+            </Link>
+
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "!w-[29px] !h-[29px]",
+                },
+              }}
+            />
+          </>
+        )}
       </div>
 
       {/* Hamburger — mobile only */}
@@ -140,18 +169,41 @@ const Navbar = () => {
               </button>
             ))}
             <div className="border-t border-(--color-border) mt-2 pt-3 flex flex-col gap-2">
-              <Link
-                href="/sign-in"
-                className="px-4 py-3 text-[14px] font-semibold text-(--color-text-700) text-center border border-(--color-border) rounded-full"
-              >
-                Masuk
-              </Link>
-              <Link
-                href="/sign-up"
-                className="btn-brand text-[14px] py-3 text-center justify-center"
-              >
-                Daftar Gratis →
-              </Link>
+              {!isSignedIn && (
+                <>
+                  <Link
+                    href="/sign-in"
+                    className="px-4 py-3 text-[14px] font-semibold text-(--color-text-700) text-center border border-(--color-border) rounded-full"
+                  >
+                    Masuk
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    className="btn-brand text-[14px] py-3 text-center justify-center"
+                  >
+                    Daftar Gratis →
+                  </Link>
+                </>
+              )}
+
+              {isSignedIn && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Link
+                    href="/dashboard"
+                    className="btn-brand text-[14px] py-3 px-6 flex-1 text-center justify-center"
+                  >
+                    Buka Dashboard →
+                  </Link>
+
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: "!w-[29px] !h-[29px]",
+                      },
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         )}

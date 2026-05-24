@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
+import type { PlanName } from "@/types/billing";
 
 // Below-the-fold sections — dynamically imported so hero loads instantly
 const TrustStrip = dynamic(() => import("@/components/landing/TrustStrip"));
@@ -26,9 +27,10 @@ const FooterSection = dynamic(
 
 interface LandingPageProps {
   activeOrgCount: number;
+  currentPlan: PlanName | null; // null = not signed in
 }
 
-const LandingPage = ({ activeOrgCount }: LandingPageProps) => {
+const LandingPage = ({ activeOrgCount, currentPlan }: LandingPageProps) => {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       <Navbar />
@@ -37,7 +39,7 @@ const LandingPage = ({ activeOrgCount }: LandingPageProps) => {
       <FeaturesSection />
       <HowItWorksSection />
       <TestimonialsSection />
-      <PricingSection />
+      <PricingSection currentPlan={currentPlan} />
       <FaqSection />
       <CtaBanner />
       <FooterSection />

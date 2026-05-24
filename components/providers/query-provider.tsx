@@ -19,7 +19,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
         defaultOptions: {
           queries: {
             // Keep data fresh for 30 seconds before refetching in background
-            staleTime: 30 * 1000,
+            staleTime: 60 * 1000,
             // Retry failed queries once before showing error
             retry: 1,
           },
