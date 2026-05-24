@@ -14,6 +14,7 @@ import {
   triggerConversationMessage,
   triggerUsageUpdated,
 } from "@/lib/pusher";
+import { detectInjection, detectHandoffRequest } from "@/helpers/security";
 import type { ConversationTurn } from "@/types/chat";
 
 // ─── Input validation ───
@@ -22,46 +23,6 @@ const chatRequestSchema = z.object({
   sessionId: z.string().min(1).max(100),
   orgSlug: z.string().min(1).max(100),
 });
-
-// ─── Prompt injection detection ───
-const INJECTION_PATTERNS = [
-  /ignore\s+(previous|prior|above|all)\s+instructions?/i,
-  /forget\s+(everything|all|your|the)\s+(instructions?|rules?|context)/i,
-  /you\s+are\s+now\s+(a\s+)?(?!the\s+assistant)/i,
-  /act\s+as\s+(if\s+you\s+are\s+)?(?!a\s+helpful)/i,
-  /jailbreak/i,
-  /dan\s+mode/i,
-  /pretend\s+(you\s+are|to\s+be)/i,
-  /override\s+(your\s+)?(instructions?|rules?|guidelines?)/i,
-  /system\s*prompt/i,
-  /reveal\s+(your\s+)?(instructions?|prompt|rules?)/i,
-  /what\s+are\s+your\s+instructions/i,
-  /disregard\s+(your\s+)?(previous|prior|all)/i,
-  /bypass\s+(your\s+)?(restrictions?|filters?|rules?)/i,
-  /<\s*script/i,
-  /\{\{.*\}\}/i,
-];
-
-function detectInjection(message: string): boolean {
-  return INJECTION_PATTERNS.some((pattern) => pattern.test(message));
-}
-
-// ─── Handoff request detection ───
-const HANDOFF_PATTERNS = [
-  /bicara\s+(sama|dengan|ke)\s+(admin|staff|manusia|orang|cs|operator)/i,
-  /hubungi\s+(admin|staff|cs|operator)/i,
-  /minta\s+(bicara|ngobrol|chat)\s+(sama|dengan|ke)\s+(manusia|orang|admin|staff)/i,
-  /tolong\s+(sambungkan|hubungkan)\s+(ke|sama|dengan)\s+(admin|staff|manusia|orang)/i,
-  /ada\s+(manusia|orang|admin|staff)\s+(nya|yang\s+bisa\s+bantu)/i,
-  /bisa\s+(bicara|ngobrol|chat)\s+(sama|dengan)\s+(manusia|orang|admin|staff)/i,
-  /speak\s+to\s+(a\s+)?(human|agent|staff|person|admin)/i,
-  /talk\s+to\s+(a\s+)?(human|agent|staff|person|admin)/i,
-  /connect\s+me\s+(to|with)\s+(a\s+)?(human|agent|staff|person)/i,
-];
-
-function detectHandoffRequest(message: string): boolean {
-  return HANDOFF_PATTERNS.some((pattern) => pattern.test(message));
-}
 
 // ─── Mock streaming ───
 function createMockStream(

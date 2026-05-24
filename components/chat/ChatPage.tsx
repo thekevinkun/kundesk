@@ -3,16 +3,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useChatStore } from "@/stores/chat-store";
 import { useChatStream } from "@/hooks/use-chat-stream";
-import type { ChatbotConfig } from "@/types/chat";
-import ChatHeader from "./ChatHeader";
-import MessageBubble from "./MessageBubble";
-import TypingIndicator from "./TypingIndicator";
-import ChatInput from "./ChatInput";
 import {
+  ChatHeader,
+  ChatInput,
+  MessageBubble,
+  TypingIndicator,
   QuotaExceededState,
   GenericErrorBanner,
   PendingHandoffState,
-} from "./ChatErrorState";
+} from "@/components/chat";
+import type { ChatbotConfig, MessageRole } from "@/types/chat";
 
 interface ChatPageProps {
   config: ChatbotConfig;
@@ -25,7 +25,7 @@ interface ChatPageProps {
 // Payload shape from Pusher conversation:message event
 interface PusherMessagePayload {
   conversationId: number;
-  role: "user" | "assistant" | "human_agent";
+  role: MessageRole;
   content: string;
 }
 

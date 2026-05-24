@@ -8,21 +8,8 @@ import { db } from "@/lib/db";
 import { documents } from "@/lib/db/schema";
 import { generatePresignedUploadUrl } from "@/lib/aws/s3";
 import { checkUploadRateLimit } from "@/lib/redis";
+import { validateUploadRequest } from "@/helpers/security";
 import type { ApiResponse } from "@/types/api";
-
-// Allowed MIME types — enforced here and again in the processing route
-const ALLOWED_MIME_TYPES = [
-  "application/pdf",
-  "text/plain",
-  "text/markdown",
-  "text/x-markdown",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-] as const;
-type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
-const ALLOWED_EXTENSIONS = [".pdf", ".txt", ".md", ".docx"] as const;
-
-// Max file size: 10MB — matches the Project Bible spec
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 // Shape returned to the client on success
 interface UploadUrlData {
@@ -73,53 +60,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { filename, contentType, fileSize } = body;
 
-  // Validate filename
-  if (typeof filename !== "string" || !filename.trim()) {
+  // Validate the upload parameters — filename, MIME type, and file size
+  const validationError = validateUploadRequest({
+    filename,
+    contentType,
+    fileSize,
+  });
+  if (validationError) {
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Invalid filename", status: 400 },
+      { ok: false, error: validationError, status: 400 },
       { status: 400 },
     );
   }
 
-  const normalizedFilename = filename.trim().toLowerCase();
-  const hasAllowedExtension = ALLOWED_EXTENSIONS.some((ext) =>
-    normalizedFilename.endsWith(ext),
-  );
-  const hasAllowedMimeType = ALLOWED_MIME_TYPES.includes(
-    contentType as AllowedMimeType,
-  );
-
-  // Validate MIME type and extension together because browsers can report
-  // empty or inconsistent MIME types for markdown/docx files.
-  if (!hasAllowedMimeType && !hasAllowedExtension) {
-    return NextResponse.json<ApiResponse>(
-      {
-        ok: false,
-        error: "Only PDF, TXT, MD, and DOCX files are allowed",
-        status: 400,
-      },
-      { status: 400 },
-    );
-  }
-
-  // Validate file size — reject before issuing URL to avoid wasted uploads
-  // Tighten file-size validation for non-finite/negative values.
-  if (
-    typeof fileSize !== "number" ||
-    !Number.isFinite(fileSize) ||
-    fileSize <= 0 ||
-    fileSize > MAX_FILE_SIZE_BYTES
-  ) {
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: "File size must be under 10MB", status: 400 },
-      { status: 400 },
-    );
-  }
+  // Safe to cast — validateUploadRequest guarantees filename is a non-empty string
+  const safeFilename = (filename as string).trim();
 
   // Generate presigned URL — mock or real S3 depending on KUNDESK_STORAGE_MODE
   const { uploadUrl, s3Key } = await generatePresignedUploadUrl(
     orgId,
-    filename.trim(),
+    safeFilename,
     typeof contentType === "string" && contentType
       ? contentType
       : "application/octet-stream",
@@ -131,7 +91,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .insert(documents)
     .values({
       orgId,
-      name: filename.trim(),
+      name: safeFilename,
       s3Key,
       status: "processing",
       chunkCount: 0,
