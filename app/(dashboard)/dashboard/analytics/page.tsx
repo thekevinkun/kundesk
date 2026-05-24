@@ -23,6 +23,9 @@ export const metadata: Metadata = {
 export default async function AnalyticsRoute() {
   // requireOrg — throws if no session, caught by dashboard layout error boundary
   const { orgId } = await requireOrg();
+  const clusteredQuestionsPromise = getTopQuestions(orgId).then((rows) =>
+    clusterTopQuestions(rows),
+  );
 
   // All queries in parallel — no query waits for another
   const [
@@ -33,7 +36,7 @@ export default async function AnalyticsRoute() {
     handoffTrend,
     aiVsHandoff,
     peakHours,
-    topQuestions,
+    clusteredQuestions,
     channelBreakdown,
     responseTrend,
     dailyTrend,
@@ -45,15 +48,11 @@ export default async function AnalyticsRoute() {
     getHandoffTrend(orgId),
     getAiVsHandoffSplit(orgId),
     getPeakHours(orgId),
-    getTopQuestions(orgId),
+    clusteredQuestionsPromise,
     getChannelBreakdown(orgId),
     getResponseTimeTrend(orgId),
     getDailyMessageTrend(orgId),
   ]);
-
-  // Cluster raw questions into semantic topics — AI groups similar questions together
-  // Falls back to mock grouping when KUNDESK_AI_MODE=mock
-  const clusteredQuestions = await clusterTopQuestions(topQuestions);
 
   return (
     <AnalyticsPage
