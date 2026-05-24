@@ -207,7 +207,7 @@ export async function getTopQuestions(
         AND LENGTH(TRIM(${messages.content})) <= 200
       GROUP BY LOWER(TRIM(${messages.content}))
       ORDER BY count DESC
-      LIMIT 8
+      LIMIT 50
     `,
   );
 

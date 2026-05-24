@@ -13,6 +13,7 @@ import {
   getChannelBreakdown,
   getResponseTimeTrend,
 } from "@/lib/db/queries/analytics";
+import { clusterTopQuestions } from "@/lib/ai/cluster";
 import { getDailyMessageTrend } from "@/lib/db/queries/dashboard";
 
 export const metadata: Metadata = {
@@ -50,6 +51,10 @@ export default async function AnalyticsRoute() {
     getDailyMessageTrend(orgId),
   ]);
 
+  // Cluster raw questions into semantic topics — AI groups similar questions together
+  // Falls back to mock grouping when KUNDESK_AI_MODE=mock
+  const clusteredQuestions = await clusterTopQuestions(topQuestions);
+
   return (
     <AnalyticsPage
       totalConversations={totalConversations}
@@ -59,7 +64,7 @@ export default async function AnalyticsRoute() {
       aiCount={aiVsHandoff.aiCount}
       handoffCount={aiVsHandoff.handoffCount}
       handoffTrend={handoffTrend}
-      topQuestions={topQuestions}
+      topQuestions={clusteredQuestions}
       channelBreakdown={channelBreakdown}
       peakHours={peakHours}
       dailyTrend={dailyTrend}

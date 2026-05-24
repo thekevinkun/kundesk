@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import AnalyticsKpiStrip from "@/components/dashboard/analytics/AnalyticsKpiStrip";
 import { fadeUp, staggerContainer } from "@/lib/animations";
+import type { QuestionCluster } from "@/lib/ai/cluster";
 import type { DeliveryChannel } from "@/types/chat";
 
 // Dynamic imports — Chart.js is heavy, load after shell renders
@@ -81,7 +82,7 @@ interface AnalyticsPageProps {
   handoffCount: number;
   handoffTrend: { date: string; count: number }[];
   // Top questions
-  topQuestions: { question: string; count: number }[];
+  topQuestions: QuestionCluster[];
   // Channel breakdown
   channelBreakdown: { channel: DeliveryChannel; count: number }[];
   // Peak hours
