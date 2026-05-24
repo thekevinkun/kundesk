@@ -90,11 +90,19 @@ export function validateUploadRequest(
     normalizedFilename.endsWith(ext),
   );
 
-  const hasAllowedMimeType =
-    typeof contentType === "string" && ALLOWED_MIME_TYPES.has(contentType);
+  const normalizedContentType =
+    typeof contentType === "string" ? contentType.trim().toLowerCase() : "";
 
-  // Both checks together — browsers can report inconsistent MIME for .md and .docx
-  if (!hasAllowedMimeType && !hasAllowedExtension) {
+  const hasAllowedMimeType =
+    normalizedContentType !== "" &&
+    ALLOWED_MIME_TYPES.has(normalizedContentType);
+
+  // Always require an allowed extension. MIME is optional because some browsers
+  // omit it, but an explicit MIME must still match the allowlist.
+  if (
+    !hasAllowedExtension ||
+    (normalizedContentType !== "" && !hasAllowedMimeType)
+  ) {
     return "Only PDF, TXT, MD, and DOCX files are allowed";
   }
 
