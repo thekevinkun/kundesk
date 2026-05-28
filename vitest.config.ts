@@ -21,7 +21,7 @@ export default defineConfig({
     include: ["**/*.{test,spec}.{ts,tsx}"],
 
     // Exclude generated files
-    exclude: ["node_modules", ".next"],
+    exclude: ["node_modules", ".next", "e2e"],
   },
   resolve: {
     // Mirror the @/ alias from tsconfig.json
