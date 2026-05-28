@@ -59,6 +59,20 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const handleSend = async () => {
+    const trimmed = input.trim();
+    // In human mode — allow sending even during streaming (silent SSE, completes instantly)
+    if (!trimmed || (!isHumanMode && isStreaming)) return;
+    setInput("");
+    await sendMessage(trimmed);
+  };
+
+  // Chip tap: fill input and send immediately
+  const handleQuickReply = async (text: string) => {
+    if (hasUserMessage || isStreaming || isLoading) return;
+    await sendMessage(text);
+  };
+
   // Generate session ID once on mount
   useEffect(() => {
     if (!sessionId) setSessionId(crypto.randomUUID());
@@ -144,19 +158,16 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     };
   }, [orgId, addHumanAgentMessage, conversationId, channelToken]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
-    // In human mode — allow sending even during streaming (silent SSE, completes instantly)
-    if (!trimmed || (!isHumanMode && isStreaming)) return;
-    setInput("");
-    await sendMessage(trimmed);
-  };
-
-  // Chip tap: fill input and send immediately
-  const handleQuickReply = async (text: string) => {
-    if (hasUserMessage || isStreaming || isLoading) return;
-    await sendMessage(text);
-  };
+  // Notify parent window (widget iframe) when a new bot/staff message arrives
+  // Widget uses this to increment the unread badge when the panel is closed
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    // Only fire for assistant and human_agent — not the user's own messages
+    if (last.role === "user") return;
+    // postMessage to parent — safe even when not in an iframe (no-op)
+    window.parent.postMessage({ type: "kundesk:new_message" }, "*");
+  }, [messages]);
 
   // In human mode — input stays enabled, customer can send freely
   const isInputDisabled = isHumanMode ? false : isStreaming || isLoading;

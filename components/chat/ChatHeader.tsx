@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 interface ChatHeaderProps {
   name: string;
   orgName: string;
@@ -5,6 +9,18 @@ interface ChatHeaderProps {
 }
 
 const ChatHeader = ({ name, orgName, accentColor }: ChatHeaderProps) => {
+  // Detect iframe AFTER mount — avoids SSR/client hydration mismatch
+  // Server always renders the header; client hides it post-mount if embedded
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    // window.self !== window.top means we're inside an iframe
+    setIsEmbedded(window.self !== window.top);
+  }, []);
+
+  // Hidden when embedded — widget provides its own header
+  if (isEmbedded) return null;
+
   return (
     <header
       className="flex items-center gap-3 px-4 py-3 shadow-sm flex-shrink-0"
@@ -22,7 +38,7 @@ const ChatHeader = ({ name, orgName, accentColor }: ChatHeaderProps) => {
         <p className="text-white/75 text-xs">{orgName}</p>
       </div>
 
-      {/* Live indicator — always shown, bot is always online */}
+      {/* Live indicator */}
       <div className="ml-auto flex items-center gap-1.5">
         <span
           className="w-2 h-2 rounded-full bg-white animate-pulse"

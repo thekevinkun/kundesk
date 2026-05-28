@@ -58,6 +58,23 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Allow the chat page to be embedded in iframes — needed for the widget
+        // Overrides the SAMEORIGIN rule above for this path only
+        source: "/chat/:path*",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            // ALLOWALL lets any site embed this — intentional, widget is public
+            value: "ALLOWALL",
+          },
+          {
+            key: "Content-Security-Policy",
+            // frame-ancestors * allows embedding from any origin
+            value: "frame-ancestors *",
+          },
+        ],
+      },
     ];
   },
 };

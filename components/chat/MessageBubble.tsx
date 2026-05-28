@@ -53,7 +53,7 @@ const MessageBubble = ({
             : "rounded-2xl rounded-bl-sm text-gray-800"
         }`}
         style={{ background: isUser ? accentColor : "#f0f2f4" }}
-        aria-label={`Pesan dari ${isUser ? "kamu" : isHumanAgent ? "staff" : botName}`}
+        aria-label={`${isUser ? "Kamu" : isHumanAgent ? "Staff" : botName}: ${content}`}
       >
         <div className="prose-bubble">
           <ReactMarkdown>{content}</ReactMarkdown>
