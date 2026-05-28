@@ -164,9 +164,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Install Chromium only — Firefox and WebKit not needed
+      # Cache Playwright browsers — avoids re-downloading on every run
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      # Install Chromium + system deps — skipped if cache hit
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
+
+      # Install system deps only — browsers already cached
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       # Run all E2E tests — webServer block in playwright.config.ts starts Next.js
       - name: Run Playwright tests
