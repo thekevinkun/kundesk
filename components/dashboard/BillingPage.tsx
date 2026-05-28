@@ -1,12 +1,12 @@
 "use client";
 
-import type { BillingPageData, PlanName } from "@/types/billing";
 import {
   CurrentPlanCard,
   PlanCard,
   CancelDialog,
   PaymentHistoryCard,
-} from "./billing";
+} from "@/components/dashboard/billing";
+import type { BillingPageData, PlanName } from "@/types/billing";
 
 interface BillingPageProps {
   data: BillingPageData;
@@ -39,8 +39,10 @@ const BillingPage = ({ data }: BillingPageProps) => {
         </p>
 
         {/* Payment security note */}
-        <div className="mb-9 px-2 py-3 rounded-(--radius-sm) bg-gray-400/15
-          border border-(--color-border-sm) flex items-start gap-3">
+        <div
+          className="mb-9 px-2 py-3 rounded-(--radius-sm) bg-gray-400/15
+          border border-(--color-border-sm) flex items-start gap-3"
+        >
           <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">
             🔒
           </span>
@@ -49,8 +51,9 @@ const BillingPage = ({ data }: BillingPageProps) => {
               Pembayaran aman via Midtrans
             </p>
             <p className="text-xs text-(--color-text-500) leading-relaxed">
-              Kami mendukung Transfer Bank (BCA, Mandiri, BNI, BRI), GoPay, QRIS,
-              OVO, dan DANA. Tidak ada biaya tersembunyi. Tagihan dalam Rupiah.
+              Kami mendukung Transfer Bank (BCA, Mandiri, BNI, BRI), GoPay,
+              QRIS, OVO, dan DANA. Tidak ada biaya tersembunyi. Tagihan dalam
+              Rupiah.
             </p>
           </div>
         </div>

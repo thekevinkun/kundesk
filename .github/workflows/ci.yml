@@ -1,5 +1,5 @@
 # CI pipeline — runs on every push and PR to master
-# Checks: TypeScript, ESLint, Vitest, Build
+# Checks: TypeScript, ESLint, Vitest, Build, Playwright E2E
 # CodeRabbit runs separately as a GitHub App on every PR
 
 name: CI
@@ -82,10 +82,101 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Vitest — all 101 tests must pass
+      # Vitest — all tests must pass
       - name: Test
         run: npm run test -- --run
 
       # Build — catches Next.js compilation failures and import errors
       - name: Build
         run: npm run build
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    # Only run after check job passes — no point running E2E if build is broken
+    needs: check
+
+    env:
+      # Real credentials — loaded from GitHub repository secrets
+      DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+      CLERK_WEBHOOK_SECRET: ${{ secrets.E2E_CLERK_WEBHOOK_SECRET }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: /dashboard
+      NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: /dashboard
+
+      # E2E test account
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_ORG_ID: ${{ secrets.E2E_ORG_ID }}
+      E2E_ORG_SLUG: ${{ secrets.E2E_ORG_SLUG }}
+
+      # All services in mock mode — no real API calls during E2E
+      KUNDESK_AI_MODE: mock
+      KUNDESK_EMBEDDING_MODE: mock
+      KUNDESK_STORAGE_MODE: mock
+      KUNDESK_PAYMENT_MODE: mock
+      KUNDESK_REALTIME_MODE: mock
+      KUNDESK_EMAIL_MODE: mock
+
+      # Midtrans — real server key needed for webhook signature verification
+      MIDTRANS_SERVER_KEY: ${{ secrets.E2E_MIDTRANS_SERVER_KEY }}
+      MIDTRANS_CLIENT_KEY: Mid-client-fake
+      MIDTRANS_IS_PRODUCTION: "false"
+
+      # Other services — fake values fine since modes are all mock
+      UPSTASH_REDIS_REST_URL: https://fake.upstash.io
+      UPSTASH_REDIS_REST_TOKEN: fake_token
+      NEXT_PUBLIC_PUSHER_KEY: fake_pusher_key
+      NEXT_PUBLIC_PUSHER_CLUSTER: ap1
+      PUSHER_APP_ID: fake_pusher_app_id
+      PUSHER_KEY: fake_pusher_key
+      PUSHER_SECRET: fake_pusher_secret
+      PUSHER_CLUSTER: ap1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_POSTHOG_KEY: phc_fake
+      NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+      NEXT_PUBLIC_SENTRY_DSN: https://fake@fake.ingest.sentry.io/fake
+      SENTRY_DSN: https://fake@fake.ingest.sentry.io/fake
+      SENTRY_ORG: fake_org
+      SENTRY_PROJECT: fake_project
+      LOGO_URL: https://placeholder.example.com/logo.png
+      CRON_SECRET: fake_cron_secret
+      AWS_S3_BUCKET: fake-bucket
+      AWS_ACCESS_KEY_ID: AKIAFAKE
+      AWS_SECRET_ACCESS_KEY: fake_secret
+      AWS_REGION: ap-southeast-1
+      RESEND_API_KEY: re_fake
+      RESEND_TO_EMAIL: fake@example.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Install Chromium only — Firefox and WebKit not needed
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      # Run all E2E tests — webServer block in playwright.config.ts starts Next.js
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      # Upload Playwright report on failure — downloadable from GitHub Actions UI
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

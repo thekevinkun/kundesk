@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env.local
 .env*.local
+.env.e2e
 
 # vercel
 .vercel
@@ -43,3 +44,8 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Playwright
+e2e/.auth/
+test-results/
+playwright-report/
