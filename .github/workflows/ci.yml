@@ -127,8 +127,8 @@ jobs:
       MIDTRANS_IS_PRODUCTION: "false"
 
       # Other services — fake values fine since modes are all mock
-      UPSTASH_REDIS_REST_URL: https://fake.upstash.io
-      UPSTASH_REDIS_REST_TOKEN: fake_token
+      UPSTASH_REDIS_REST_URL: ${{ secrets.E2E_UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.E2E_UPSTASH_REDIS_REST_TOKEN }}
       NEXT_PUBLIC_PUSHER_KEY: fake_pusher_key
       NEXT_PUBLIC_PUSHER_CLUSTER: ap1
       PUSHER_APP_ID: fake_pusher_app_id
