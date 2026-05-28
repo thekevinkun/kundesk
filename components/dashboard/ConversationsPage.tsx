@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
@@ -54,6 +54,14 @@ const ConversationsPage = ({
     conversationId: number;
     message: ConversationMessage;
   } | null>(null);
+  const [expandedConversationId, setExpandedConversationId] = useState<
+    number | null
+  >(highlightId ?? null);
+
+  useEffect(() => {
+    if (highlightId == null) return;
+    setExpandedConversationId(highlightId);
+  }, [highlightId]);
 
   // Called by ConversationRow after successful takeover API call
   const handleTakeover = useCallback((conversationId: number) => {
@@ -253,6 +261,10 @@ const ConversationsPage = ({
                     convo={convo}
                     onTakeover={handleTakeover}
                     onReturn={handleReturn}
+                    isExpanded={expandedConversationId === convo.id}
+                    onExpandedChange={(expanded) =>
+                      setExpandedConversationId(expanded ? convo.id : null)
+                    }
                     newMessage={
                       latestMessage?.conversationId === convo.id
                         ? latestMessage.message
@@ -380,6 +392,10 @@ const ConversationsPage = ({
                   convo={convo}
                   onTakeover={handleTakeover}
                   onReturn={handleReturn}
+                  isExpanded={expandedConversationId === convo.id}
+                  onExpandedChange={(expanded) =>
+                    setExpandedConversationId(expanded ? convo.id : null)
+                  }
                   newMessage={
                     latestMessage?.conversationId === convo.id
                       ? latestMessage.message

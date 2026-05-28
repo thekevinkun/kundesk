@@ -1,10 +1,7 @@
-// Inline conversation dialog — slides open below a conversation row
-// Shows full message history (customer + AI + staff) in chat bubble layout
-// Staff can reply and return to AI from here
-
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
+import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import type { ConversationMessage } from "@/types/api";
@@ -191,7 +188,9 @@ const ConversationDialog = ({
     >
       <div className="border-t border-(--color-border) bg-(--color-bg-page)">
         {/* Dialog header */}
-        <div className="flex flex-col gap-2 px-4 py-3 border-b border-(--color-border-sm) sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex flex-col gap-2 px-4 py-3 border-b border-(--color-border-sm) 
+          sm:flex-row sm:items-center sm:justify-between sm:px-5"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[12px] font-bold text-(--color-text-500) uppercase tracking-[0.06em]">
               Riwayat Percakapan
@@ -274,12 +273,9 @@ const ConversationDialog = ({
                       <div
                         className={`px-3 py-2 text-[13px] leading-relaxed ${config.bubble}`}
                       >
-                        {msg.content.split("\n").map((line, i, arr) => (
-                          <span key={i}>
-                            {line}
-                            {i < arr.length - 1 && <br />}
-                          </span>
-                        ))}
+                        <div className="prose-bubble">
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
                       </div>
 
                       {/* Timestamp */}

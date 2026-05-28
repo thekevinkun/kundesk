@@ -372,6 +372,43 @@
     box-shadow: 0 6px 20px rgba(6, 148, 148, 0.3);
   }
 
+  /* Markdown prose inside chat bubbles — inherits parent text color */
+  .prose-bubble p {
+    margin-bottom: 0.6em;
+  }
+  .prose-bubble p:last-child {
+    margin-bottom: 0;
+  }
+  .prose-bubble strong {
+    font-weight: 700;
+  }
+  .prose-bubble ol {
+    list-style: decimal;
+    padding-left: 1.25em;
+    margin: 0.5em 0 0.6em;
+  }
+  .prose-bubble ul {
+    list-style: disc;
+    padding-left: 1.25em;
+    margin: 0.5em 0 0.6em;
+  }
+  .prose-bubble li {
+    margin-bottom: 0.3em;
+    line-height: 1.5;
+  }
+  .prose-bubble li:last-child {
+    margin-bottom: 0;
+  }
+  /* Paragraph inside a list item — react-markdown wraps li content in <p> */
+  .prose-bubble li p {
+    margin-bottom: 0;
+  }
+  /* Space after a list before the next paragraph */
+  .prose-bubble ol + p,
+  .prose-bubble ul + p {
+    margin-top: 0.6em;
+  }
+
   /* ── Live indicator pulse ── */
   .live-dot {
     width: 6px;

@@ -114,6 +114,8 @@ interface ConversationRowProps {
   convo: ConversationRowType;
   onTakeover: (conversationId: number) => void;
   onReturn: (conversationId: number) => void;
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   // New message from Pusher — passed down from ConversationsPage
   newMessage: ConversationMessage | null;
   isHighlighted?: boolean;
@@ -123,6 +125,8 @@ const ConversationRow = ({
   convo,
   onTakeover,
   onReturn,
+  isExpanded,
+  onExpandedChange,
   newMessage,
   isHighlighted,
 }: ConversationRowProps) => {
@@ -137,9 +141,6 @@ const ConversationRow = ({
 
   const [isTakingOver, startTakeoverTransition] = useTransition();
   const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
-
-  // Auto-open when navigated from search — isHighlighted means this row was the target
-  const [isExpanded, setIsExpanded] = useState(isHighlighted ?? false);
 
   const rowRef = useRef<HTMLTableRowElement>(null);
 
@@ -161,7 +162,7 @@ const ConversationRow = ({
         if (!res.ok) throw new Error("Failed to take over");
         setHandoffStatus("human");
         // Auto-expand dialog after taking over — staff needs to see the messages
-        setIsExpanded(true);
+        onExpandedChange(true);
         onTakeover(convo.id);
         toast.success("Kamu sekarang menangani percakapan ini");
       } catch {
@@ -172,7 +173,7 @@ const ConversationRow = ({
 
   const handleReturn = () => {
     setHandoffStatus("ai");
-    setIsExpanded(false);
+    onExpandedChange(false);
     onReturn(convo.id);
   };
 
@@ -249,7 +250,7 @@ const ConversationRow = ({
             // Expired and pending: no sign clearing on expand
           }
 
-          setIsExpanded((p) => !p);
+          onExpandedChange(!isExpanded);
         }}
         className={`group transition-colors cursor-pointer ${
           isExpired
@@ -363,6 +364,8 @@ interface ConversationCardProps {
   convo: ConversationRowType;
   onTakeover: (conversationId: number) => void;
   onReturn: (conversationId: number) => void;
+  isExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   newMessage: ConversationMessage | null;
   isHighlighted?: boolean;
 }
@@ -371,6 +374,8 @@ export const ConversationMobileCard = ({
   convo,
   onTakeover,
   onReturn,
+  isExpanded,
+  onExpandedChange,
   newMessage,
   isHighlighted,
 }: ConversationCardProps) => {
@@ -383,8 +388,6 @@ export const ConversationMobileCard = ({
 
   const [isTakingOver, startTakeoverTransition] = useTransition();
   const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
-  const [isExpanded, setIsExpanded] = useState(isHighlighted ?? false);
-
   const cardRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -401,7 +404,7 @@ export const ConversationMobileCard = ({
         });
         if (!res.ok) throw new Error("Failed to take over");
         setHandoffStatus("human");
-        setIsExpanded(true);
+        onExpandedChange(true);
         onTakeover(convo.id);
         toast.success("Kamu sekarang menangani percakapan ini");
       } catch {
@@ -412,7 +415,7 @@ export const ConversationMobileCard = ({
 
   const handleReturn = () => {
     setHandoffStatus("ai");
-    setIsExpanded(false);
+    onExpandedChange(false);
     onReturn(convo.id);
   };
 
@@ -471,7 +474,7 @@ export const ConversationMobileCard = ({
           if (!isExpanded && !isPending && !isExpired && hasUnread) {
             clearUnreadConversation(convo.id);
           }
-          setIsExpanded((p) => !p);
+          onExpandedChange(!isExpanded);
         }}
       >
         <div className="p-4">

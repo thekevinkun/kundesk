@@ -1,3 +1,5 @@
+import ReactMarkdown from "react-markdown";
+
 // Animated cursor shown at the end of a streaming assistant message
 const StreamingCursor = () => (
   <span
@@ -51,14 +53,11 @@ const MessageBubble = ({
             : "rounded-2xl rounded-bl-sm text-gray-800"
         }`}
         style={{ background: isUser ? accentColor : "#f0f2f4" }}
-        aria-label={`${isUser ? "Kamu" : isHumanAgent ? "Staff" : botName}: ${content}`}
+        aria-label={`Pesan dari ${isUser ? "kamu" : isHumanAgent ? "staff" : botName}`}
       >
-        {content.split("\n").map((line, i, arr) => (
-          <span key={i}>
-            {line}
-            {i < arr.length - 1 && <br />}
-          </span>
-        ))}
+        <div className="prose-bubble">
+          <ReactMarkdown>{content}</ReactMarkdown>
+        </div>
         {isStreaming && <StreamingCursor />}
       </div>
     </div>
