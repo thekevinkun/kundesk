@@ -71,8 +71,11 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
                 >
                   {/* Background fill bar */}
                   <div
-                    className="absolute inset-y-0 left-0 bg-(--color-brand-light) rounded-[10px] transition-all duration-700"
-                    style={{ width: `${fillPct}%` }}
+                    className="absolute inset-y-0 left-0 rounded-[10px] transition-[width,background-color] duration-700"
+                    style={{
+                      width: `${fillPct}%`,
+                      backgroundColor: "var(--color-brand-light)",
+                    }}
                     aria-hidden="true"
                   />
 
@@ -84,7 +87,8 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
                     </span>
 
                     {/* Topic label */}
-                    <span className="flex-1 text-[13px] text-(--color-text-700) font-semibold truncate">
+                    <span className="flex-1 text-[13px] text-(--color-text-700)
+                      font-semibold truncate">
                       {item.topic}
                     </span>
 

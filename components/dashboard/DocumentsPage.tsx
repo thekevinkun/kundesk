@@ -120,97 +120,99 @@ const DocumentsPage = () => {
       variants={fadeUp}
       initial="hidden"
       animate="visible"
-      className="max-w-4xl mx-auto"
+      className="flex flex-col items-center"
     >
-      {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
-          Dokumen
-        </h1>
-        <p className="text-[13px] text-(--color-text-500) mt-1">
-          Upload menu, FAQ, atau daftar harga — AI kamu akan mempelajarinya
-          otomatis.
-        </p>
-      </div>
-
-      {/* Main card */}
-      <div className="card-base overflow-hidden">
-        {/* Card header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-(--color-border-sm)">
-          <div>
-            <div className="text-[15px] font-bold text-(--color-text-900)">
-              Knowledge Base
-            </div>
-            <div className="text-[11.5px] text-(--color-text-400) mt-0.5">
-              {isLoading
-                ? "Memuat..."
-                : `${visibleDocuments.length} dokumen · ${totalChunks} chunks`}
-            </div>
-          </div>
+      <div className="w-full max-w-4xl mx-auto">
+        {/* Page header */}
+        <div className="mb-6">
+          <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
+            Dokumen
+          </h1>
+          <p className="text-[13px] text-(--color-text-500) mt-1">
+            Upload menu, FAQ, atau daftar harga — AI kamu akan mempelajarinya
+            otomatis.
+          </p>
         </div>
 
-        {/* Tip panel */}
-        <TipPanel />
-
-        {/* Document list */}
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          aria-live="polite"
-          aria-label="Daftar dokumen"
-        >
-          {/* Skeleton rows while loading */}
-          {isLoading && (
-            <>
-              <DocumentRowSkeleton />
-              <DocumentRowSkeleton />
-              <DocumentRowSkeleton />
-            </>
-          )}
-
-          {/* In-flight uploads — above server docs */}
-          <AnimatePresence>
-            {uploadingList.map((f) => (
-              <UploadingRow
-                key={f.id}
-                filename={f.filename}
-                progress={f.progress}
-                error={f.error}
-              />
-            ))}
-          </AnimatePresence>
-
-          {/* Server documents */}
-          {!isLoading &&
-            visibleDocuments.map((doc) => (
-              <DocumentRow
-                key={doc.id}
-                doc={doc}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                isDeleting={
-                  deleteMutation.isPending &&
-                  deleteMutation.variables === doc.id
-                }
-              />
-            ))}
-
-          {/* Empty state */}
-          {isEmpty && (
-            <div className="py-14 text-center">
-              <div className="text-4xl mb-3">📂</div>
-              <div className="text-[14px] font-semibold text-(--color-text-500)">
-                Belum ada dokumen
+        {/* Main card */}
+        <div className="card-base overflow-hidden">
+          {/* Card header */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-(--color-border-sm)">
+            <div>
+              <div className="text-[15px] font-bold text-(--color-text-900)">
+                Knowledge Base
               </div>
-              <div className="text-[12px] text-(--color-text-400) mt-1">
-                Upload dokumen pertama kamu di bawah
+              <div className="text-[11.5px] text-(--color-text-400) mt-0.5">
+                {isLoading
+                  ? "Memuat..."
+                  : `${visibleDocuments.length} dokumen · ${totalChunks} chunks`}
               </div>
             </div>
-          )}
-        </motion.div>
+          </div>
 
-        {/* Upload zone */}
-        <UploadZone onFiles={handleFiles} />
+          {/* Tip panel */}
+          <TipPanel />
+
+          {/* Document list */}
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            aria-live="polite"
+            aria-label="Daftar dokumen"
+          >
+            {/* Skeleton rows while loading */}
+            {isLoading && (
+              <>
+                <DocumentRowSkeleton />
+                <DocumentRowSkeleton />
+                <DocumentRowSkeleton />
+              </>
+            )}
+
+            {/* In-flight uploads — above server docs */}
+            <AnimatePresence>
+              {uploadingList.map((f) => (
+                <UploadingRow
+                  key={f.id}
+                  filename={f.filename}
+                  progress={f.progress}
+                  error={f.error}
+                />
+              ))}
+            </AnimatePresence>
+
+            {/* Server documents */}
+            {!isLoading &&
+              visibleDocuments.map((doc) => (
+                <DocumentRow
+                  key={doc.id}
+                  doc={doc}
+                  onDelete={(id) => deleteMutation.mutate(id)}
+                  isDeleting={
+                    deleteMutation.isPending &&
+                    deleteMutation.variables === doc.id
+                  }
+                />
+              ))}
+
+            {/* Empty state */}
+            {isEmpty && (
+              <div className="py-14 text-center">
+                <div className="text-4xl mb-3">📂</div>
+                <div className="text-[14px] font-semibold text-(--color-text-500)">
+                  Belum ada dokumen
+                </div>
+                <div className="text-[12px] text-(--color-text-400) mt-1">
+                  Upload dokumen pertama kamu di bawah
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Upload zone */}
+          <UploadZone onFiles={handleFiles} />
+        </div>
       </div>
     </motion.div>
   );

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useTheme } from "next-themes";
+import { useEffect, useRef, useState } from "react";
 import {
   Chart,
   BarController,
@@ -24,7 +23,23 @@ const DAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const BarChart = ({ data }: BarChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
-  const { resolvedTheme } = useTheme();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,9 +60,11 @@ const BarChart = ({ data }: BarChartProps) => {
       style.getPropertyValue("--color-border-sm").trim() || "#f0f2f4";
     const tickColor =
       style.getPropertyValue("--color-text-400").trim() || "#a0aec0";
-    // Muted bar color — slightly visible in both themes
-    const mutedBar =
-      style.getPropertyValue("--color-border").trim() || "#e8ecf0";
+    // Muted bar color should invert with theme:
+    // dark in light mode, light in dark mode.
+    const mutedBar = isDarkMode
+      ? style.getPropertyValue("--color-chart-muted-soft").trim() || "#7888a0"
+      : style.getPropertyValue("--color-chart-muted").trim() || "#2d3748";
 
     chartRef.current?.destroy();
 
@@ -116,7 +133,7 @@ const BarChart = ({ data }: BarChartProps) => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data, resolvedTheme]);
+  }, [data, isDarkMode]);
 
   return (
     <div className="h-[160px]">

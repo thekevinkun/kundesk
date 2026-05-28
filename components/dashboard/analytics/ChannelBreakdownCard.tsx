@@ -108,7 +108,7 @@ const ChannelBreakdownCard = ({ data }: ChannelBreakdownCardProps) => {
           </p>
         </div>
       ) : (
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-6">
           {/* Donut */}
           <div className="relative w-[120px] h-[120px] flex-shrink-0">
             <canvas ref={canvasRef} />
@@ -124,7 +124,7 @@ const ChannelBreakdownCard = ({ data }: ChannelBreakdownCardProps) => {
           </div>
 
           {/* Legend — one row per channel */}
-          <div className="flex-1 space-y-3">
+          <div className="max-w-sm lg:max-w-full flex-1 space-y-3">
             {data.map((item) => {
               const config = CHANNEL_CONFIG[item.channel];
               const pct = Math.round((item.count / total) * 100);

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { Sheet, SheetTitle, SheetContent } from "@/components/ui/sheet";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { slideInLeft } from "@/lib/animations";
 import { SidebarContent } from "./sidebar";
@@ -18,7 +19,8 @@ const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
     <>
       {/* Desktop sidebar — fixed, always visible on lg+ */}
       <motion.aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-screen w-[230px] bg-(--color-bg-card) border-r border-(--color-border) z-50"
+        className="hidden lg:flex flex-col fixed top-0 left-0 h-dvh w-3/4  lg:w-[230px]
+          bg-(--color-bg-card) border-r border-(--color-border) z-50"
         variants={slideInLeft}
         initial="hidden"
         animate="visible"
@@ -28,9 +30,13 @@ const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
 
       {/* Mobile sidebar — Sheet drawer, triggered by topbar hamburger */}
       <Sheet open={mobileOpen} onOpenChange={(open) => !open && closeMobile()}>
+        <VisuallyHidden>
+          <SheetTitle>Navigation Menu</SheetTitle>
+        </VisuallyHidden>
+
         <SheetContent
           side="left"
-          className="p-0 w-[230px] bg-(--color-bg-card) border-r border-(--color-border)"
+          className="p-0 bg-(--color-bg-card) border-r border-(--color-border)"
         >
           <SidebarContent
             onNavClick={closeMobile}

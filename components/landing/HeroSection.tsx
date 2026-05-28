@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
 import { DashboardCard, FloatCard } from "@/components/landing/Hero";
@@ -65,7 +66,8 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
         {/* Subheadline */}
         <motion.p
           variants={landingStaggerItem}
-          className="text-[17px] text-(--color-text-500) max-w-[520px] mx-auto leading-relaxed mb-9"
+          className="text-[13px] sm:text-[17px] text-(--color-text-500) 
+            max-w-[480px] sm:max-w-[520px] mx-auto leading-relaxed mb-9"
         >
           Upload dokumen bisnis kamu — menu, FAQ, harga.
           <br />
@@ -110,7 +112,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
         {/* Trust micro-copy */}
         <motion.p
           variants={landingStaggerItem}
-          className="text-[12.5px] text-(--color-text-400) mb-16"
+          className="text-[11px] sm:text-[12.5px] text-(--color-text-400) mb-16"
         >
           ✓ Setup{" "}
           <span className="text-(--color-brand) font-semibold">5 menit</span>
@@ -134,37 +136,14 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           className="relative rounded-t-3xl overflow-hidden"
           style={{ height: "520px" }}
         >
-          {/* Sky-to-hills gradient */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, #c8e8e8 0%, #a8d8d8 20%, #7ec8c8 42%, #5eb8b8 55%, #8fbc8f 65%, #6aaa6a 76%, #4a8a4a 100%)",
-            }}
-          />
-
-          {/* Cloud layer */}
-          <div
-            className="absolute top-[10%] left-[8%] h-12 pointer-events-none"
-            style={{
-              width: "180px",
-              background: "rgba(255,255,255,0.45)",
-              borderRadius: "50px",
-              filter: "blur(6px)",
-              boxShadow:
-                "110px -16px 0 -8px rgba(255,255,255,0.35), 230px 8px 0 -4px rgba(255,255,255,0.3)",
-            }}
-          />
-
-          {/* Rolling hills foreground */}
-          <div
-            className="absolute bottom-0 left-[-10%] right-[-10%]"
-            style={{
-              height: "200px",
-              background:
-                "linear-gradient(180deg, transparent 0%, #4a7c59 40%, #3d6b4a 100%)",
-              borderRadius: "60% 60% 0 0 / 30% 30% 0 0",
-            }}
+          {/* Hero scenic background */}
+          <Image 
+            src="/images/bg-hero-market.png"
+            alt="Market scenic background"
+            fill
+            sizes="100vw"
+            className="object-cover"
+            priority
           />
 
           {/* ── Dashboard mockup card ── */}
@@ -177,10 +156,10 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           >
             <span className="w-2 h-2 rounded-full bg-(--color-brand) animate-pulse flex-shrink-0" />
             <div>
-              <div className="text-[12px] font-bold text-(--color-text-900)">
+              <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
                 Sari Assistant sedang online
               </div>
-              <div className="text-[10.5px] text-(--color-text-400)">
+              <div className="text-[8.5px] sm:text-[1] text-(--color-text-400)">
                 142 percakapan hari ini ⚡
               </div>
             </div>
@@ -195,10 +174,10 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
               💬
             </div>
             <div>
-              <div className="text-[12px] font-bold text-(--color-text-900)">
+              <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
                 Dijawab otomatis
               </div>
-              <div className="text-[10.5px] text-(--color-text-400)">
+              <div className="text-[8.5px] sm:text-[1] text-(--color-text-400)">
                 97.3% akurasi bulan ini
               </div>
             </div>
@@ -206,7 +185,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
 
           {/* ── Floating card: right — active businesses ── */}
           <FloatCard delay={2.5} className="top-[24%] right-[3%] px-3.5 py-3">
-            <div className="text-[10.5px] text-(--color-text-400) mb-1.5">
+            <div className="text-[8.5px] sm:text-[1] text-(--color-text-400) mb-1.5">
               Bisnis yang aktif
             </div>
 
@@ -235,10 +214,10 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
                 +
               </div>
             </div>
-            <div className="text-[12px] font-bold text-(--color-text-900)">
+            <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
               {formattedCount} bisnis aktif
             </div>
-            <div className="text-[10.5px] text-(--color-text-400) mt-0.5">
+            <div className="text-[8.5px] sm:text-[1] text-(--color-text-400) mt-0.5">
               Kelola CS mereka pakai Kundesk
             </div>
           </FloatCard>

@@ -137,14 +137,25 @@ const Navbar = () => {
       </div>
 
       {/* Hamburger — mobile only */}
-      <button
-        onClick={() => setMobileOpen((p) => !p)}
-        className="lg:hidden w-9 h-9 flex items-center justify-center rounded-[10px] bg-(--color-bg-input) border border-(--color-border) text-(--color-text-500)"
-        aria-label="Buka menu"
-        aria-expanded={mobileOpen}
-      >
-        <span className="text-base">{mobileOpen ? "✕" : "☰"}</span>
-      </button>
+      <div className="flex items-center gap-3 lg:hidden">
+        <button
+          onClick={() => setMobileOpen((p) => !p)}
+          className=" w-9 h-9 flex items-center justify-center rounded-[10px] bg-(--color-bg-input) 
+            border border-(--color-border) text-(--color-text-500)"
+          aria-label="Buka menu"
+          aria-expanded={mobileOpen}
+        >
+          <span className="text-base">{mobileOpen ? "✕" : "☰"}</span>
+        </button>
+
+        <UserButton
+          appearance={{
+            elements: {
+              avatarBox: "!w-[29px] !h-[29px]",
+            },
+          }}
+        />
+      </div>
 
       {/* Mobile menu dropdown */}
       <AnimatePresence>
@@ -157,13 +168,15 @@ const Navbar = () => {
               duration: 0.2,
               ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
             }}
-            className="absolute top-[68px] left-0 right-0 bg-white border-b border-(--color-border) shadow-lg p-4 flex flex-col gap-1 lg:hidden"
+            className="absolute top-[68px] left-0 right-0 bg-white border-b 
+              border-(--color-border) shadow-lg p-4 flex flex-col gap-1 lg:hidden"
           >
             {NAV_LINKS.map(({ label, href }) => (
               <button
                 key={href}
                 onClick={() => handleNavClick(href)}
-                className="text-left px-4 py-3 rounded-[10px] text-[14px] font-medium text-(--color-text-700) hover:bg-(--color-bg-input) transition-all"
+                className="text-left px-4 py-3 rounded-[10px] text-[14px] font-medium 
+                  text-(--color-text-700) hover:bg-(--color-bg-input) transition-all"
               >
                 {label}
               </button>
@@ -190,18 +203,10 @@ const Navbar = () => {
                 <div className="flex items-center gap-3 px-4 py-3">
                   <Link
                     href="/dashboard"
-                    className="btn-brand text-[14px] py-3 px-6 flex-1 text-center justify-center"
+                    className="btn-brand text-[14px] py-3 px-6 text-center justify-center"
                   >
                     Buka Dashboard →
                   </Link>
-
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: "!w-[29px] !h-[29px]",
-                      },
-                    }}
-                  />
                 </div>
               )}
             </div>

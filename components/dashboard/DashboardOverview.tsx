@@ -182,8 +182,8 @@ const DashboardOverview = ({
         <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
           Dashboard
         </h1>
-        <p className="text-[13px] text-(--color-text-500) mt-1">
-          Halo {orgName} 👋 — Selamat datang kembali di Kundesk
+        <p className="text-[14px] text-(--color-text-500) mt-1">
+          Selamat datang, {orgName} 👋
         </p>
       </div>
 

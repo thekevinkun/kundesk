@@ -114,7 +114,7 @@ const AnalyticsPage = ({
         <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
           Analytics
         </h1>
-        <p className="text-[13px] text-(--color-text-500) mt-1">
+        <p className="text-[13px] max-w-sm sm:max-w-lg text-(--color-text-500) mt-1">
           Pahami bagaimana pelanggan berinteraksi dengan chatbot kamu.
         </p>
       </div>

@@ -182,301 +182,305 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
       variants={fadeUp}
       initial="hidden"
       animate="visible"
-      className="max-w-3xl mx-auto"
+      className="flex flex-col items-center"
     >
-      {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
-          Konfigurasi Chatbot
-        </h1>
-        <p className="text-[13px] text-(--color-text-500) mt-1">
-          Sesuaikan nama, bahasa, nada bicara, dan tampilan chatbot kamu.
-        </p>
-      </div>
+      <div className="max-w-3xl mx-auto">
+        {/* Page header */}
+        <div className="mb-6">
+          <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
+            Konfigurasi Chatbot
+          </h1>
+          <p className="text-[13px] text-(--color-text-500) mt-1">
+            Sesuaikan nama, bahasa, nada bicara, dan tampilan chatbot kamu.
+          </p>
+        </div>
 
-      {/* Form — action is the Server Action wrapper */}
-      <form action={action}>
-        {/* Hidden inputs for Select values — Selects are controlled but form needs raw values */}
-        <input type="hidden" name="language" value={language} />
-        <input type="hidden" name="tone" value={tone} />
-        <input type="hidden" name="accentColor" value={accentColor} />
+        {/* Form — action is the Server Action wrapper */}
+        <form action={action}>
+          {/* Hidden inputs for Select values — Selects are controlled but form needs raw values */}
+          <input type="hidden" name="language" value={language} />
+          <input type="hidden" name="tone" value={tone} />
+          <input type="hidden" name="accentColor" value={accentColor} />
 
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="space-y-4 max-w-2xl"
-        >
-          {/* ── Identity section ── */}
-          <ConfigSection
-            title="Identitas Bot"
-            description="Nama dan cara bot memperkenalkan diri ke pelanggan."
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-4 max-w-2xl"
           >
-            <div className="space-y-4">
-              <div>
-                <Label
-                  htmlFor="name"
-                  className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
-                >
-                  Nama Bot
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: Sari Assistant"
-                  maxLength={50}
-                  className="input-base"
-                  aria-describedby="name-hint"
-                />
-                <p
-                  id="name-hint"
-                  className="text-[11.5px] text-(--color-text-400) mt-1"
-                >
-                  Nama ini ditampilkan di header chat widget.
-                </p>
-              </div>
-
-              <div>
-                <Label
-                  htmlFor="greetingMessage"
-                  className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
-                >
-                  Pesan Sambutan{" "}
-                  <span className="text-(--color-text-400) font-normal">
-                    (opsional)
-                  </span>
-                </Label>
-                <Textarea
-                  id="greetingMessage"
-                  name="greetingMessage"
-                  value={greetingMessage}
-                  onChange={(e) => setGreetingMessage(e.target.value)}
-                  placeholder="Halo! Ada yang bisa saya bantu hari ini? 😊"
-                  maxLength={300}
-                  rows={2}
-                  className="input-base resize-none"
-                  aria-describedby="greeting-hint"
-                />
-                <p
-                  id="greeting-hint"
-                  className="text-[11.5px] text-(--color-text-400) mt-1"
-                >
-                  Pesan pertama yang dilihat pelanggan saat membuka chat.
-                </p>
-              </div>
-            </div>
-          </ConfigSection>
-
-          {/* ── Behavior section ── */}
-          <ConfigSection
-            title="Bahasa & Nada Bicara"
-            description="Atur bagaimana bot berkomunikasi dengan pelanggan."
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
-                  Bahasa
-                </Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="input-base">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
-                    <SelectItem value="en">🇬🇧 English</SelectItem>
-                    <SelectItem value="both">🇮🇩 ID + 🇬🇧 EN</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
-                  Nada Bicara
-                </Label>
-                <Select value={tone} onValueChange={setTone}>
-                  <SelectTrigger className="input-base">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="friendly">😊 Ramah</SelectItem>
-                    <SelectItem value="professional">💼 Profesional</SelectItem>
-                    <SelectItem value="formal">🎩 Formal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </ConfigSection>
-
-          {/* ── Quick Replies section ── */}
-          <ConfigSection
-            title="Quick Replies"
-            description="Pertanyaan singkat yang muncul sebagai chip di atas input chat — memudahkan pelanggan memulai percakapan."
-            titleAction={
-              quickRepliesSaving === "saving" ? (
-                <span className="text-[11.5px] text-(--color-text-400)">
-                  Menyimpan...
-                </span>
-              ) : quickRepliesSaving === "saved" ? (
-                <span className="text-[11.5px] text-emerald-600 font-medium">
-                  ✓ Tersimpan
-                </span>
-              ) : quickRepliesSaving === "error" ? (
-                <span className="text-[11.5px] text-red-500 font-medium">
-                  Gagal menyimpan
-                </span>
-              ) : null
-            }
-          >
-            {/* Existing chips */}
-            {chips.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {chips.map((chip, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-medium bg-(--color-brand-light) text-(--color-brand-dark) border border-(--color-brand-mid)"
+            {/* ── Identity section ── */}
+            <ConfigSection
+              title="Identitas Bot"
+              description="Nama dan cara bot memperkenalkan diri ke pelanggan."
+            >
+              <div className="space-y-4">
+                <div>
+                  <Label
+                    htmlFor="name"
+                    className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
                   >
-                    {chip}
-                    <button
-                      type="button"
-                      onClick={() => removeChip(index)}
-                      aria-label={`Hapus "${chip}"`}
-                      className="text-(--color-brand) hover:text-(--color-brand-dark) transition-colors leading-none"
-                    >
-                      ×
-                    </button>
+                    Nama Bot
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Contoh: Sari Assistant"
+                    maxLength={50}
+                    className="input-base"
+                    aria-describedby="name-hint"
+                  />
+                  <p
+                    id="name-hint"
+                    className="text-[11.5px] text-(--color-text-400) mt-1"
+                  >
+                    Nama ini ditampilkan di header chat widget.
+                  </p>
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="greetingMessage"
+                    className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
+                  >
+                    Pesan Sambutan{" "}
+                    <span className="text-(--color-text-400) font-normal">
+                      (opsional)
+                    </span>
+                  </Label>
+                  <Textarea
+                    id="greetingMessage"
+                    name="greetingMessage"
+                    value={greetingMessage}
+                    onChange={(e) => setGreetingMessage(e.target.value)}
+                    placeholder="Halo! Ada yang bisa saya bantu hari ini? 😊"
+                    maxLength={300}
+                    rows={2}
+                    className="input-base resize-none"
+                    aria-describedby="greeting-hint"
+                  />
+                  <p
+                    id="greeting-hint"
+                    className="text-[11.5px] text-(--color-text-400) mt-1"
+                  >
+                    Pesan pertama yang dilihat pelanggan saat membuka chat.
+                  </p>
+                </div>
+              </div>
+            </ConfigSection>
+
+            {/* ── Behavior section ── */}
+            <ConfigSection
+              title="Bahasa & Nada Bicara"
+              description="Atur bagaimana bot berkomunikasi dengan pelanggan."
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
+                    Bahasa
+                  </Label>
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger className="input-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
+                      <SelectItem value="en">🇬🇧 English</SelectItem>
+                      <SelectItem value="both">🇮🇩 ID + 🇬🇧 EN</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
+                    Nada Bicara
+                  </Label>
+                  <Select value={tone} onValueChange={setTone}>
+                    <SelectTrigger className="input-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="friendly">😊 Ramah</SelectItem>
+                      <SelectItem value="professional">
+                        💼 Profesional
+                      </SelectItem>
+                      <SelectItem value="formal">🎩 Formal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </ConfigSection>
+
+            {/* ── Quick Replies section ── */}
+            <ConfigSection
+              title="Quick Replies"
+              description="Pertanyaan singkat yang muncul sebagai chip di atas input chat — memudahkan pelanggan memulai percakapan."
+              titleAction={
+                quickRepliesSaving === "saving" ? (
+                  <span className="text-[11.5px] text-(--color-text-400)">
+                    Menyimpan...
                   </span>
+                ) : quickRepliesSaving === "saved" ? (
+                  <span className="text-[11.5px] text-emerald-600 font-medium">
+                    ✓ Tersimpan
+                  </span>
+                ) : quickRepliesSaving === "error" ? (
+                  <span className="text-[11.5px] text-red-500 font-medium">
+                    Gagal menyimpan
+                  </span>
+                ) : null
+              }
+            >
+              {/* Existing chips */}
+              {chips.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {chips.map((chip, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-medium bg-(--color-brand-light) text-(--color-brand-dark) border border-(--color-brand-mid)"
+                    >
+                      {chip}
+                      <button
+                        type="button"
+                        onClick={() => removeChip(index)}
+                        aria-label={`Hapus "${chip}"`}
+                        className="text-(--color-brand) hover:text-(--color-brand-dark) transition-colors leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Input row — hidden when limit reached */}
+              {chips.length < MAX_CHIPS ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={chipInput}
+                    onChange={(e) => setChipInput(e.target.value)}
+                    onKeyDown={handleChipKeyDown}
+                    placeholder="Contoh: Jam buka hari ini sampai jam berapa?"
+                    maxLength={MAX_CHIP_LENGTH}
+                    className="input-base flex-1"
+                    aria-label="Tambah quick reply baru"
+                    aria-describedby="quickreply-hint"
+                  />
+                  <Button
+                    type="button"
+                    onClick={addChip}
+                    disabled={!chipInput.trim()}
+                    variant="outline"
+                    className="border-(--color-border) px-4"
+                    aria-label="Tambah"
+                  >
+                    +
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[12px] text-(--color-brand) font-medium">
+                  Maksimal {MAX_CHIPS} quick reply tercapai.
+                </p>
+              )}
+
+              <p
+                id="quickreply-hint"
+                className="text-[11.5px] text-(--color-text-400) mt-2"
+              >
+                Tekan Enter atau + untuk menambah. Maks {MAX_CHIPS} pertanyaan,{" "}
+                {MAX_CHIP_LENGTH} karakter per pertanyaan.
+              </p>
+            </ConfigSection>
+
+            {/* ── Advanced section ── */}
+            <ConfigSection
+              title="System Prompt"
+              description="Instruksi tambahan untuk AI — hanya jika kamu tahu cara menggunakannya."
+            >
+              <Textarea
+                id="systemPrompt"
+                name="systemPrompt"
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder="Contoh: Selalu sarankan pelanggan untuk menghubungi nomor WhatsApp jika pertanyaan terlalu kompleks."
+                maxLength={2000}
+                rows={4}
+                className="input-base resize-none"
+                aria-describedby="prompt-hint"
+              />
+              <p
+                id="prompt-hint"
+                className="text-[11.5px] text-(--color-text-400) mt-1.5"
+              >
+                Instruksi ini ditambahkan di atas sistem prompt default Kundesk.
+              </p>
+            </ConfigSection>
+
+            {/* ── Brand color section ── */}
+            <ConfigSection
+              title="Warna Brand"
+              description="Warna ini digunakan di chat widget, QR code, dan tampilan dashboard."
+            >
+              {/* Color preset grid */}
+              <div className="grid grid-cols-6 gap-2 mb-4">
+                {COLOR_PRESETS.map(({ hex, label }) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    onClick={() => setAccentColor(hex)}
+                    title={label}
+                    aria-label={label}
+                    className={`w-9 h-9 rounded-[8px] transition-all hover:scale-110 border-2 ${
+                      accentColor === hex
+                        ? "border-(--color-text-900) scale-110"
+                        : "border-transparent"
+                    }`}
+                    style={{ background: hex }}
+                  />
                 ))}
               </div>
-            )}
 
-            {/* Input row — hidden when limit reached */}
-            {chips.length < MAX_CHIPS ? (
-              <div className="flex gap-2">
-                <Input
-                  value={chipInput}
-                  onChange={(e) => setChipInput(e.target.value)}
-                  onKeyDown={handleChipKeyDown}
-                  placeholder="Contoh: Jam buka hari ini sampai jam berapa?"
-                  maxLength={MAX_CHIP_LENGTH}
-                  className="input-base flex-1"
-                  aria-label="Tambah quick reply baru"
-                  aria-describedby="quickreply-hint"
-                />
-                <Button
-                  type="button"
-                  onClick={addChip}
-                  disabled={!chipInput.trim()}
-                  variant="outline"
-                  className="border-(--color-border) px-4"
-                  aria-label="Tambah"
+              {/* Custom hex input */}
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="colorCustom"
+                  className="text-[12.5px] text-(--color-text-500) font-medium"
                 >
-                  +
-                </Button>
-              </div>
-            ) : (
-              <p className="text-[12px] text-(--color-brand) font-medium">
-                Maksimal {MAX_CHIPS} quick reply tercapai.
-              </p>
-            )}
-
-            <p
-              id="quickreply-hint"
-              className="text-[11.5px] text-(--color-text-400) mt-2"
-            >
-              Tekan Enter atau + untuk menambah. Maks {MAX_CHIPS} pertanyaan,{" "}
-              {MAX_CHIP_LENGTH} karakter per pertanyaan.
-            </p>
-          </ConfigSection>
-
-          {/* ── Advanced section ── */}
-          <ConfigSection
-            title="System Prompt"
-            description="Instruksi tambahan untuk AI — hanya jika kamu tahu cara menggunakannya."
-          >
-            <Textarea
-              id="systemPrompt"
-              name="systemPrompt"
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Contoh: Selalu sarankan pelanggan untuk menghubungi nomor WhatsApp jika pertanyaan terlalu kompleks."
-              maxLength={2000}
-              rows={4}
-              className="input-base resize-none"
-              aria-describedby="prompt-hint"
-            />
-            <p
-              id="prompt-hint"
-              className="text-[11.5px] text-(--color-text-400) mt-1.5"
-            >
-              Instruksi ini ditambahkan di atas sistem prompt default Kundesk.
-            </p>
-          </ConfigSection>
-
-          {/* ── Brand color section ── */}
-          <ConfigSection
-            title="Warna Brand"
-            description="Warna ini digunakan di chat widget, QR code, dan tampilan dashboard."
-          >
-            {/* Color preset grid */}
-            <div className="grid grid-cols-6 gap-2 mb-4">
-              {COLOR_PRESETS.map(({ hex, label }) => (
-                <button
-                  key={hex}
-                  type="button"
-                  onClick={() => setAccentColor(hex)}
-                  title={label}
-                  aria-label={label}
-                  className={`w-9 h-9 rounded-[8px] transition-all hover:scale-110 border-2 ${
-                    accentColor === hex
-                      ? "border-(--color-text-900) scale-110"
-                      : "border-transparent"
-                  }`}
-                  style={{ background: hex }}
+                  Custom:
+                </label>
+                <input
+                  id="colorCustom"
+                  type="color"
+                  value={accentColor}
+                  onChange={(e) => setAccentColor(e.target.value)}
+                  className="w-10 h-8 rounded-[7px] border border-(--color-border) p-0.5 cursor-pointer bg-transparent"
+                  aria-label="Pilih warna custom"
                 />
-              ))}
-            </div>
+                {/* Current hex value display */}
+                <span className="font-mono text-[12px] text-(--color-text-500) bg-(--color-bg-page) border border-(--color-border) px-2.5 py-1 rounded-[6px]">
+                  {accentColor.toUpperCase()}
+                </span>
+              </div>
+            </ConfigSection>
 
-            {/* Custom hex input */}
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="colorCustom"
-                className="text-[12.5px] text-(--color-text-500) font-medium"
+            {/* ── Save button ── */}
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-[12px] text-(--color-text-400)">
+                Perubahan berlaku langsung setelah disimpan.
+              </p>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="btn-brand min-w-[120px]"
+                aria-busy={isPending}
               >
-                Custom:
-              </label>
-              <input
-                id="colorCustom"
-                type="color"
-                value={accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
-                className="w-10 h-8 rounded-[7px] border border-(--color-border) p-0.5 cursor-pointer bg-transparent"
-                aria-label="Pilih warna custom"
-              />
-              {/* Current hex value display */}
-              <span className="font-mono text-[12px] text-(--color-text-500) bg-(--color-bg-page) border border-(--color-border) px-2.5 py-1 rounded-[6px]">
-                {accentColor.toUpperCase()}
-              </span>
+                {isPending ? "Menyimpan..." : "Simpan Perubahan"}
+              </Button>
             </div>
-          </ConfigSection>
-
-          {/* ── Save button ── */}
-          <div className="flex items-center justify-between pt-2">
-            <p className="text-[12px] text-(--color-text-400)">
-              Perubahan berlaku langsung setelah disimpan.
-            </p>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="btn-brand min-w-[120px]"
-              aria-busy={isPending}
-            >
-              {isPending ? "Menyimpan..." : "Simpan Perubahan"}
-            </Button>
-          </div>
-        </motion.div>
-      </form>
+          </motion.div>
+        </form>
+      </div>
     </motion.div>
   );
 };

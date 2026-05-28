@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useTheme } from "next-themes";
+import { useEffect, useRef, useState } from "react";
 import {
   Chart,
   BarController,
@@ -22,7 +21,23 @@ interface HourlyBarChartProps {
 const HourlyBarChart = ({ data }: HourlyBarChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
-  const { resolvedTheme } = useTheme();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,8 +54,9 @@ const HourlyBarChart = ({ data }: HourlyBarChartProps) => {
       style.getPropertyValue("--color-text-500").trim() || "#718096";
     const borderColor =
       style.getPropertyValue("--color-border").trim() || "#e8ecf0";
-    const mutedFill =
-      style.getPropertyValue("--color-border").trim() || "#e8ecf0";
+    const mutedFill = isDarkMode
+      ? style.getPropertyValue("--color-chart-muted-soft").trim() || "#7888a0"
+      : style.getPropertyValue("--color-chart-muted").trim() || "#2d3748";
     const tickColor =
       style.getPropertyValue("--color-text-400").trim() || "#a0aec0";
     const gridColor =
@@ -116,7 +132,7 @@ const HourlyBarChart = ({ data }: HourlyBarChartProps) => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data, resolvedTheme]);
+  }, [data, isDarkMode]);
 
   return (
     <div className="h-full min-h-[120px]">

@@ -3,7 +3,7 @@ import { Separator } from "@/components/ui/separator";
 
 const DashboardCard = () => {
   return (
-    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 px-28 w-full">
+    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-10 px-4 md:px-28 w-full">
       <div
         className="w-full rounded-t-2xl overflow-hidden shadow-[0_-16px_60px_rgba(0,0,0,0.35)]"
         style={{ background: "#ffffff", fontFamily: "var(--font-body)" }}
@@ -197,7 +197,7 @@ const DashboardCard = () => {
             style={{ background: "#f4f5f7" }}
           >
             {/* Stat cards row */}
-            <div className="grid grid-cols-4 gap-2 mb-2.5">
+            <div className="grid grid-cols-2 min-[610px]:grid-cols-4 gap-2 mb-2.5">
               {[
                 {
                   icon: "💬",
@@ -223,10 +223,13 @@ const DashboardCard = () => {
                   val: "1.2s",
                   bg: "#fee2e2",
                 },
-              ].map(({ icon, label, val, bg }) => (
+              ].map(({ icon, label, val, bg }, index) => (
                 <div
                   key={label}
-                  className="rounded-xl p-2.5 flex items-center gap-2"
+                  className={`
+                    rounded-xl p-2.5 flex items-center gap-2
+                    ${index >= 2 ? "hidden min-[610px]:flex" : "flex"}
+                  `}
                   style={{
                     background: "#ffffff",
                     border: "1px solid #e8ecf0",
@@ -240,13 +243,13 @@ const DashboardCard = () => {
                   </div>
                   <div className="min-w-0">
                     <div
-                      className="text-[11px] font-extrabold tracking-[-0.03em]"
+                      className="text-[9.5px] sm:text-[11px] font-extrabold tracking-[-0.03em]"
                       style={{ color: "#0f1117" }}
                     >
                       {val}
                     </div>
                     <div
-                      className="text-[8.5px] truncate"
+                      className="text-[7px] sm:text-[8.5px] truncate"
                       style={{ color: "#718096" }}
                     >
                       {label}
@@ -267,7 +270,7 @@ const DashboardCard = () => {
                 }}
               >
                 <div
-                  className="text-[9px] font-bold mb-2"
+                  className="text-[7px] sm:text-[9px] font-bold mb-2"
                   style={{ color: "#0f1117" }}
                 >
                   Ringkasan Performa
@@ -318,7 +321,7 @@ const DashboardCard = () => {
                         </text>
                       </svg>
                       <span
-                        className="text-[7.5px]"
+                        className="text-[6.5px] sm:text-[7.5px]"
                         style={{ color: "#a0aec0" }}
                       >
                         {label}
@@ -337,7 +340,7 @@ const DashboardCard = () => {
                 }}
               >
                 <div
-                  className="text-[9px] font-bold mb-2"
+                  className="text-[7px] sm:text-[9px] font-bold mb-2"
                   style={{ color: "#0f1117" }}
                 >
                   Tren Percakapan

@@ -12,6 +12,8 @@
   --color-brand-mid: #b3e5e5;
   --color-brand-dark: #045f5f;
   --color-brand-glow: rgba(6, 148, 148, 0.12);
+  --color-chart-muted: #2d3748;
+  --color-chart-muted-soft: #a0aec0;
 
   /* Background surfaces — light mode defaults */
   --color-bg-page: #f4f5f7;
@@ -82,14 +84,24 @@
   --color-bg-card: #161b27;
   --color-bg-input: #1a2030;
   --color-bg-sidebar: #161b27;
+  --color-brand-light: rgba(6, 148, 148, 0.16);
+  --color-brand-mid: rgba(6, 148, 148, 0.28);
+  --color-brand-glow: rgba(6, 148, 148, 0.18);
+  --color-chart-muted: #4a5568;
+  --color-chart-muted-soft: #7888a0;
 
   --color-border: #2a3044;
   --color-border-sm: #222840;
 
-  --color-text-900: #f0f4ff;
-  --color-text-700: #c8d0e0;
-  --color-text-500: #7888a0;
-  --color-text-400: #4a5568;
+  --color-text-900: #f3f6ff;
+  --color-text-700: #d0d8e6;
+  --color-text-500: #a5b0c2;
+  --color-text-400: #8a96aa;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28), 0 1px 1px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.34), 0 4px 14px rgba(0, 0, 0, 0.22);
+  --shadow-xl: 0 28px 90px rgba(0, 0, 0, 0.42);
 }
 
 /* ─── BASE STYLES ─── */

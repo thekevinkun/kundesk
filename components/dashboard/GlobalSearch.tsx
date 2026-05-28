@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getConversationPageAction } from "@/lib/actions/dashboard";
 import { dropdownVariants } from "@/lib/animations";
 import { formatRelativeTime } from "@/helpers/format";
+import { cn } from "@/lib/utils";
 
 interface ConversationResult {
   conversationId: number;
@@ -27,7 +28,17 @@ interface SearchResults {
   documents: DocumentResult[];
 }
 
-const GlobalSearch = () => {
+interface GlobalSearchProps {
+  compactMode?: boolean;
+  isExpanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+}
+
+const GlobalSearch = ({
+  compactMode = false,
+  isExpanded = false,
+  onExpandedChange,
+}: GlobalSearchProps) => {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -37,6 +48,20 @@ const GlobalSearch = () => {
   const panelRef = useRef<HTMLDivElement>(null);
   // Debounce timer ref — cleared on each keystroke
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const collapseCompactSearch = useCallback(() => {
+    if (compactMode) {
+      onExpandedChange?.(false);
+    }
+  }, [compactMode, onExpandedChange]);
+
+  const clearSearch = useCallback(() => {
+    setQuery("");
+    setResults(null);
+    setIsOpen(false);
+    collapseCompactSearch();
+    inputRef.current?.blur();
+  }, [collapseCompactSearch]);
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -68,6 +93,10 @@ const GlobalSearch = () => {
     const val = e.target.value;
     setQuery(val);
 
+    if (compactMode && val.length > 0) {
+      onExpandedChange?.(true);
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => void search(val), 300);
   };
@@ -75,8 +104,12 @@ const GlobalSearch = () => {
   // Close on Escape
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
+      if (compactMode && query.length > 0) {
+        return;
+      }
       setIsOpen(false);
       setQuery("");
+      collapseCompactSearch();
       inputRef.current?.blur();
     }
   };
@@ -84,21 +117,40 @@ const GlobalSearch = () => {
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      if (compactMode && query.length > 0) {
+        return;
+      }
       if (
         panelRef.current &&
         !panelRef.current.contains(e.target as Node) &&
         !inputRef.current?.contains(e.target as Node)
       ) {
         setIsOpen(false);
+        collapseCompactSearch();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [collapseCompactSearch, compactMode, query.length]);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const handleNativeSearch = () => {
+      if (compactMode && input.value === "") {
+        clearSearch();
+      }
+    };
+
+    input.addEventListener("search", handleNativeSearch);
+    return () => input.removeEventListener("search", handleNativeSearch);
+  }, [clearSearch, compactMode]);
 
   const handleConversationClick = async (conversationId: number) => {
     setIsOpen(false);
     setQuery("");
+    collapseCompactSearch();
 
     // Find which page this conversation is on — prevents highlight landing on wrong page
     try {
@@ -114,6 +166,7 @@ const GlobalSearch = () => {
   const handleDocumentClick = () => {
     setIsOpen(false);
     setQuery("");
+    collapseCompactSearch();
     router.push("/dashboard/documents");
   };
 
@@ -127,7 +180,17 @@ const GlobalSearch = () => {
     results.documents.length === 0;
 
   return (
-    <div className="flex-1 max-w-[400px] relative">
+    <motion.div
+      layout
+      className={cn(
+        "relative min-w-0 flex-1",
+        compactMode
+          ? isExpanded
+            ? "max-w-none"
+            : "max-w-[180px]"
+          : "max-w-[400px]",
+      )}
+    >
       {/* Search input */}
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-(--color-text-400) text-sm pointer-events-none">
         {isLoading ? "⏳" : "🔍"}
@@ -138,12 +201,20 @@ const GlobalSearch = () => {
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onBlur={() => {
+          if (compactMode && query.length === 0) {
+            collapseCompactSearch();
+          }
+        }}
         onFocus={() => {
+          if (compactMode) onExpandedChange?.(true);
           // Reopen panel if there are existing results
           if (results && query.length >= 2) setIsOpen(true);
         }}
         placeholder="Cari percakapan, dokumen..."
-        className="w-full bg-(--color-bg-page) border border-(--color-border) rounded-full py-2 pl-9 pr-4 text-[13px] text-(--color-text-700) placeholder:text-(--color-text-400) outline-none focus:border-(--color-brand) focus:bg-(--color-bg-card) focus:ring-2 focus:ring-(--color-brand-light) transition-all"
+        className={cn(
+          "w-full bg-(--color-bg-page) border border-(--color-border) rounded-full py-2 pl-9 pr-4 text-[13px] text-(--color-text-700) placeholder:text-(--color-text-400) outline-none focus:border-(--color-brand) focus:bg-(--color-bg-card) focus:ring-2 focus:ring-(--color-brand-light) transition-all",
+        )}
         aria-label="Cari percakapan dan dokumen"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
@@ -299,7 +370,7 @@ const GlobalSearch = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 };
 

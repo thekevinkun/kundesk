@@ -101,9 +101,9 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
           {/* QR Code tab */}
           {activeTab === "qr" && (
             <div className="card-base p-6">
-              <div className="flex items-start gap-6">
+              <div className="flex flex-col sm:flex-row items-start gap-6">
                 {/* QR preview */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 self-center">
                   <div
                     className="w-[180px] h-[180px] rounded-[14px] border-2 border-(--color-border) 
                     overflow-hidden bg-white flex items-center justify-center"

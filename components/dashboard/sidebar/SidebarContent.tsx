@@ -32,7 +32,7 @@ const SidebarContent = ({
   if (!mounted) return null;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-dvh">
       {/* ── Logo + Org Switcher ── */}
       <div className="px-6 py-5 border-b border-(--color-border) flex-shrink-0">
         <div className="mb-3">

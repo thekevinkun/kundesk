@@ -95,6 +95,8 @@ jobs:
     runs-on: ubuntu-latest
     # Only run after check job passes — no point running E2E if build is broken
     needs: check
+    # Only run E2E on pull requests — not on every push to master
+    if: github.event_name == 'pull_request'
 
     env:
       # Real credentials — loaded from GitHub repository secrets

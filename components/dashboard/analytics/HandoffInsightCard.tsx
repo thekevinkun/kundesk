@@ -139,8 +139,12 @@ const HandoffInsightCard = ({
             Seberapa sering pelanggan meminta bantuan admin
           </p>
         </div>
+
         {/* Live handoff rate badge */}
-        <span className="text-[12px] font-bold px-3 py-1 rounded-full bg-(--color-bg-page) border border-(--color-border) text-(--color-text-500)">
+        <span
+          className="text-[10px] sm:text-[12px] text-right font-bold px-3 py-1 rounded-full 
+          bg-(--color-bg-page) border border-(--color-border) text-(--color-text-500)"
+        >
           {handoffRate}% handoff
         </span>
       </div>

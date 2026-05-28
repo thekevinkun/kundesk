@@ -1,4 +1,7 @@
-import { ConversationRowSkeleton } from "@/components/dashboard/conversations";
+import {
+  ConversationCardSkeleton,
+  ConversationRowSkeleton,
+} from "@/components/dashboard/conversations";
 
 export default function ConversationsLoading() {
   return (
@@ -9,8 +12,8 @@ export default function ConversationsLoading() {
         <div className="h-4 w-64 rounded-[8px] skeleton" />
       </div>
 
-      {/* Table card skeleton */}
-      <div className="card-base overflow-hidden">
+      {/* Desktop table card skeleton */}
+      <div className="hidden md:block card-base overflow-hidden">
         {/* Card header */}
         <div className="px-5 pt-5 pb-3 border-b border-(--color-border-sm)">
           <div className="h-5 w-36 rounded-[8px] skeleton mb-1.5" />
@@ -38,6 +41,20 @@ export default function ConversationsLoading() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Mobile card skeleton */}
+      <div className="md:hidden space-y-3">
+        <div className="card-base p-4">
+          <div className="h-5 w-36 rounded-[8px] skeleton mb-1.5" />
+          <div className="h-3.5 w-48 rounded-[6px] skeleton" />
+        </div>
+
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <ConversationCardSkeleton key={i} />
+          ))}
         </div>
       </div>
     </div>

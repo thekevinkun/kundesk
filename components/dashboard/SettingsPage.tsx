@@ -170,64 +170,68 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
         variants={fadeUp}
         initial="hidden"
         animate="visible"
-        className="max-w-3xl mx-auto"
+        className="flex flex-col items-center"
       >
-        <div className="mb-6">
-          <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
-            Pengaturan
-          </h1>
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
+              Pengaturan
+            </h1>
 
-          <p className="text-[13px] text-(--color-text-500) mt-1">
-            Kelola profil bisnis dan informasi akun kamu.
-          </p>
+            <p className="text-[13px] text-(--color-text-500) mt-1">
+              Kelola profil bisnis dan informasi akun kamu.
+            </p>
+          </div>
+
+          {/* Settings form */}
+          <form onSubmit={handleProfileSubmit}>
+            {/* Controlled slug must still exist in submitted form */}
+            <input type="hidden" name="slug" value={slug} />
+
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4 max-w-2xl"
+            >
+              {/* Business profile settings */}
+              <ProfileSection
+                name={name}
+                slug={slug}
+                setName={setName}
+                handleSlugChange={handleSlugChange}
+              />
+            
+              {/* Account + billing information */}
+              <AccountSection
+                ownerEmail={settings.ownerEmail}
+                subscriptionStatus={settings.subscriptionStatus}
+                planBadge={planBadge}
+              />
+
+              {/* Save profile changes */}
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-[12px] text-(--color-text-400)">
+                  Perubahan berlaku langsung setelah disimpan.
+                </p>
+
+                <Button
+                  type="submit"
+                  disabled={isProfilePending}
+                  className="btn-brand min-w-[120px]"
+                  aria-busy={isProfilePending}
+                >
+                  {isProfilePending ? "Menyimpan..." : "Simpan Perubahan"}
+                </Button>
+              </div>
+
+              {/* Destructive actions */}
+              <DangerZoneSection
+                onDeleteClick={() => setDeleteModalOpen(true)}
+              />
+            </motion.div>
+          </form>
         </div>
-
-        {/* Settings form */}
-        <form onSubmit={handleProfileSubmit}>
-          {/* Controlled slug must still exist in submitted form */}
-          <input type="hidden" name="slug" value={slug} />
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="space-y-4 max-w-2xl"
-          >
-            {/* Business profile settings */}
-            <ProfileSection
-              name={name}
-              slug={slug}
-              setName={setName}
-              handleSlugChange={handleSlugChange}
-            />
-
-            {/* Account + billing information */}
-            <AccountSection
-              ownerEmail={settings.ownerEmail}
-              subscriptionStatus={settings.subscriptionStatus}
-              planBadge={planBadge}
-            />
-
-            {/* Save profile changes */}
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-[12px] text-(--color-text-400)">
-                Perubahan berlaku langsung setelah disimpan.
-              </p>
-
-              <Button
-                type="submit"
-                disabled={isProfilePending}
-                className="btn-brand min-w-[120px]"
-                aria-busy={isProfilePending}
-              >
-                {isProfilePending ? "Menyimpan..." : "Simpan Perubahan"}
-              </Button>
-            </div>
-
-            {/* Destructive actions */}
-            <DangerZoneSection onDeleteClick={() => setDeleteModalOpen(true)} />
-          </motion.div>
-        </form>
       </motion.div>
 
       {/* Confirmation modal for public URL changes */}

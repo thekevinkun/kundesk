@@ -191,8 +191,8 @@ const ConversationDialog = ({
     >
       <div className="border-t border-(--color-border) bg-(--color-bg-page)">
         {/* Dialog header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-(--color-border-sm)">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 px-4 py-3 border-b border-(--color-border-sm) sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-[12px] font-bold text-(--color-text-500) uppercase tracking-[0.06em]">
               Riwayat Percakapan
             </span>
@@ -206,7 +206,7 @@ const ConversationDialog = ({
             <button
               onClick={handleReturn}
               disabled={isReturning}
-              className="text-[12px] font-semibold text-(--color-text-500) hover:text-(--color-brand) transition-colors disabled:opacity-50 flex items-center gap-1"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-[10px] border border-(--color-border) bg-(--color-bg-card) px-3 py-2 text-[12px] font-semibold text-(--color-text-500) transition-colors hover:text-(--color-brand) disabled:opacity-50 sm:w-auto sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:justify-start"
             >
               {isReturning ? (
                 <span className="animate-spin inline-block">⏳</span>
@@ -220,7 +220,7 @@ const ConversationDialog = ({
         {/* Message list */}
         <div
           ref={scrollContainerRef}
-          className="max-h-[320px] overflow-y-auto px-5 py-4 space-y-3"
+          className="max-h-[280px] overflow-y-auto px-4 py-4 space-y-3 sm:max-h-[320px] sm:px-5"
         >
           {isLoading ? (
             // Skeleton loading — 3 placeholder bubbles
@@ -260,7 +260,7 @@ const ConversationDialog = ({
                       </div>
                     )}
 
-                    <div className="max-w-[70%]">
+                    <div className="max-w-[85%] sm:max-w-[70%]">
                       {/* Role label */}
                       <div
                         className={`text-[10px] font-semibold text-(--color-text-400) mb-1 ${
@@ -305,8 +305,8 @@ const ConversationDialog = ({
 
         {/* Reply box — only shown in active human mode */}
         {canReply && (
-          <div className="border-t border-(--color-border-sm) px-5 py-3">
-            <div className="flex gap-2 items-end">
+          <div className="border-t border-(--color-border-sm) px-4 py-3 sm:px-5">
+            <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:items-end">
               <textarea
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
@@ -314,13 +314,13 @@ const ConversationDialog = ({
                 placeholder="Balas sebagai staff... (Enter kirim, Shift+Enter baris baru)"
                 rows={2}
                 maxLength={1000}
-                className="flex-1 input-base resize-none text-[13px] py-2 px-3 min-h-[60px]"
+                className="flex-1 input-base resize-none text-[13px] py-2 px-3 min-h-[56px] sm:min-h-[60px]"
               />
               <button
                 onClick={handleSend}
                 disabled={isSending || !replyContent.trim()}
-                className="btn-brand h-[60px] px-4 text-[13px] font-semibold disabled:opacity-50 
-          disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+                className="btn-brand h-11 w-full px-4 text-[13px] font-semibold disabled:opacity-50 
+          disabled:cursor-not-allowed flex items-center justify-center gap-1.5 whitespace-nowrap sm:h-[60px] sm:w-auto"
                 aria-label="Kirim balasan"
               >
                 {isSending ? (

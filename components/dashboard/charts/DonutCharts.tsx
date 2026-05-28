@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useTheme } from "next-themes";
+import { useEffect, useRef, useState } from "react";
 import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
 
 Chart.register(DoughnutController, ArcElement, Tooltip);
@@ -19,11 +18,26 @@ const DonutItem = ({
   label: string;
   percentage: number;
   color: string;
-}) => {
+  }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
-  // resolvedTheme changes on toggle — triggers effect re-run with fresh colors
-  const { resolvedTheme } = useTheme();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,8 +49,9 @@ const DonutItem = ({
       color === "brand"
         ? style.getPropertyValue("--color-brand").trim() || "#069494"
         : color;
-    const borderColor =
-      style.getPropertyValue("--color-border").trim() || "#e8ecf0";
+    const ringBg = isDarkMode
+      ? style.getPropertyValue("--color-chart-muted-soft").trim() || "#7888a0"
+      : style.getPropertyValue("--color-chart-muted").trim() || "#2d3748";
 
     const safePercentage = Math.max(0, Math.min(100, percentage));
 
@@ -48,7 +63,7 @@ const DonutItem = ({
         datasets: [
           {
             data: [safePercentage, 100 - safePercentage],
-            backgroundColor: [resolvedColor, borderColor],
+            backgroundColor: [resolvedColor, ringBg],
             borderWidth: 0,
           },
         ],
@@ -70,8 +85,7 @@ const DonutItem = ({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-    // resolvedTheme in deps — chart rebuilds when dark/light toggles
-  }, [percentage, color, resolvedTheme]);
+  }, [percentage, color, isDarkMode]);
 
   return (
     <div className="flex flex-col items-center">
