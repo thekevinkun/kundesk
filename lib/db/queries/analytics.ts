@@ -1,14 +1,16 @@
 // Analytics queries — deeper than dashboard overview
 // All queries scoped to orgId first — tenant isolation, never skip
 // Called in parallel from analytics page via Promise.all
+// timezone param: IANA timezone string e.g. "Asia/Makassar" (WIB UTC+7)
+// Time-grouped queries use CTEs to pre-compute local timestamps — avoids PostgreSQL
+// GROUP BY parameter mismatch error when using AT TIME ZONE with parameterized values
 
 import { eq, and, count, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { messages, conversations } from "@/lib/db/schema";
 import type { DeliveryChannel } from "@/types/chat";
 
-// ── KPI: Total conversations (not messages) ──
-// Distinct from getTotalMessages — conversations = sessions, messages = individual turns
+// ── KPI: Total conversations ──
 export async function getTotalConversations(orgId: string): Promise<number> {
   const [result] = await db
     .select({ total: count() })
@@ -18,8 +20,7 @@ export async function getTotalConversations(orgId: string): Promise<number> {
   return result?.total ?? 0;
 }
 
-// ── KPI: Handoff rate — conversations that were handed off / total conversations ──
-// "human" + "pending_handoff" both count — customer initiated contact with staff
+// ── KPI: Handoff rate ──
 export async function getHandoffRate(orgId: string): Promise<number> {
   const [totalResult, handoffResult] = await Promise.all([
     db
@@ -32,7 +33,6 @@ export async function getHandoffRate(orgId: string): Promise<number> {
       .where(
         and(
           eq(conversations.orgId, orgId),
-          // Both states mean customer wanted human — pending = waiting, human = taken over
           eq(conversations.wasHandedOff, true),
         ),
       ),
@@ -42,12 +42,10 @@ export async function getHandoffRate(orgId: string): Promise<number> {
   const handoffs = handoffResult[0]?.total ?? 0;
 
   if (total === 0) return 0;
-
-  return Math.round((handoffs / total) * 1000) / 10; // e.g. 4.2
+  return Math.round((handoffs / total) * 1000) / 10;
 }
 
-// ── KPI: AI resolution rate — conversations fully handled by AI (never handed off) ──
-// Inverse of handoff rate — conversations where handoffStatus stayed "ai"
+// ── KPI: AI resolution rate ──
 export async function getAiResolutionRate(orgId: string): Promise<number> {
   const [totalResult, resolvedResult] = await Promise.all([
     db
@@ -60,7 +58,6 @@ export async function getAiResolutionRate(orgId: string): Promise<number> {
       .where(
         and(
           eq(conversations.orgId, orgId),
-          // Only conversations the AI handled entirely — no handoff requested
           eq(conversations.wasHandedOff, false),
         ),
       ),
@@ -70,12 +67,10 @@ export async function getAiResolutionRate(orgId: string): Promise<number> {
   const resolved = resolvedResult[0]?.total ?? 0;
 
   if (total === 0) return 0;
-
   return Math.round((resolved / total) * 1000) / 10;
 }
 
-// ── KPI: Avg response time across all assistant messages ──
-// Returns formatted string e.g. "1.4s" — null if no assistant messages yet
+// ── KPI: Avg response time ──
 export async function getAnalyticsAvgResponseTime(
   orgId: string,
 ): Promise<string | null> {
@@ -94,36 +89,42 @@ export async function getAnalyticsAvgResponseTime(
 
   const avgMs = result?.avgMs;
   if (avgMs == null) return null;
-
   return `${(avgMs / 1000).toFixed(1)}s`;
 }
 
-// ── Handoff trend — daily handoff count over last 30 days ──
-// Powers the HandoffInsightCard line chart
-// Returns { date: "DD/MM", count: number }[] sorted oldest→newest
+// ── Handoff trend — daily handoff count over last 30 days in owner's local timezone ──
+// CTE pre-computes local_day once — avoids GROUP BY parameter mismatch
 export async function getHandoffTrend(
   orgId: string,
+  timezone: string,
 ): Promise<{ date: string; count: number }[]> {
   const result = await db.execute<{ date: string; count: number }>(
     sql`
+      WITH local_convos AS (
+        SELECT
+          DATE_TRUNC('day', timezone(${timezone}, created_at AT TIME ZONE 'UTC')) AS local_day
+        FROM conversations
+        WHERE
+          org_id = ${orgId}
+          AND was_handed_off = true
+      )
       SELECT
-        TO_CHAR(DATE_TRUNC('day', ${conversations.createdAt}), 'DD/MM') AS date,
+        TO_CHAR(local_day, 'DD/MM') AS date,
         COUNT(*)::int AS count
-      FROM ${conversations}
-      WHERE
-        ${conversations.orgId} = ${orgId}
-        AND ${conversations.wasHandedOff} = true
-        AND ${conversations.createdAt} >= NOW() - INTERVAL '30 days'
-      GROUP BY DATE_TRUNC('day', ${conversations.createdAt})
-      ORDER BY DATE_TRUNC('day', ${conversations.createdAt}) ASC
+      FROM local_convos
+      WHERE local_day >= DATE_TRUNC('day', timezone(${timezone}, now()))
+        - INTERVAL '29 days'
+        AND local_day <= DATE_TRUNC('day', timezone(${timezone}, now()))
+      GROUP BY local_day
+      ORDER BY local_day ASC
     `,
   );
 
   return result.rows as { date: string; count: number }[];
 }
 
-// ── AI vs handoff split — for donut chart in HandoffInsightCard ──
-// Returns { aiCount, handoffCount } — two slices of the donut
+// ── AI vs handoff split — for donut chart ──
+// No timezone needed — not time-windowed
 export async function getAiVsHandoffSplit(orgId: string): Promise<{
   aiCount: number;
   handoffCount: number;
@@ -155,20 +156,26 @@ export async function getAiVsHandoffSplit(orgId: string): Promise<{
   };
 }
 
-// ── Peak hours — message volume grouped by hour of day (0–23) ──
-// Powers HourlyBarChart — tells owner when customers are most active
-// Returns array of 24 numbers, index = hour (0=midnight, 12=noon)
-export async function getPeakHours(orgId: string): Promise<number[]> {
+// ── Peak hours — message volume grouped by local hour, not UTC hour ──
+// CTE pre-computes local_hour once — avoids GROUP BY parameter mismatch
+export async function getPeakHours(
+  orgId: string,
+  timezone: string,
+): Promise<number[]> {
   const result = await db.execute<{ hour: number; count: number }>(
     sql`
+      WITH local_msgs AS (
+        SELECT
+          EXTRACT(HOUR FROM timezone(${timezone}, created_at AT TIME ZONE 'UTC'))::int AS hour
+        FROM messages
+        WHERE
+          org_id = ${orgId}
+          AND role = 'user'
+      )
       SELECT
-        EXTRACT(HOUR FROM ${messages.createdAt})::int AS hour,
+        hour,
         COUNT(*)::int AS count
-      FROM ${messages}
-      WHERE
-        ${messages.orgId} = ${orgId}
-        -- Only user messages — we want when customers are active, not AI response volume
-        AND ${messages.role} = 'user'
+      FROM local_msgs
       GROUP BY hour
       ORDER BY hour ASC
     `,
@@ -179,31 +186,24 @@ export async function getPeakHours(orgId: string): Promise<number[]> {
   for (const row of result.rows as { hour: number; count: number }[]) {
     hours[row.hour] = row.count;
   }
-
   return hours;
 }
 
-// ── Top questions — most frequent user messages, grouped by similarity ──
-// Exact text match grouping — works well for short questions like "jam buka?"
-// Returns top 8 questions with their frequency count
-// Note: for a real production system this would use embeddings clustering —
-// exact match is sufficient for MVP with < 10k messages
+// ── Top questions — most frequent user messages ──
+// No timezone needed — groups by content, not time
 export async function getTopQuestions(
   orgId: string,
 ): Promise<{ question: string; count: number }[]> {
   const result = await db.execute<{ question: string; count: number }>(
     sql`
       SELECT
-        -- Trim and lowercase for grouping — "Jam buka?" and "jam buka?" merge
         LOWER(TRIM(${messages.content})) AS question,
         COUNT(*)::int AS count
       FROM ${messages}
       WHERE
         ${messages.orgId} = ${orgId}
         AND ${messages.role} = 'user'
-        -- Ignore very short inputs — less than 5 chars are noise ("ok", "ya", "thx")
         AND LENGTH(TRIM(${messages.content})) >= 5
-        -- Ignore very long messages — these are context-heavy, not repeating questions
         AND LENGTH(TRIM(${messages.content})) <= 200
       GROUP BY LOWER(TRIM(${messages.content}))
       ORDER BY count DESC
@@ -212,14 +212,13 @@ export async function getTopQuestions(
   );
 
   return (result.rows as { question: string; count: number }[]).map((row) => ({
-    // Capitalize first letter for display — grouped as lowercase, shown nicely
     question: row.question.charAt(0).toUpperCase() + row.question.slice(1),
     count: row.count,
   }));
 }
 
 // ── Channel breakdown — conversations per delivery channel ──
-// Powers ChannelBreakdownCard donut — web_widget vs qr_link vs whatsapp
+// No timezone needed — not time-windowed
 export async function getChannelBreakdown(
   orgId: string,
 ): Promise<{ channel: DeliveryChannel; count: number }[]> {
@@ -241,32 +240,38 @@ export async function getChannelBreakdown(
   return result.rows as { channel: DeliveryChannel; count: number }[];
 }
 
-// ── Response time trend — daily avg response time over last 30 days ──
-// Powers ResponseTrendChart — shows if AI is getting faster/slower over time
-// Returns { date: "DD/MM", avgMs: number }[] sorted oldest→newest
+// ── Response time trend — daily avg over last 30 days in owner's local timezone ──
+// CTE pre-computes local_day once — avoids GROUP BY parameter mismatch
 export async function getResponseTimeTrend(
   orgId: string,
+  timezone: string,
 ): Promise<{ date: string; avgMs: number }[]> {
   const result = await db.execute<{ date: string; avg_ms: number }>(
     sql`
+      WITH local_msgs AS (
+        SELECT
+          DATE_TRUNC('day', timezone(${timezone}, created_at AT TIME ZONE 'UTC')) AS local_day,
+          response_time_ms
+        FROM messages
+        WHERE
+          org_id = ${orgId}
+          AND role = 'assistant'
+          AND response_time_ms IS NOT NULL
+      )
       SELECT
-        TO_CHAR(DATE_TRUNC('day', ${messages.createdAt}), 'DD/MM') AS date,
-        AVG(${messages.responseTimeMs})::float AS avg_ms
-      FROM ${messages}
-      WHERE
-        ${messages.orgId} = ${orgId}
-        AND ${messages.role} = 'assistant'
-        -- Only messages with a recorded response time
-        AND ${messages.responseTimeMs} IS NOT NULL
-        AND ${messages.createdAt} >= NOW() - INTERVAL '30 days'
-      GROUP BY DATE_TRUNC('day', ${messages.createdAt})
-      ORDER BY DATE_TRUNC('day', ${messages.createdAt}) ASC
+        TO_CHAR(local_day, 'DD/MM') AS date,
+        AVG(response_time_ms)::float AS avg_ms
+      FROM local_msgs
+      WHERE local_day >= DATE_TRUNC('day', timezone(${timezone}, now()))
+        - INTERVAL '29 days'
+        AND local_day <= DATE_TRUNC('day', timezone(${timezone}, now()))
+      GROUP BY local_day
+      ORDER BY local_day ASC
     `,
   );
 
   return (result.rows as { date: string; avg_ms: number }[]).map((row) => ({
     date: row.date,
-    // Keep as ms in the query result — chart component converts to seconds for display
     avgMs: Math.round(row.avg_ms),
   }));
 }

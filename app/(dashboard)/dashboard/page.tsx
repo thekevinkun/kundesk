@@ -12,16 +12,22 @@ import {
   getOrgData,
   getAvgResponseTime,
 } from "@/lib/db/queries/dashboard";
+import { getOwnerTimezone } from "@/lib/timezone";
 import { DashboardOverview } from "@/components/dashboard";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
+// Force dynamic rendering — dashboard data changes frequently
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const { orgId } = await auth();
 
-  // All queries in parallel — 8 round trips become 1 wait
+  // Owner's timezone — used for all time-grouped queries to show local times in charts
+  const timezone = await getOwnerTimezone();
+
   const [
     organization,
     dailyTrend,
@@ -29,7 +35,6 @@ export default async function DashboardPage() {
     weeklyMessages,
     botStatus,
     orgData,
-    // Stats now fetched client-side via TanStack — only initial values needed here
     initialTotalMessages,
     initialAnsweredRate,
     initialUniqueVisitors,
@@ -38,9 +43,9 @@ export default async function DashboardPage() {
     (await clerkClient()).organizations.getOrganization({
       organizationId: orgId!,
     }),
-    getDailyMessageTrend(orgId!),
-    getMonthlyMessageComparison(orgId!),
-    getWeeklyMessages(orgId!),
+    getDailyMessageTrend(orgId!, timezone),
+    getMonthlyMessageComparison(orgId!, timezone),
+    getWeeklyMessages(orgId!, timezone),
     getBotStatus(orgId!),
     getOrgData(orgId!),
     getTotalMessages(orgId!),
@@ -49,7 +54,10 @@ export default async function DashboardPage() {
     getAvgResponseTime(orgId!),
   ]);
 
-  const currentYear = new Date().getFullYear();
+  // Derive current year in owner's local timezone — not server UTC
+  const currentYear = new Date(
+    new Date().toLocaleString("en-US", { timeZone: timezone }),
+  ).getFullYear();
 
   return (
     <DashboardOverview

@@ -158,7 +158,7 @@ const NotificationPanel = ({ isOpen, onOpenChange }: NotificationPanelProps) => 
                   <div
                     className={`text-[13px] leading-snug ${
                       !notif.isRead
-                        ? "font-bold text-(--color-text-900) dark:!text-black/80"
+                        ? "font-bold text-(--color-text-900)"
                         : "font-medium text-(--color-text-700)"
                     }`}
                   >

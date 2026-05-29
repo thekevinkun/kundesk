@@ -75,21 +75,26 @@ export async function getUniqueVisitors(orgId: string): Promise<number> {
 // Returns array of { date: "DD/MM", count: number } sorted oldest→newest
 export async function getDailyMessageTrend(
   orgId: string,
+  timezone: string,
 ): Promise<{ date: string; count: number }[]> {
-  // Raw SQL — Drizzle doesn't have a clean date_trunc + group by date abstraction
-  // Cast createdAt to date, group, count — scoped to org and last 30 days
   const result = await db.execute<{ date: string; count: number }>(
     sql`
+      WITH local_msgs AS (
+        SELECT
+          DATE_TRUNC('day', timezone(${timezone}, created_at AT TIME ZONE 'UTC')) AS local_day
+        FROM messages
+        WHERE org_id = ${orgId}
+      )
       SELECT
-        TO_CHAR(DATE_TRUNC('day', ${messages.createdAt}), 'DD/MM') AS date,
+        TO_CHAR(local_day, 'DD/MM') AS date,
         COUNT(*)::int AS count
-      FROM ${messages}
-      WHERE
-        ${messages.orgId} = ${orgId}
-        AND ${messages.createdAt} >= NOW() - INTERVAL '30 days'
-      GROUP BY DATE_TRUNC('day', ${messages.createdAt})
-      ORDER BY DATE_TRUNC('day', ${messages.createdAt}) ASC
-    `,
+      FROM local_msgs
+      WHERE local_day >= DATE_TRUNC('day', timezone(${timezone}, now()))
+        - INTERVAL '29 days'
+        AND local_day <= DATE_TRUNC('day', timezone(${timezone}, now()))
+      GROUP BY local_day
+      ORDER BY local_day ASC
+      `,
   );
 
   return result.rows as { date: string; count: number }[];
@@ -97,34 +102,43 @@ export async function getDailyMessageTrend(
 
 // ── Monthly message totals — current year vs previous year for line chart ──
 // Returns { current: number[], previous: number[] } — index 0 = January
-export async function getMonthlyMessageComparison(orgId: string): Promise<{
+export async function getMonthlyMessageComparison(
+  orgId: string,
+  timezone: string,
+): Promise<{
   current: number[];
   previous: number[];
 }> {
-  const currentYear = new Date().getFullYear();
+  const nowInTz = new Date(
+    new Date().toLocaleString("en-US", { timeZone: timezone }),
+  );
+  const currentYear = nowInTz.getFullYear();
   const previousYear = currentYear - 1;
 
-  // Both years in one query — cheaper than two round trips
   const result = await db.execute<{
     year: number;
     month: number;
     count: number;
   }>(
     sql`
+      WITH local_msgs AS (
+        SELECT
+          EXTRACT(YEAR FROM timezone(${timezone}, created_at AT TIME ZONE 'UTC'))::int AS year,
+          EXTRACT(MONTH FROM timezone(${timezone}, created_at AT TIME ZONE 'UTC'))::int AS month
+        FROM messages
+        WHERE org_id = ${orgId}
+      )
       SELECT
-        EXTRACT(YEAR FROM ${messages.createdAt})::int AS year,
-        EXTRACT(MONTH FROM ${messages.createdAt})::int AS month,
+        year,
+        month,
         COUNT(*)::int AS count
-      FROM ${messages}
-      WHERE
-        ${messages.orgId} = ${orgId}
-        AND EXTRACT(YEAR FROM ${messages.createdAt}) IN (${currentYear}, ${previousYear})
+      FROM local_msgs
+      WHERE year IN (${currentYear}, ${previousYear})
       GROUP BY year, month
       ORDER BY year, month
     `,
   );
 
-  // Initialize 12-month arrays with zeros — months without data stay 0
   const current = Array<number>(12).fill(0);
   const previous = Array<number>(12).fill(0);
 
@@ -133,7 +147,6 @@ export async function getMonthlyMessageComparison(orgId: string): Promise<{
     month: number;
     count: number;
   }[]) {
-    // month from SQL is 1-indexed — convert to 0-indexed array position
     const idx = row.month - 1;
     if (row.year === currentYear) current[idx] = row.count;
     else previous[idx] = row.count;
@@ -144,25 +157,31 @@ export async function getMonthlyMessageComparison(orgId: string): Promise<{
 
 // ── Weekly message counts — Mon–Sun this week for bar chart ──
 // Returns array of 7 numbers, index 0 = Monday
-export async function getWeeklyMessages(orgId: string): Promise<number[]> {
+export async function getWeeklyMessages(
+  orgId: string,
+  timezone: string,
+): Promise<number[]> {
   const result = await db.execute<{ dow: number; count: number }>(
     sql`
+      WITH local_msgs AS (
+        SELECT
+          EXTRACT(DOW FROM timezone(${timezone}, created_at AT TIME ZONE 'UTC'))::int AS dow,
+          DATE_TRUNC('week', timezone(${timezone}, created_at AT TIME ZONE 'UTC')) AS local_week
+        FROM messages
+        WHERE org_id = ${orgId}
+      )
       SELECT
-        EXTRACT(DOW FROM ${messages.createdAt})::int AS dow,
+        dow,
         COUNT(*)::int AS count
-      FROM ${messages}
-      WHERE
-        ${messages.orgId} = ${orgId}
-        AND DATE_TRUNC('week', ${messages.createdAt}) = DATE_TRUNC('week', NOW())
+      FROM local_msgs
+      WHERE local_week = DATE_TRUNC('week', timezone(${timezone}, now()))
       GROUP BY dow
       ORDER BY dow
     `,
   );
 
-  // DOW: 0=Sunday, 1=Mon ... 6=Sat — remap to Mon-first (index 0=Mon)
   const week = Array<number>(7).fill(0);
   for (const row of result.rows as { dow: number; count: number }[]) {
-    // Convert Sunday(0) → index 6, Mon(1) → index 0, etc.
     const idx = row.dow === 0 ? 6 : row.dow - 1;
     week[idx] = row.count;
   }

@@ -80,6 +80,7 @@ const ResponseTrendChart = ({ data }: ResponseTrendChartProps) => {
             fill: true,
             backgroundColor: gradient,
             tension: 0.45,
+            clip: 8,
             pointRadius: 0,
             pointHoverRadius: 5,
             pointBackgroundColor: lineColor,
@@ -127,6 +128,14 @@ const ResponseTrendChart = ({ data }: ResponseTrendChartProps) => {
             },
             // Start at 0 — so owner sees absolute time, not relative change
             beginAtZero: true,
+          },
+        },
+        layout: {
+          padding: {
+            top: 8,
+            right: 8,
+            left: 4,
+            bottom: 2,
           },
         },
         interaction: { mode: "index", intersect: false },

@@ -7,16 +7,6 @@ export function formatRupiah(amount: number): string {
   return `Rp ${amount.toLocaleString("id-ID")}`;
 }
 
-// Format Date to Indonesian locale — "1 Juni 2026"
-export function formatDate(date: Date | null): string {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 // Maps Midtrans payment_type to human-readable Indonesian label
 export function formatPaymentMethod(method: string | null): string {
   if (!method) return "—";
@@ -31,6 +21,51 @@ export function formatPaymentMethod(method: string | null): string {
   return map[method] ?? method;
 }
 
+// Format Date to Indonesian locale — "1 Juni 2026"
+export function formatDate(date: Date | null): string {
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// ── Timezone helpers ──
+// Returns the device's IANA timezone string — e.g. "Asia/Makassar", "Asia/Jakarta"
+// Used to pass local timezone to server-side analytics queries
+// Falls back to "Asia/Jakarta" (WIB UTC+7) if browser API unavailable
+export function getLocalTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return "Asia/Jakarta";
+  }
+}
+
+// Format local time as HH:MM:SS string in id-ID locale
+export function formatLocalClock(date: Date): string {
+  return date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+// Format UTC offset string — e.g. "UTC+8", "UTC+7", "UTC+5:30"
+export function formatUtcOffset(date: Date): string {
+  const offsetMinutes = -date.getTimezoneOffset();
+  const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
+  const offsetMins = Math.abs(offsetMinutes) % 60;
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  return offsetMins > 0
+    ? `UTC${sign}${offsetHours}:${String(offsetMins).padStart(2, "0")}`
+    : `UTC${sign}${offsetHours}`;
+}
+
+// Formats a date as relative time in Indonesian —
+// "Baru saja", "5 mnt lalu", "2 jam lalu", "3 hari lalu", "4 bulan lalu", "1 tahun lalu"
 export function formatRelativeTime(date: Date | string): string {
   const d = date instanceof Date ? date : new Date(date);
 
@@ -55,6 +90,7 @@ export function formatRelativeTime(date: Date | string): string {
   return `${diffYears} tahun lalu`;
 }
 
+// Format a date as "1 Juni 2026, 14:30:00 (UTC+7)" — includes local time and UTC offset
 export const toDateSafe = (value: Date | string | null): Date => {
   if (value === null) return new Date(NaN); // or throw, or return a sentinel
   if (value instanceof Date) return value;

@@ -19,6 +19,11 @@ import { COLOR_PRESETS } from "@/helpers/chatbot";
 import { cn } from "@/lib/utils";
 import { fadeIn, dropdownVariants } from "@/lib/animations";
 import { saveAccentColor, getChatbotConfig } from "@/lib/actions/chatbot";
+import {
+  getLocalTimezone,
+  formatLocalClock,
+  formatUtcOffset,
+} from "@/helpers/format";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 const Topbar = () => {
@@ -119,30 +124,23 @@ const Topbar = () => {
     void loadUnread();
   }, [setNotifications]);
 
+  // Set timezone cookie on mount — read by dashboard/analytics Server Components
+  // Uses IANA timezone name — e.g. "Asia/Makassar" for WITA
   useEffect(() => {
+    const tz = getLocalTimezone();
+    // SameSite=Lax — readable server-side, sent on navigation requests
+    document.cookie = `tz=${encodeURIComponent(tz)}; path=/; SameSite=Lax; max-age=31536000`;
+  }, []);
+
+  // Live clock — updates every second using extracted helpers
+  useEffect(() => {
+    console.log("Device timezone:", getLocalTimezone());
+    console.log("Device offset:", -new Date().getTimezoneOffset() / 60);
+
     const update = () => {
       const now = new Date();
-
-      // Device local time — no hardcoded timezone
-      setClock(
-        now.toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        }),
-      );
-
-      // UTC offset — e.g. "UTC+8" for WITA, "UTC+7" for WIB, "UTC+9" for WIT
-      const offsetMinutes = -now.getTimezoneOffset();
-      const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
-      const offsetMins = Math.abs(offsetMinutes) % 60;
-      const sign = offsetMinutes >= 0 ? "+" : "-";
-      setUtcOffset(
-        offsetMins > 0
-          ? `UTC${sign}${offsetHours}:${String(offsetMins).padStart(2, "0")}`
-          : `UTC${sign}${offsetHours}`,
-      );
+      setClock(formatLocalClock(now));
+      setUtcOffset(formatUtcOffset(now));
     };
 
     update();
@@ -295,7 +293,9 @@ const Topbar = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      onClick={() =>
+                        setTheme(theme === "dark" ? "light" : "dark")
+                      }
                       className="w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) border border-(--color-border) flex items-center justify-center text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) transition-all"
                       aria-label={
                         theme === "dark"

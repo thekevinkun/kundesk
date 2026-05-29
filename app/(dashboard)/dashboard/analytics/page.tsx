@@ -13,6 +13,7 @@ import {
   getChannelBreakdown,
   getResponseTimeTrend,
 } from "@/lib/db/queries/analytics";
+import { getOwnerTimezone } from "@/lib/timezone";
 import { clusterTopQuestions } from "@/lib/ai/cluster";
 import { getDailyMessageTrend } from "@/lib/db/queries/dashboard";
 
@@ -20,12 +21,18 @@ export const metadata: Metadata = {
   title: "Analytics",
 };
 
+// Force dynamic rendering — dashboard data changes frequently
+export const dynamic = "force-dynamic";
+
 export default async function AnalyticsRoute() {
   // requireOrg — throws if no session, caught by dashboard layout error boundary
   const { orgId } = await requireOrg();
   const clusteredQuestionsPromise = getTopQuestions(orgId).then((rows) =>
     clusterTopQuestions(rows),
   );
+
+  // Owner's timezone — used for all time-grouped queries to show local times in charts
+  const timezone = await getOwnerTimezone();
 
   // All queries in parallel — no query waits for another
   const [
@@ -45,13 +52,13 @@ export default async function AnalyticsRoute() {
     getHandoffRate(orgId),
     getAiResolutionRate(orgId),
     getAnalyticsAvgResponseTime(orgId),
-    getHandoffTrend(orgId),
+    getHandoffTrend(orgId, timezone),
     getAiVsHandoffSplit(orgId),
-    getPeakHours(orgId),
+    getPeakHours(orgId, timezone),
     clusteredQuestionsPromise,
     getChannelBreakdown(orgId),
-    getResponseTimeTrend(orgId),
-    getDailyMessageTrend(orgId),
+    getResponseTimeTrend(orgId, timezone),
+    getDailyMessageTrend(orgId, timezone),
   ]);
 
   return (

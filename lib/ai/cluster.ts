@@ -30,17 +30,20 @@ async function aiCluster(
   questions: { question: string; count: number }[],
 ): Promise<QuestionCluster[]> {
   const openai = new OpenAI({ apiKey: env.openaiApiKey! });
-  const REQUEST_TIMEOUT_MS = 8000;
+  const REQUEST_TIMEOUT_MS = 15000;
+
+  // Cap at 20 questions — enough for meaningful clustering, reduces token count and latency
+  const capped = questions.slice(0, 20);
 
   // Format questions for the prompt — include counts so AI weighs them correctly
-  const formatted = questions
+  const formatted = capped
     .map((q, i) => `${i + 1}. "${q.question}" (${q.count}x)`)
     .join("\n");
 
   const response = await Promise.race([
     openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_tokens: 800,
+      max_tokens: 600,
       temperature: 0.2, // Low temperature — we want consistent, factual grouping
       messages: [
         {
