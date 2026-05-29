@@ -1,14 +1,15 @@
 // All billing-related DB queries — imported by Server Actions and webhook handler
 // Every query scopes to orgId first — never query by id alone
 
-import { and, eq, gte, lt, desc } from "drizzle-orm";
+import { and, eq, gte, lt, desc, lte, isNull, or, ilike } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orgs, payments } from "@/lib/db/schema";
+import { orgs, payments, promoCodes } from "@/lib/db/schema";
 import type {
   BillingPageData,
   PlanName,
   SubscriptionStatus,
 } from "@/types/billing";
+import type { PromoCode } from "@/types/billing";
 import { PLAN_LIMITS, PaymentHistoryItem } from "@/types/billing";
 
 // Fetches all billing data the billing page needs in one query
@@ -23,6 +24,7 @@ export async function getBillingData(orgId: string): Promise<BillingPageData> {
       currentPeriodEnd: orgs.currentPeriodEnd,
       nextBillingDate: orgs.nextBillingDate,
       lastPaymentMethod: orgs.lastPaymentMethod,
+      hasUsedFirstPurchase: orgs.hasUsedFirstPurchase,
     })
     .from(orgs)
     .where(eq(orgs.id, orgId));
@@ -39,6 +41,8 @@ export async function getBillingData(orgId: string): Promise<BillingPageData> {
     nextBillingDate: org.nextBillingDate,
     lastPaymentMethod: org.lastPaymentMethod,
     paymentHistory: await getPaymentHistory(orgId),
+    hasUsedFirstPurchase: org.hasUsedFirstPurchase,
+    hasActivePromo: await checkHasActivePromo(),
   };
 }
 
@@ -67,6 +71,8 @@ export async function activateSubscription(
       currentPeriodEnd: periodEnd,
       nextBillingDate: nextBilling,
       lastPaymentMethod: paymentMethod,
+      // Consume the first-time discount — any paid purchase burns it forever
+      hasUsedFirstPurchase: true,
     })
     .where(eq(orgs.id, orgId));
 }
@@ -203,4 +209,79 @@ export async function getPaymentHistory(
     paidAt: row.paidAt,
     status: row.status as PaymentHistoryItem["status"],
   }));
+}
+
+// Checks if any promo code is currently active and not expired
+// Used on billing page load — drives whether the promo input appears at all
+export async function checkHasActivePromo(): Promise<boolean> {
+  const now = new Date();
+
+  const [row] = await db
+    .select({ id: promoCodes.id })
+    .from(promoCodes)
+    .where(
+      and(
+        // Code must be manually enabled
+        eq(promoCodes.isActive, true),
+        // Must have started already
+        lte(promoCodes.validFrom, now),
+        // validUntil null = no expiry, otherwise must not be expired
+        or(isNull(promoCodes.validUntil), gte(promoCodes.validUntil, now)),
+      ),
+    )
+    .limit(1);
+
+  return !!row;
+}
+
+// Validates a promo code at checkout — called server-side in createPayment action
+// Returns the code details if valid, null if invalid/expired/maxed out/wrong plan
+export async function validatePromoCode(
+  code: string,
+  plan: "starter" | "pro",
+): Promise<PromoCode | null> {
+  const now = new Date();
+
+  const [row] = await db
+    .select()
+    .from(promoCodes)
+    .where(
+      and(
+        // Case-insensitive match — CHRISTMAS50 = christmas50
+        ilike(promoCodes.code, code),
+        eq(promoCodes.isActive, true),
+        lte(promoCodes.validFrom, now),
+        or(isNull(promoCodes.validUntil), gte(promoCodes.validUntil, now)),
+      ),
+    )
+    .limit(1);
+
+  if (!row) return null;
+
+  // Check usage cap — null maxUses means unlimited
+  if (row.maxUses !== null && row.usedCount >= row.maxUses) return null;
+
+  // Check plan applicability — null means all paid plans
+  if (row.applicablePlans !== null) {
+    let applicable: PlanName[];
+    try {
+      applicable = JSON.parse(row.applicablePlans) as PlanName[];
+    } catch {
+      // Malformed JSON in DB — treat as inapplicable, don't crash
+      return null;
+    }
+    if (!applicable.includes(plan)) return null;
+  }
+
+  return {
+    id: row.id,
+    code: row.code,
+    discountPercent: row.discountPercent,
+    applicablePlans: row.applicablePlans
+      ? (JSON.parse(row.applicablePlans) as PlanName[])
+      : null,
+    validUntil: row.validUntil,
+    maxUses: row.maxUses,
+    usedCount: row.usedCount,
+  };
 }

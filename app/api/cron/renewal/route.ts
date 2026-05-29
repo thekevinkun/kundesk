@@ -84,6 +84,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         org.id,
         org.plan,
         ownerEmail,
+        // Renewals always charge the regular price — discounts are first-purchase only
+        PLAN_PRICE[org.plan as PlanName],
       );
 
       // ── Record the attempt AFTER Midtrans succeeds ──

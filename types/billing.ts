@@ -63,6 +63,24 @@ export const PLAN_PRICE: Record<PlanName, number> = {
   pro: 399000,
 };
 
+// First-time discount prices — fixed amounts, only applies before first purchase
+// Once any paid plan is bought, hasUsedFirstPurchase flips to true and these never show again
+export const PLAN_FIRST_TIME_PRICE: Record<"starter" | "pro", number> = {
+  starter: 99_000,
+  pro: 299_000,
+};
+
+// Matches the promoCodes table — used by validatePromoCode query return type
+export interface PromoCode {
+  id: number;
+  code: string;
+  discountPercent: number;
+  applicablePlans: PlanName[] | null; // null = all paid plans
+  validUntil: Date | null;
+  maxUses: number | null;
+  usedCount: number;
+}
+
 // Midtrans webhook notification payload
 export interface MidtransNotification {
   order_id: string;
@@ -97,4 +115,8 @@ export interface BillingPageData {
   nextBillingDate: Date | null;
   lastPaymentMethod: string | null;
   paymentHistory: PaymentHistoryItem[];
+  hasUsedFirstPurchase: boolean;
+  // true if at least one promo code is active and not expired right now
+  // drives whether the promo code input appears on the billing page
+  hasActivePromo: boolean;
 }

@@ -27,10 +27,15 @@ const FooterSection = dynamic(
 
 interface LandingPageProps {
   activeOrgCount: number;
-  currentPlan: PlanName | null; // null = not signed in
+  currentPlan: PlanName | null;
+  hasUsedFirstPurchase: boolean;
 }
 
-const LandingPage = ({ activeOrgCount, currentPlan }: LandingPageProps) => {
+const LandingPage = ({
+  activeOrgCount,
+  currentPlan,
+  hasUsedFirstPurchase,
+}: LandingPageProps) => {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       <Navbar />
@@ -39,7 +44,10 @@ const LandingPage = ({ activeOrgCount, currentPlan }: LandingPageProps) => {
       <FeaturesSection />
       <HowItWorksSection />
       <TestimonialsSection />
-      <PricingSection currentPlan={currentPlan} />
+      <PricingSection
+        currentPlan={currentPlan}
+        hasUsedFirstPurchase={hasUsedFirstPurchase}
+      />
       <FaqSection />
       <CtaBanner />
       <FooterSection />

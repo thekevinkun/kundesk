@@ -71,6 +71,13 @@
       "when": 1779541668365,
       "tag": "0009_left_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780081104947,
+      "tag": "0010_yellow_black_tom",
+      "breakpoints": true
     }
   ]
 }

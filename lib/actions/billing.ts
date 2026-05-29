@@ -4,26 +4,32 @@
 
 "use server";
 
-import { z } from "zod/v4";
-import { requireOrg } from "@/lib/auth";
-import { createSubscriptionTransaction } from "@/lib/midtrans";
-import { cancelSubscription } from "@/lib/db/queries/billing";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
+import { z } from "zod/v4";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { processedWebhooks } from "@/lib/db/schema";
-import { and, eq, gte } from "drizzle-orm";
+import { requireOrg } from "@/lib/auth";
+import { processedWebhooks, orgs, promoCodes } from "@/lib/db/schema";
+import { createSubscriptionTransaction } from "@/lib/midtrans";
+import {
+  cancelSubscription,
+  validatePromoCode,
+} from "@/lib/db/queries/billing";
 import type { PlanName } from "@/types/billing";
+import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 
 // ── Input schema ──
 const upgradeSchema = z.object({
   // Only paid plans can be selected — free has no payment flow
   plan: z.enum(["starter", "pro"]),
+  // Optional promo code — validated server-side, never trusted from client
+  promoCode: z.string().trim().max(50).optional(),
 });
 
 // Return type for createPayment — consistent shape for useActionState
 type BillingActionResult =
-  | { success: true; redirectUrl: string }
+  | { success: true; redirectUrl: string; finalAmount: number }
   | { success: false; error: string };
 
 // Creates a Midtrans transaction for the selected plan
@@ -41,7 +47,7 @@ export async function createPayment(
     return { success: false, error: "Invalid plan selected." };
   }
 
-  const { plan } = result.data;
+  const { plan, promoCode } = result.data;
 
   // ── Idempotency check — one active unpaid transaction per org per plan per day ──
   // Prevents duplicate Midtrans transactions on rapid re-submits or double-clicks
@@ -74,9 +80,46 @@ export async function createPayment(
     };
   }
 
-  // Get the customer's email from Clerk — passed to Midtrans for their records
-  const user = await currentUser();
+  // Fetch org data and customer email in parallel — both needed before Midtrans call
+  const [user, org] = await Promise.all([
+    currentUser(),
+    db
+      .select({
+        hasUsedFirstPurchase: orgs.hasUsedFirstPurchase,
+      })
+      .from(orgs)
+      .where(eq(orgs.id, orgId))
+      .then((rows) => rows[0] ?? null),
+  ]);
+
+  if (!org) return { success: false, error: "Organisasi tidak ditemukan." };
+
   const email = user?.emailAddresses[0]?.emailAddress ?? "noemail@kundesk.app";
+
+  // ── Discount logic ──
+  // Priority: promo code > first-time discount. No stacking.
+  let finalAmount = PLAN_PRICE[plan];
+  let appliedPromoId: number | null = null;
+
+  if (promoCode) {
+    // Validate promo code server-side — never trust client price
+    const promo = await validatePromoCode(promoCode, plan);
+    if (!promo) {
+      return {
+        success: false,
+        error:
+          "Kode promo tidak valid, sudah habis, atau tidak berlaku untuk plan ini.",
+      };
+    }
+    // Apply percentage discount — floor to avoid fractional Rupiah
+    finalAmount = Math.floor(
+      PLAN_PRICE[plan] * (1 - promo.discountPercent / 100),
+    );
+    appliedPromoId = promo.id;
+  } else if (!org.hasUsedFirstPurchase) {
+    // No promo code — apply first-time discount if still eligible
+    finalAmount = PLAN_FIRST_TIME_PRICE[plan];
+  }
 
   try {
     // ── Record the attempt BEFORE calling Midtrans ──
@@ -93,11 +136,21 @@ export async function createPayment(
       orgId,
       plan as PlanName,
       email,
+      finalAmount,
     );
+
+    // Increment promo code usedCount if one was applied
+    // Done after Midtrans call succeeds — failed transactions don't consume the code
+    if (appliedPromoId !== null) {
+      await db
+        .update(promoCodes)
+        .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+        .where(eq(promoCodes.id, appliedPromoId));
+    }
 
     revalidatePath("/dashboard/billing");
 
-    return { success: true, redirectUrl };
+    return { success: true, redirectUrl, finalAmount };
   } catch (err) {
     console.error("[createPayment] Midtrans error:", err);
     return {

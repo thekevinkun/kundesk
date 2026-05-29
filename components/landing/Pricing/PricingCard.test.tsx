@@ -51,33 +51,69 @@ describe("PricingCard", () => {
 
   describe("when not signed in", () => {
     it("shows 'Mulai Sekarang' CTA for free plan", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Mulai Sekarang")).toBeInTheDocument();
     });
 
     it("shows 'Mulai Sekarang' CTA for starter plan", () => {
-      render(<PricingCard plan="starter" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Mulai Sekarang")).toBeInTheDocument();
     });
 
     it("shows 'Mulai Sekarang' CTA for pro plan", () => {
-      render(<PricingCard plan="pro" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Mulai Sekarang")).toBeInTheDocument();
     });
 
     it("CTA links to /sign-up when not signed in", () => {
-      render(<PricingCard plan="starter" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       const link = screen.getByRole("link", { name: "Mulai Sekarang" });
       expect(link).toHaveAttribute("href", "/sign-up");
     });
 
     it("does not show 'Aktif' badge when not signed in", () => {
-      render(<PricingCard plan="starter" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.queryByText("Aktif")).not.toBeInTheDocument();
     });
 
     it("CTA is a link — not disabled — when not signed in", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       // Should be a link, not a div with cursor-not-allowed
       const link = screen.getByRole("link", { name: "Mulai Sekarang" });
       expect(link).toBeInTheDocument();
@@ -88,27 +124,57 @@ describe("PricingCard", () => {
 
   describe("when signed in and viewing current plan", () => {
     it("shows 'Plan Aktif' CTA when free is current plan", () => {
-      render(<PricingCard plan="free" currentPlan="free" />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan="free"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Plan Aktif")).toBeInTheDocument();
     });
 
     it("shows 'Plan Aktif' CTA when starter is current plan", () => {
-      render(<PricingCard plan="starter" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Plan Aktif")).toBeInTheDocument();
     });
 
     it("shows 'Plan Aktif' CTA when pro is current plan", () => {
-      render(<PricingCard plan="pro" currentPlan="pro" />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan="pro"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Plan Aktif")).toBeInTheDocument();
     });
 
     it("shows 'Aktif' badge on current plan", () => {
-      render(<PricingCard plan="starter" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Aktif")).toBeInTheDocument();
     });
 
     it("renders CTA as disabled div — not a link — for current plan", () => {
-      render(<PricingCard plan="starter" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       // Should NOT find a link with this label
       expect(
         screen.queryByRole("link", { name: "Plan Aktif" }),
@@ -118,7 +184,13 @@ describe("PricingCard", () => {
     });
 
     it("disabled CTA has cursor-not-allowed class", () => {
-      render(<PricingCard plan="starter" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       const cta = screen.getByText("Plan Aktif");
       expect(cta).toHaveClass("cursor-not-allowed");
     });
@@ -128,28 +200,58 @@ describe("PricingCard", () => {
 
   describe("when signed in but viewing a different plan", () => {
     it("shows 'Pilih Plan Ini' when signed in on free but viewing starter", () => {
-      render(<PricingCard plan="starter" currentPlan="free" />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan="free"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Pilih Plan Ini")).toBeInTheDocument();
     });
 
     it("shows 'Pilih Plan Ini' when signed in on starter but viewing pro", () => {
-      render(<PricingCard plan="pro" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Pilih Plan Ini")).toBeInTheDocument();
     });
 
     it("CTA links to /dashboard/billing when signed in", () => {
-      render(<PricingCard plan="pro" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       const link = screen.getByRole("link", { name: "Pilih Plan Ini" });
       expect(link).toHaveAttribute("href", "/dashboard/billing");
     });
 
     it("does not show 'Aktif' badge on non-current plan", () => {
-      render(<PricingCard plan="pro" currentPlan="starter" />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan="starter"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.queryByText("Aktif")).not.toBeInTheDocument();
     });
 
     it("CTA is a link — not disabled — for non-current plans", () => {
-      render(<PricingCard plan="pro" currentPlan="free" />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan="free"
+          hasUsedFirstPurchase={false}
+        />,
+      );
       const link = screen.getByRole("link", { name: "Pilih Plan Ini" });
       expect(link).toBeInTheDocument();
     });
@@ -159,17 +261,35 @@ describe("PricingCard", () => {
 
   describe("featured card (starter)", () => {
     it("shows 'Paling Populer' badge on starter plan", () => {
-      render(<PricingCard plan="starter" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Paling Populer")).toBeInTheDocument();
     });
 
     it("does not show 'Paling Populer' badge on free plan", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.queryByText("Paling Populer")).not.toBeInTheDocument();
     });
 
     it("does not show 'Paling Populer' badge on pro plan", () => {
-      render(<PricingCard plan="pro" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.queryByText("Paling Populer")).not.toBeInTheDocument();
     });
   });
@@ -178,42 +298,90 @@ describe("PricingCard", () => {
 
   describe("plan content", () => {
     it("shows correct plan label for free", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Free")).toBeInTheDocument();
     });
 
     it("shows correct plan label for starter", () => {
-      render(<PricingCard plan="starter" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Starter")).toBeInTheDocument();
     });
 
     it("shows correct plan label for pro", () => {
-      render(<PricingCard plan="pro" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Pro")).toBeInTheDocument();
     });
 
     it("shows 'Gratis' price for free plan", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Gratis")).toBeInTheDocument();
     });
 
     it("shows 'selamanya gratis' for free plan", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("selamanya gratis")).toBeInTheDocument();
     });
 
     it("shows 'per bulan' for paid plans", () => {
-      render(<PricingCard plan="starter" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("per bulan")).toBeInTheDocument();
     });
 
     it("shows a feature from the free plan features list", () => {
-      render(<PricingCard plan="free" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("100 pesan / bulan")).toBeInTheDocument();
     });
 
     it("shows a feature from the pro plan features list", () => {
-      render(<PricingCard plan="pro" currentPlan={null} />);
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
       expect(screen.getByText("Dokumen unlimited")).toBeInTheDocument();
     });
   });

@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   CurrentPlanCard,
   PlanCard,
   CancelDialog,
   PaymentHistoryCard,
+  PromoCodeInput,
 } from "@/components/dashboard/billing";
 import { fadeUp } from "@/lib/animations";
 import type { BillingPageData, PlanName } from "@/types/billing";
@@ -15,6 +17,10 @@ interface BillingPageProps {
 }
 
 const BillingPage = ({ data }: BillingPageProps) => {
+  // Promo code applied by the user — passed down to all PlanCards
+  // null = no code entered yet, empty string = cleared
+  const [promoCode, setPromoCode] = useState<string | null>(null);
+
   return (
     <motion.div
       variants={fadeUp}
@@ -66,6 +72,9 @@ const BillingPage = ({ data }: BillingPageProps) => {
             </div>
           </div>
 
+          {/* Promo code input — only shown when at least one active promo exists */}
+          {data.hasActivePromo && <PromoCodeInput onApply={setPromoCode} />}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {(["free", "starter", "pro"] as PlanName[]).map((plan) => (
               <PlanCard
@@ -73,6 +82,8 @@ const BillingPage = ({ data }: BillingPageProps) => {
                 plan={plan}
                 currentPlan={data.currentPlan}
                 subscriptionStatus={data.subscriptionStatus}
+                hasUsedFirstPurchase={data.hasUsedFirstPurchase}
+                promoCode={promoCode}
               />
             ))}
           </div>

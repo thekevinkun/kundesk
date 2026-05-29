@@ -4,17 +4,29 @@ import { cn } from "@/lib/utils";
 import { landingStaggerItem } from "@/lib/animations";
 import { PRICING_PLANS } from "@/lib/landing-constants";
 import { formatRupiah } from "@/helpers/format";
-import { PLAN_PRICE } from "@/types/billing";
+import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 import type { PlanName } from "@/types/billing";
 
 interface PricingCardProps {
   plan: PlanName;
-  currentPlan: PlanName | null; // null = not signed in
+  currentPlan: PlanName | null;
+  hasUsedFirstPurchase: boolean;
 }
 
-const PricingCard = ({ plan, currentPlan }: PricingCardProps) => {
+const PricingCard = ({
+  plan,
+  currentPlan,
+  hasUsedFirstPurchase,
+}: PricingCardProps) => {
   const config = PRICING_PLANS[plan];
-  const price = PLAN_PRICE[plan];
+  const regularPrice = PLAN_PRICE[plan];
+
+  // Show first-time price if signed-in user hasn't made a purchase yet
+  const isFirstTimeEligible = plan !== "free" && !hasUsedFirstPurchase;
+  const displayPrice = isFirstTimeEligible
+    ? PLAN_FIRST_TIME_PRICE[plan as "starter" | "pro"]
+    : regularPrice;
+
   const isFeatured = plan === "starter";
   const isCurrent = currentPlan === plan;
   const isSignedIn = currentPlan !== null;
@@ -67,12 +79,24 @@ const PricingCard = ({ plan, currentPlan }: PricingCardProps) => {
       </p>
 
       {/* Price */}
+      {isFirstTimeEligible && (
+        <div className="text-[16px] text-(--color-text-400) line-through leading-none mb-1">
+          {formatRupiah(regularPrice)}
+        </div>
+      )}
       <div className="text-[44px] font-extrabold tracking-[-0.05em] text-(--color-text-900) leading-none mb-1">
-        {formatRupiah(price)}
+        {formatRupiah(displayPrice)}
       </div>
-      <div className="text-[13px] text-(--color-text-500) mb-7">
-        {price > 0 ? "per bulan" : "selamanya gratis"}
+      <div className="text-[13px] text-(--color-text-500) mb-4">
+        {regularPrice > 0 ? "per bulan" : "selamanya gratis"}
       </div>
+      {isFirstTimeEligible && (
+        <div className="mb-3">
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-(--color-brand-light) text-(--color-brand) border border-(--color-brand-mid)">
+            🎉 Harga perdana — hemat {formatRupiah(regularPrice - displayPrice)}
+          </span>
+        </div>
+      )}
 
       {/* CTA */}
       {isDisabled ? (

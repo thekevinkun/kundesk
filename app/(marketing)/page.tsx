@@ -32,11 +32,13 @@ export default async function MarketingPage() {
 
   // Optionally fetch current plan — only if visitor is a signed-in org member
   let currentPlan: PlanName | null = null;
+  let hasUsedFirstPurchase = false;
   try {
     const { orgId } = await auth();
     if (orgId) {
       const billing = await getBillingData(orgId);
       currentPlan = billing.currentPlan;
+      hasUsedFirstPurchase = billing.hasUsedFirstPurchase;
     }
   } catch (err) {
     console.error("[marketing/page] Failed to fetch billing data:", err);
@@ -74,7 +76,11 @@ export default async function MarketingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <LandingPage activeOrgCount={activeOrgCount} currentPlan={currentPlan} />
+      <LandingPage
+        activeOrgCount={activeOrgCount}
+        currentPlan={currentPlan}
+        hasUsedFirstPurchase={hasUsedFirstPurchase}
+      />
     </>
   );
 }

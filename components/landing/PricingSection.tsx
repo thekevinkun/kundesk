@@ -7,9 +7,13 @@ import type { PlanName } from "@/types/billing";
 
 interface PricingSectionProps {
   currentPlan: PlanName | null;
+  hasUsedFirstPurchase: boolean;
 }
 
-const PricingSection = ({ currentPlan }: PricingSectionProps) => {
+const PricingSection = ({
+  currentPlan,
+  hasUsedFirstPurchase,
+}: PricingSectionProps) => {
   return (
     <section id="pricing" className="py-24 px-6 lg:px-16 bg-white">
       {/* Section header */}
@@ -51,7 +55,12 @@ const PricingSection = ({ currentPlan }: PricingSectionProps) => {
         className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-[1000px] mx-auto items-start"
       >
         {(["free", "starter", "pro"] as PlanName[]).map((plan) => (
-          <PricingCard key={plan} plan={plan} currentPlan={currentPlan} />
+          <PricingCard
+            key={plan}
+            plan={plan}
+            currentPlan={currentPlan}
+            hasUsedFirstPurchase={hasUsedFirstPurchase}
+          />
         ))}
       </motion.div>
     </section>

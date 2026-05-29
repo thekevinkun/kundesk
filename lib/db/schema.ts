@@ -68,6 +68,13 @@ export const orgs = pgTable("orgs", {
   // Message limit — set based on plan, updated on plan change
   messagesLimit: integer("messages_limit").notNull().default(100),
 
+  // Tracks whether this org has ever completed a paid purchase
+  // false = first-time discount still applies to both plans
+  // true = discount consumed forever, regardless of which plan was bought first
+  hasUsedFirstPurchase: boolean("has_used_first_purchase")
+    .notNull()
+    .default(false),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -395,5 +402,45 @@ export const payments = pgTable(
     index("payments_org_id_idx").on(table.orgId),
     // Index on paidAt DESC — history is always shown newest first
     index("payments_paid_at_idx").on(table.paidAt),
+  ],
+);
+
+// ─── PROMO CODES ───
+// Time-limited discount codes — created manually via Neon console
+// Percentage-based discount applied at checkout, validated server-side
+// Never trust discounted price from client — always recalculate server-side
+export const promoCodes = pgTable(
+  "promo_codes",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+
+    // The code customers type — stored uppercase, matched case-insensitively
+    code: text("code").notNull().unique(),
+
+    // Discount percentage — e.g. 50 means 50% off
+    discountPercent: integer("discount_percent").notNull(),
+
+    // Which plans this code applies to — JSON array string e.g. '["starter","pro"]'
+    // null = applies to all paid plans
+    applicablePlans: text("applicable_plans"),
+
+    // Validity window — null validUntil means no expiry
+    validFrom: timestamp("valid_from").notNull().defaultNow(),
+    validUntil: timestamp("valid_until"),
+
+    // Usage cap — null means unlimited
+    maxUses: integer("max_uses"),
+
+    // How many times this code has been successfully used
+    usedCount: integer("used_count").notNull().default(0),
+
+    // Manual kill switch — set false to disable without deleting
+    isActive: boolean("is_active").notNull().default(true),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Index on code — lookup by code at checkout
+    uniqueIndex("promo_codes_code_idx").on(table.code),
   ],
 );

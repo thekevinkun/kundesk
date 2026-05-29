@@ -6,20 +6,47 @@ import { Separator } from "@/components/ui/separator";
 import { createPayment } from "@/lib/actions/billing";
 import { PLAN_CONFIG } from "@/components/dashboard/billing/constants";
 import { formatRupiah } from "@/helpers/format";
-import { PLAN_PRICE } from "@/types/billing";
+import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 import type { BillingPageData, PlanName } from "@/types/billing";
 
 interface PlanCardProps {
   plan: PlanName;
   currentPlan: PlanName;
   subscriptionStatus: BillingPageData["subscriptionStatus"];
+  hasUsedFirstPurchase: boolean;
+  // null = no promo entered, string = code to apply at checkout
+  promoCode: string | null;
 }
 
-const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
+const PlanCard = ({
+  plan,
+  currentPlan,
+  subscriptionStatus,
+  hasUsedFirstPurchase,
+  promoCode,
+}: PlanCardProps) => {
   const config = PLAN_CONFIG[plan];
-  const price = PLAN_PRICE[plan];
   const isCurrent = plan === currentPlan;
   const isFeatured = plan === "starter";
+
+  // Free plan has no discount logic
+  const regularPrice = PLAN_PRICE[plan];
+
+  // Display price — what the user sees on the card
+  // Promo code takes precedence over first-time discount (no stacking)
+  // Note: actual promo discount % is unknown client-side — we just show "Kode diterapkan"
+  // The real deduction is calculated server-side in createPayment
+  const isFirstTimeEligible = plan !== "free" && !hasUsedFirstPurchase;
+
+  const hasPromo = plan !== "free" && !!promoCode;
+
+  const displayPrice = hasPromo
+    ? regularPrice // show regular, server will apply promo — we don't know % client-side
+    : isFirstTimeEligible
+      ? PLAN_FIRST_TIME_PRICE[plan as "starter" | "pro"]
+      : regularPrice;
+
+  const showOriginalPrice = !hasPromo && isFirstTimeEligible;
 
   const [state, formAction, isPending] = useActionState(createPayment, null);
 
@@ -80,17 +107,43 @@ const PlanCard = ({ plan, currentPlan, subscriptionStatus }: PlanCardProps) => {
 
       {/* Price */}
       <div className="mb-5">
+        {/* Strikethrough original price — only shown when first-time discount applies */}
+        {showOriginalPrice && (
+          <div className="text-sm text-(--color-text-400) line-through mb-0.5">
+            {formatRupiah(regularPrice)}
+          </div>
+        )}
         <div className="text-3xl font-extrabold tracking-tight text-(--color-text-900) leading-none mb-1">
-          {formatRupiah(price)}
+          {formatRupiah(displayPrice)}
         </div>
-        {price > 0 && (
-          <div className="text-xs text-(--color-text-400)">per bulan</div>
+        {regularPrice > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-(--color-text-400)">per bulan</span>
+            {/* Promo applied indicator — shown when a code is entered */}
+            {hasPromo && (
+              <span className="badge-base badge-success text-[10px]">
+                🎟 Kode diterapkan
+              </span>
+            )}
+            {/* First-time discount badge */}
+            {showOriginalPrice && (
+              <span className="badge-base badge-success text-[10px]">
+                🎉 Harga perdana
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {/* CTA form — hidden input passes plan to Server Action */}
+      {/* CTA form — hidden inputs pass plan + promo code to Server Action */}
       <form action={formAction} className="mb-5">
         <input type="hidden" name="plan" value={plan} />
+
+        {/* Pass promo code if one is entered — validated server-side */}
+        {promoCode && (
+          <input type="hidden" name="promoCode" value={promoCode} />
+        )}
+
         <button
           type="submit"
           disabled={isDisabled}
