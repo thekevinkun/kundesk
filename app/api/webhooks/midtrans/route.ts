@@ -151,30 +151,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Both run before marking processed — if either throws, Midtrans retries
   // activateSubscription is idempotent (SET) — safe to retry
   // insertPayment has unique constraint on orderId — second attempt throws, caught by idempotency check above
-  await activateSubscription(org.id, plan, payment_type);
-  await insertPayment(
-    org.id,
-    order_id,
-    plan,
-    parseInt(notification.gross_amount, 10),
-    payment_type,
-  );
+  // Wrap state transition writes atomically (or make each step conflict-safe/idempotent).
+  // Practical implementation may require threading a tx handle into query helpers.
+  await db.transaction(async (tx) => {
+    await activateSubscription(org.id, plan, payment_type /*, tx */);
+    await insertPayment(
+      org.id,
+      order_id,
+      plan,
+      parseInt(notification.gross_amount, 10),
+      payment_type,
+      /* tx */
+    );
 
-  // Atomically increment promo usedCount — only on confirmed settlement
-  // Moving this here (not in createPayment) ensures abandoned checkouts don't burn quota
-  // sql`` increment is atomic — concurrent webhooks for the same code won't overshoot
-  if (promoId !== null) {
-    await db
-      .update(promoCodes)
-      .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
-      .where(eq(promoCodes.id, promoId));
-  }
+    if (promoId !== null) {
+      await tx
+        .update(promoCodes)
+        .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+        .where(eq(promoCodes.id, promoId));
+    }
 
-  // ── Layer 8: Mark as processed ──
-  // Insert AFTER both writes succeed — guarantees retry-safety
-  await db.insert(processedWebhooks).values({
-    externalId: order_id,
-    source: "midtrans",
+    await tx.insert(processedWebhooks).values({
+      externalId: order_id,
+      source: "midtrans",
+    });
   });
 
   console.log("[midtrans webhook] Subscription activated", {
