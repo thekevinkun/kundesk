@@ -36,12 +36,20 @@ export default async function MarketingPage() {
   try {
     const { orgId } = await auth();
     if (orgId) {
-      const billing = await getBillingData(orgId);
-      currentPlan = billing.currentPlan;
-      hasUsedFirstPurchase = billing.hasUsedFirstPurchase;
+      try {
+        const billing = await getBillingData(orgId);
+        currentPlan = billing.currentPlan;
+        hasUsedFirstPurchase = billing.hasUsedFirstPurchase;
+      } catch (err) {
+        // Billing fetch failed — treat as ineligible to avoid showing
+        // a discount the org may no longer qualify for
+        console.error("[marketing/page] Failed to fetch billing data:", err);
+        currentPlan = "free"; // authenticated but unknown plan — show logged-in CTAs
+        hasUsedFirstPurchase = true; // conservative — don't advertise discount
+      }
     }
   } catch (err) {
-    console.error("[marketing/page] Failed to fetch billing data:", err);
+    console.error("[marketing/page] Failed to fetch auth:", err);
   }
 
   // JSON-LD structured data — helps Google understand the business

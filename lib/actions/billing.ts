@@ -42,7 +42,12 @@ export async function createPayment(
   const { orgId } = await requireOrg();
 
   // Validate the selected plan
-  const result = upgradeSchema.safeParse({ plan: formData.get("plan") });
+  const rawPromoCode = formData.get("promoCode");
+  const result = upgradeSchema.safeParse({
+    plan: formData.get("plan"),
+    promoCode: typeof rawPromoCode === "string" ? rawPromoCode : undefined,
+  });
+
   if (!result.success) {
     return { success: false, error: "Invalid plan selected." };
   }

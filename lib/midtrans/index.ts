@@ -101,15 +101,18 @@ export async function fireMockWebhook(
   orderId: string,
   orgId: string,
   plan: PlanName,
+  // Accept the actual charged amount — may differ from PLAN_PRICE due to discounts
+  // Defaults to regular price for backward compatibility (renewal cron, E2E tests)
+  amount?: number,
 ): Promise<void> {
-  const amount = PLAN_PRICE[plan].toString();
+  const grossAmount = (amount ?? PLAN_PRICE[plan]).toString();
 
   // Build a fake notification matching Midtrans structure exactly
   const notification: Omit<MidtransNotification, "signature_key"> = {
     order_id: orderId,
     transaction_status: "settlement",
     fraud_status: "accept",
-    gross_amount: amount,
+    gross_amount: grossAmount,
     payment_type: "bank_transfer",
     transaction_id: `mock-txn-${Date.now()}`,
     status_code: "200",

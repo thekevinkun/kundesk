@@ -18,7 +18,7 @@ interface BillingPageProps {
 
 const BillingPage = ({ data }: BillingPageProps) => {
   // Promo code applied by the user — passed down to all PlanCards
-  // null = no code entered yet, empty string = cleared
+  // null = no code entered/cleared, string = code applied
   const [promoCode, setPromoCode] = useState<string | null>(null);
 
   return (

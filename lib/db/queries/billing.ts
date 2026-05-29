@@ -1,7 +1,7 @@
 // All billing-related DB queries — imported by Server Actions and webhook handler
 // Every query scopes to orgId first — never query by id alone
 
-import { and, eq, gte, lt, desc, lte, isNull, or, ilike } from "drizzle-orm";
+import { and, eq, gte, lt, desc, lte, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orgs, payments, promoCodes } from "@/lib/db/schema";
 import type {
@@ -216,24 +216,28 @@ export async function getPaymentHistory(
 export async function checkHasActivePromo(): Promise<boolean> {
   const now = new Date();
 
-  const [row] = await db
-    .select({ id: promoCodes.id })
+  // A code is "available" if: active, within validity window, and under usage cap
+  // maxUses null = unlimited; used_count < max_uses = still has capacity
+  const rows = await db
+    .select({
+      id: promoCodes.id,
+      maxUses: promoCodes.maxUses,
+      usedCount: promoCodes.usedCount,
+    })
     .from(promoCodes)
     .where(
       and(
-        // Code must be manually enabled
         eq(promoCodes.isActive, true),
-        // Must have started already
         lte(promoCodes.validFrom, now),
-        // validUntil null = no expiry, otherwise must not be expired
         or(isNull(promoCodes.validUntil), gte(promoCodes.validUntil, now)),
       ),
-    )
-    .limit(1);
+    );
 
-  return !!row;
+  // At least one code must have remaining capacity
+  return rows.some(
+    (row) => row.maxUses === null || row.usedCount < row.maxUses,
+  );
 }
-
 // Validates a promo code at checkout — called server-side in createPayment action
 // Returns the code details if valid, null if invalid/expired/maxed out/wrong plan
 export async function validatePromoCode(
@@ -247,8 +251,9 @@ export async function validatePromoCode(
     .from(promoCodes)
     .where(
       and(
-        // Case-insensitive match — CHRISTMAS50 = christmas50
-        ilike(promoCodes.code, code),
+        // Exact match on lowercased code — avoids LIKE wildcard injection
+        // Both sides normalized to lowercase — CHRISTMAS50 = christmas50
+        sql`LOWER(${promoCodes.code}) = LOWER(${code})`,
         eq(promoCodes.isActive, true),
         lte(promoCodes.validFrom, now),
         or(isNull(promoCodes.validUntil), gte(promoCodes.validUntil, now)),
