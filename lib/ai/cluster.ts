@@ -43,7 +43,7 @@ async function aiCluster(
   const response = await Promise.race([
     openai.chat.completions.create({
       model: "gpt-4o-mini",
-      max_tokens: 600,
+      max_tokens: 650,
       temperature: 0.2, // Low temperature — we want consistent, factual grouping
       messages: [
         {

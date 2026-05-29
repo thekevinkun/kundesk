@@ -134,9 +134,6 @@ const Topbar = () => {
 
   // Live clock — updates every second using extracted helpers
   useEffect(() => {
-    console.log("Device timezone:", getLocalTimezone());
-    console.log("Device offset:", -new Date().getTimezoneOffset() / 60);
-
     const update = () => {
       const now = new Date();
       setClock(formatLocalClock(now));
