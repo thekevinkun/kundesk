@@ -21,9 +21,16 @@ export function verifyMidtransSignature(
 }
 
 // Generates a unique order ID for a subscription payment
-export function generateOrderId(orgId: string, plan: PlanName): string {
+export function generateOrderId(
+  orgId: string,
+  plan: PlanName,
+  promoId?: number,
+): string {
   const timestamp = Date.now();
-  return `KUNDESK-${orgId.slice(0, 8)}-${plan.toUpperCase()}-${timestamp}`;
+  // Append promo ID if one was applied — parsed by webhook to increment usedCount
+  // Format: KUNDESK-{orgSlice}-{PLAN}-{timestamp} or KUNDESK-{orgSlice}-{PLAN}-{timestamp}-P{promoId}
+  const promoSuffix = promoId !== undefined ? `-P${promoId}` : "";
+  return `KUNDESK-${orgId.slice(0, 8)}-${plan.toUpperCase()}-${timestamp}${promoSuffix}`;
 }
 
 // Creates a Midtrans transaction for a plan subscription
@@ -31,11 +38,11 @@ export async function createSubscriptionTransaction(
   orgId: string,
   plan: PlanName,
   customerEmail: string,
-  // Final amount already calculated by the action — never derived here
-  // Discount logic (first-time, promo) lives in createPayment, not here
   amount: number,
+  // Optional promo ID — encoded in order_id so webhook can increment usedCount on settlement
+  promoId?: number,
 ): Promise<{ token: string; redirectUrl: string; orderId: string }> {
-  const orderId = generateOrderId(orgId, plan);
+  const orderId = generateOrderId(orgId, plan, promoId);
 
   // Mock mode — return fake token, no real transaction created
   if (env.paymentMode === "mock") {

@@ -6,8 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orgs } from "@/lib/db/schema";
-import { processedWebhooks } from "@/lib/db/schema";
+import { orgs, processedWebhooks, promoCodes } from "@/lib/db/schema";
 import { verifyMidtransSignature } from "@/lib/midtrans";
 import { activateSubscription, insertPayment } from "@/lib/db/queries/billing";
 import type { MidtransNotification, PlanName } from "@/types/billing";
@@ -111,6 +110,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const orgIdSlice = parts[1] as string;
   const planRaw = (parts[2] as string).toLowerCase();
 
+  // Parse optional promo ID from order suffix — format: ...-P{promoId}
+  // e.g. KUNDESK-org_3DZH-STARTER-1234567890-P42 → promoId = 42
+  const promoSuffix = parts.find((p) => p.startsWith("P") && /^P\d+$/.test(p));
+  const promoId = promoSuffix ? parseInt(promoSuffix.slice(1), 10) : null;
+
   if (planRaw !== "starter" && planRaw !== "pro") {
     console.error("[midtrans webhook] Unknown plan in order_id", {
       order_id,
@@ -155,6 +159,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     parseInt(notification.gross_amount, 10),
     payment_type,
   );
+
+  // Atomically increment promo usedCount — only on confirmed settlement
+  // Moving this here (not in createPayment) ensures abandoned checkouts don't burn quota
+  // sql`` increment is atomic — concurrent webhooks for the same code won't overshoot
+  if (promoId !== null) {
+    await db
+      .update(promoCodes)
+      .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+      .where(eq(promoCodes.id, promoId));
+  }
 
   // ── Layer 8: Mark as processed ──
   // Insert AFTER both writes succeed — guarantees retry-safety

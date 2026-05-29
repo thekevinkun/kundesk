@@ -122,7 +122,7 @@ const PlanCard = ({
             {/* Promo applied indicator — shown when a code is entered */}
             {hasPromo && (
               <span className="badge-base badge-success text-[10px]">
-                🎟 Kode diterapkan
+                🎟 Diskon diterapkan saat checkout
               </span>
             )}
             {/* First-time discount badge */}

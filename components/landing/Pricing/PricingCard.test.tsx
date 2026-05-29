@@ -385,4 +385,115 @@ describe("PricingCard", () => {
       expect(screen.getByText("Dokumen unlimited")).toBeInTheDocument();
     });
   });
+
+  // ── First-time discount (hasUsedFirstPurchase) ──
+
+  describe("first-time discount pricing", () => {
+    it("shows discounted price for starter when eligible", () => {
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
+      // First-time price is Rp 99.000
+      expect(screen.getByText("Rp 99.000")).toBeInTheDocument();
+    });
+
+    it("shows discounted price for pro when eligible", () => {
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
+      // First-time price is Rp 299.000
+      expect(screen.getByText("Rp 299.000")).toBeInTheDocument();
+    });
+
+    it("shows strikethrough regular price for starter when eligible", () => {
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
+      // Regular price Rp 149.000 shown struck through
+      expect(screen.getByText("Rp 149.000")).toBeInTheDocument();
+    });
+
+    it("shows strikethrough regular price for pro when eligible", () => {
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
+      // Regular price Rp 399.000 shown struck through
+      expect(screen.getByText("Rp 399.000")).toBeInTheDocument();
+    });
+
+    it("shows 'Harga perdana' badge when eligible", () => {
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
+      expect(screen.getByText(/Harga perdana/)).toBeInTheDocument();
+    });
+
+    it("shows regular price for starter when not eligible", () => {
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={true}
+        />,
+      );
+      expect(screen.getByText("Rp 149.000")).toBeInTheDocument();
+      // Discounted price should NOT appear
+      expect(screen.queryByText("Rp 99.000")).not.toBeInTheDocument();
+    });
+
+    it("shows regular price for pro when not eligible", () => {
+      render(
+        <PricingCard
+          plan="pro"
+          currentPlan={null}
+          hasUsedFirstPurchase={true}
+        />,
+      );
+      expect(screen.getByText("Rp 399.000")).toBeInTheDocument();
+      expect(screen.queryByText("Rp 299.000")).not.toBeInTheDocument();
+    });
+
+    it("does not show 'Harga perdana' badge when not eligible", () => {
+      render(
+        <PricingCard
+          plan="starter"
+          currentPlan={null}
+          hasUsedFirstPurchase={true}
+        />,
+      );
+      expect(screen.queryByText(/Harga perdana/)).not.toBeInTheDocument();
+    });
+
+    it("free plan never shows discount regardless of eligibility", () => {
+      render(
+        <PricingCard
+          plan="free"
+          currentPlan={null}
+          hasUsedFirstPurchase={false}
+        />,
+      );
+      expect(screen.queryByText(/Harga perdana/)).not.toBeInTheDocument();
+      expect(screen.getByText("Gratis")).toBeInTheDocument();
+    });
+  });
 });

@@ -7,10 +7,10 @@
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { z } from "zod/v4";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
-import { processedWebhooks, orgs, promoCodes } from "@/lib/db/schema";
+import { processedWebhooks, orgs } from "@/lib/db/schema";
 import { createSubscriptionTransaction } from "@/lib/midtrans";
 import {
   cancelSubscription,
@@ -142,16 +142,8 @@ export async function createPayment(
       plan as PlanName,
       email,
       finalAmount,
+      appliedPromoId ?? undefined,
     );
-
-    // Increment promo code usedCount if one was applied
-    // Done after Midtrans call succeeds — failed transactions don't consume the code
-    if (appliedPromoId !== null) {
-      await db
-        .update(promoCodes)
-        .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
-        .where(eq(promoCodes.id, appliedPromoId));
-    }
 
     revalidatePath("/dashboard/billing");
 

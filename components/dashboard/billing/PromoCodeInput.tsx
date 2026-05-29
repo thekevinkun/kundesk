@@ -59,7 +59,12 @@ const PromoCodeInput = ({ onApply }: PromoCodeInputProps) => {
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === "Enter" && handleApply()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleApply();
+              }
+            }}
             placeholder="CONTOH: CHRISTMAS50"
             maxLength={50}
             className="input-base flex-1 text-sm uppercase tracking-widest"
