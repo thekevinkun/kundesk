@@ -115,6 +115,33 @@ export async function checkAuthRateLimit(ip: string): Promise<RateLimitResult> {
   };
 }
 
+// widgetRateLimit — 60 req/min per IP+org combination
+// Public endpoint — must be permissive enough for real page views
+// Keyed by IP+slug together — one user visiting multiple orgs doesn't trigger limit
+// Multiple users behind same NAT hitting same widget also won't collide
+export async function checkWidgetRateLimit(
+  ip: string,
+  orgSlug: string,
+): Promise<RateLimitResult> {
+  const redis = await getRedis();
+  const { Ratelimit } = await import("@upstash/ratelimit");
+
+  const limiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "kundesk:rl:widget",
+  });
+
+  // Key combines IP + slug — prevents single IP hammering all orgs
+  // but doesn't punish legitimate traffic from shared IPs on one site
+  const result = await limiter.limit(`${ip}:${orgSlug}`);
+  return {
+    success: result.success,
+    remaining: result.remaining,
+    reset: result.reset,
+  };
+}
+
 // Generic cache get/set — used for response caching
 export async function cacheGet(key: string): Promise<string | null> {
   const redis = await getRedis();

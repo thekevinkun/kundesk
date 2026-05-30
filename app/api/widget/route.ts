@@ -7,7 +7,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orgs, chatbots } from "@/lib/db/schema";
-import { checkAuthRateLimit } from "@/lib/redis";
+import { checkWidgetRateLimit } from "@/lib/redis";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "127.0.0.1";
-  const ipLimit = await checkAuthRateLimit(ip);
+  const ipLimit = await checkWidgetRateLimit(ip, orgSlug);
   if (!ipLimit.success) {
     return new NextResponse("// Rate limit exceeded", {
       status: 429,
