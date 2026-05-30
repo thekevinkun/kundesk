@@ -22,6 +22,84 @@ interface ProcessRequestBody {
   s3Key?: unknown;
 }
 
+// Times out after 55 seconds — gives Vercel's 60s limit a 5s safety buffer
+// Returns a rejected promise so Promise.race picks it up
+function createTimeoutPromise(ms: number): Promise<never> {
+  return new Promise((_, reject) =>
+    setTimeout(
+      () => reject(new Error(`Processing timed out after ${ms}ms`)),
+      ms,
+    ),
+  );
+}
+
+// Runs the full processing pipeline — extracted so it can race against a timeout
+async function runProcessingPipeline(
+  orgId: string,
+  document: { id: number; name: string },
+  s3Key: string,
+  markFailed: () => Promise<void>,
+): Promise<{ textChunks: { content: string }[]; embeddings: number[][] }> {
+  // ── Stage 1: Download ──
+  let fileBuffer: Buffer;
+  try {
+    fileBuffer = await downloadFromS3(s3Key);
+  } catch {
+    await markFailed();
+    throw new Error("Failed to download file");
+  }
+
+  // ── Stage 2: Parse ──
+  let rawText: string;
+  try {
+    rawText = await parseFile(fileBuffer, document.name);
+  } catch (err) {
+    await markFailed();
+    throw err;
+  }
+
+  if (!rawText.trim()) {
+    await markFailed();
+    throw new Error("Document appears to be empty");
+  }
+
+  // ── Stage 3: Chunk ──
+  const textChunks = chunkText(rawText);
+
+  if (textChunks.length === 0) {
+    await markFailed();
+    throw new Error("No chunks produced from document");
+  }
+
+  // ── Stage 4: Embed ──
+  let embeddings: number[][];
+  try {
+    embeddings = await batchedAsync(textChunks, 10, (chunk) =>
+      embedText(chunk.content),
+    );
+  } catch {
+    await markFailed();
+    throw new Error("Failed to generate embeddings");
+  }
+
+  // ── Stage 5: Bulk insert chunks ──
+  const chunkRows = textChunks.map((chunk, i) => ({
+    orgId,
+    documentId: document.id,
+    content: chunk.content,
+    embedding: JSON.stringify(embeddings[i]),
+  }));
+
+  try {
+    await db.insert(chunks).values(chunkRows);
+  } catch {
+    await markFailed();
+    throw new Error("Failed to store chunks");
+  }
+
+  return { textChunks, embeddings };
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Guard — requireOrg() also protects against IDOR via orgId scoping below
   const { orgId } = await requireOrg();
@@ -89,99 +167,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // ── Stage 1: Download ──
-
-  let fileBuffer: Buffer;
+  // ── Stages 1–5: Download → Parse → Chunk → Embed → Insert ──
+  // Wrapped in a 55s timeout — Vercel cuts functions at 60s
+  let pipelineResult: Awaited<ReturnType<typeof runProcessingPipeline>>;
   try {
-    // Downloads from /tmp/mock-uploads/ (mock) or S3 (real)
-    fileBuffer = await downloadFromS3(s3Key);
-  } catch {
-    await markFailed();
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Failed to download file", status: 500 },
-      { status: 500 },
-    );
-  }
-
-  // ── Stage 2: Parse ──
-
-  let rawText: string;
-  try {
-    rawText = await parseFile(fileBuffer, document.name);
+    pipelineResult = await Promise.race([
+      runProcessingPipeline(orgId, document, s3Key, markFailed),
+      createTimeoutPromise(55_000),
+    ]);
   } catch (err) {
-    console.error("Parse error:", err);
-    await markFailed();
+    const isTimeout = err instanceof Error && err.message.includes("timed out");
 
-    const errorMessage =
-      err instanceof Error ? err.message : "Failed to parse file";
+    if (isTimeout) {
+      console.error(
+        `[documents/process] Timeout processing document ${documentId}`,
+      );
+      await markFailed();
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error:
+            "Pemrosesan dokumen memakan waktu terlalu lama. Coba upload ulang dengan file yang lebih kecil.",
+          status: 408,
+        },
+        { status: 408 },
+      );
+    }
 
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: errorMessage, status: 422 },
-      { status: 422 },
-    );
-  }
-
-  // Reject empty documents — nothing to embed
-  if (!rawText.trim()) {
-    await markFailed();
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Document appears to be empty", status: 422 },
-      { status: 422 },
-    );
-  }
-
-  // ── Stage 3: Chunk ──
-
-  const textChunks = chunkText(rawText);
-
-  if (textChunks.length === 0) {
     await markFailed();
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "No chunks produced from document", status: 422 },
-      { status: 422 },
-    );
-  }
-
-  // ── Stage 4: Embed ──
-
-  // Embed chunks in controlled batches — never all at once
-  // limit=10 means at most 10 simultaneous OpenAI calls
-  // Prevents rate limit errors and memory spikes on large documents
-  let embeddings: number[][];
-  try {
-    embeddings = await batchedAsync(textChunks, 10, (chunk) =>
-      embedText(chunk.content),
-    );
-  } catch {
-    await markFailed();
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Failed to generate embeddings", status: 500 },
+      {
+        ok: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat memproses dokumen.",
+        status: 500,
+      },
       { status: 500 },
     );
   }
 
-  // ── Stage 5: Bulk insert chunks ──
-
-  // Build insert rows — each chunk gets orgId for tenant isolation
-  // Embedding stored as JSON string — cast to vector in pgvector queries
-  const chunkRows = textChunks.map((chunk, i) => ({
-    orgId,
-    documentId: document.id,
-    content: chunk.content,
-    // Store as JSON string — cast to ::vector(1536) in similarity queries
-    embedding: JSON.stringify(embeddings[i]),
-  }));
-
-  try {
-    // Bulk insert — one round trip for all chunks
-    await db.insert(chunks).values(chunkRows);
-  } catch {
-    await markFailed();
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Failed to store chunks", status: 500 },
-      { status: 500 },
-    );
-  }
+  const { textChunks } = pipelineResult;
 
   // ── Stage 6: Update document status ──
 

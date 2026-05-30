@@ -118,9 +118,22 @@ function createOpenAIStream(
         controller.close();
       } catch (err) {
         await onComplete("", undefined);
+
+        // Check if OpenAI is the problem — give customer a specific message
+        const isOpenAIError =
+          err instanceof Error &&
+          (err.message.includes("OpenAI") ||
+            err.message.includes("fetch") ||
+            err.message.includes("network") ||
+            err.message.includes("timeout"));
+
+        const errorMessage = isOpenAIError
+          ? "Mohon maaf, asisten AI sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi. 🙏"
+          : "Terjadi gangguan saat memproses pesanmu. Silakan coba lagi.";
+
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ error: "Stream failed" })}\n\n`,
+            `data: ${JSON.stringify({ error: errorMessage })}\n\n`,
           ),
         );
         controller.close();
