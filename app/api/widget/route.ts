@@ -7,6 +7,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orgs, chatbots } from "@/lib/db/schema";
+import { checkAuthRateLimit } from "@/lib/redis";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -17,6 +18,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!orgSlug || !/^[a-zA-Z0-9_-]+$/.test(orgSlug)) {
     return new NextResponse("// Invalid org slug", {
       status: 400,
+      headers: { "Content-Type": "application/javascript" },
+    });
+  }
+
+  // Rate limit by IP — widget route is public and unauthenticated
+  // Prevents enumeration of org slugs and DB hammering
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "127.0.0.1";
+  const ipLimit = await checkAuthRateLimit(ip);
+  if (!ipLimit.success) {
+    return new NextResponse("// Rate limit exceeded", {
+      status: 429,
       headers: { "Content-Type": "application/javascript" },
     });
   }
@@ -351,19 +365,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   var header = document.createElement('div');
   header.id = 'kd-header';
 
-  var avatarContent = ORG_IMAGE
-    ? '<img src="' + ORG_IMAGE + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="' + ORG_NAME + '">'
-    : BOT_NAME.charAt(0).toUpperCase();
-
+  // Build header structure — text content set via textContent, never innerHTML
+  // Avatar image set via setAttribute — prevents XSS via malicious ORG_IMAGE URL
   header.innerHTML =
-    '<div id="kd-avatar">' + avatarContent + '</div>' +
+    '<div id="kd-avatar"></div>' +
     '<div id="kd-header-text">' +
-      '<div id="kd-bot-name">' + BOT_NAME + '</div>' +
-      '<div id="kd-org-name">' + ORG_NAME + '</div>' +
+      '<div id="kd-bot-name"></div>' +
+      '<div id="kd-org-name"></div>' +
       '<div id="kd-status"><div id="kd-status-dot"></div><span>Online — siap membantu</span></div>' +
     '</div>' +
     '<button id="kd-close" aria-label="Tutup chat">&#x2715;</button>';
-    panel.appendChild(header);
+
+  // Set text content safely — textContent never interprets HTML
+  header.querySelector('#kd-bot-name').textContent = BOT_NAME;
+  header.querySelector('#kd-org-name').textContent = ORG_NAME;
+
+  // Set avatar safely — image via setAttribute, fallback via textContent
+  var avatarEl = header.querySelector('#kd-avatar');
+  if (ORG_IMAGE) {
+    var img = document.createElement('img');
+    img.setAttribute('src', ORG_IMAGE);
+    img.setAttribute('alt', ORG_NAME);
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+    avatarEl.appendChild(img);
+  } else {
+    // textContent safely renders the first letter — no HTML interpretation
+    avatarEl.textContent = BOT_NAME.charAt(0).toUpperCase();
+  }
+
+  panel.appendChild(header);
 
   // Iframe — lazy loaded on first open
   var iframe = document.createElement('iframe');
