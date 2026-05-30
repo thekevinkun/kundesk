@@ -183,6 +183,32 @@ export interface CachedChatbot {
   isActive: boolean;
 }
 
+// Invalidates all org cache keys — both slug and orgId
+// Billing mutations only know orgId — this reads slug from existing cache before deleting both
+// If orgById cache is already gone, slug key expires naturally within TTL
+export async function invalidateOrgCache(orgId: string): Promise<void> {
+  const idKey = CacheKeys.orgById(orgId);
+
+  // Read cached org to get the slug — needed to delete the slug key too
+  const cached = await cacheGet(idKey);
+  if (cached) {
+    try {
+      const org = JSON.parse(cached) as CachedOrg;
+      // Delete both keys atomically — slug key is what chat route reads
+      await Promise.all([
+        cacheDelete(idKey),
+        cacheDelete(CacheKeys.orgBySlug(org.slug)),
+      ]);
+      return;
+    } catch {
+      // Corrupted cache — fall through to delete just the id key
+    }
+  }
+
+  // Slug not available — delete what we can
+  await cacheDelete(idKey);
+}
+
 // Returns cached org or fetches from Neon and caches it
 // Stores under both slug and orgId keys — so invalidation works from either side
 export async function getCachedOrg(

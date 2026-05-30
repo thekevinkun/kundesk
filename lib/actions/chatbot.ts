@@ -81,7 +81,12 @@ export async function saveChatbotConfig(
     );
 
   // Invalidate chatbot cache — next chat request fetches fresh config from Neon
-  await cacheDelete(CacheKeys.chatbot(orgId));
+  // Don't fail an already-committed write if Redis is down; TTL will expire stale data
+  try {
+    await cacheDelete(CacheKeys.chatbot(orgId));
+  } catch (err) {
+    console.error("Failed to invalidate chatbot cache", err);
+  }
 
   // Revalidate dashboard so stat cards and bot status panel reflect new config
   revalidatePath("/dashboard");
@@ -113,7 +118,12 @@ export async function saveAccentColor(
     .where(eq(chatbots.orgId, orgId));
 
   // Invalidate chatbot cache — accent color change must reflect immediately
-  await cacheDelete(CacheKeys.chatbot(orgId));
+  // Don't fail an already-committed write if Redis is down; TTL will expire stale data
+  try {
+    await cacheDelete(CacheKeys.chatbot(orgId));
+  } catch (err) {
+    console.error("Failed to invalidate chatbot cache", err);
+  }
 
   // Revalidate so BotStatusPanel and chatbot config page reflect new color
   revalidatePath("/dashboard");
@@ -151,7 +161,12 @@ export async function saveQuickReplies(
     .where(eq(chatbots.orgId, orgId));
 
   // Invalidate chatbot cache — next chat request fetches fresh config from Neon
-  await cacheDelete(CacheKeys.chatbot(orgId));
+  // Don't fail an already-committed write if Redis is down; TTL will expire stale data
+  try {
+    await cacheDelete(CacheKeys.chatbot(orgId));
+  } catch (err) {
+    console.error("Failed to invalidate chatbot cache", err);
+  }
 
   revalidatePath("/dashboard/chatbot");
 
