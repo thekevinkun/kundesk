@@ -77,7 +77,10 @@ export async function generatePresignedUploadUrl(
 }
 
 // Downloads a file from S3 by key — used by the document processing pipeline
-export async function downloadFromS3(s3Key: string): Promise<Buffer> {
+export async function downloadFromS3(
+  s3Key: string,
+  signal?: AbortSignal,
+): Promise<Buffer> {
   // Mock mode — read from local /tmp/mock-uploads/
   if (env.storageMode === "mock") {
     const { readFile } = await import("fs/promises");
@@ -105,7 +108,11 @@ export async function downloadFromS3(s3Key: string): Promise<Buffer> {
     Key: s3Key,
   });
 
-  const response = await client.send(command);
+  // Pass abort signal only when provided — AWS SDK requires definite AbortSignal, not undefined
+  const response = await client.send(
+    command,
+    signal ? { abortSignal: signal } : undefined,
+  );
 
   if (!response.Body)
     throw new Error(`No body in S3 response for key: ${s3Key}`);

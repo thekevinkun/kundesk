@@ -119,13 +119,12 @@ function createOpenAIStream(
       } catch (err) {
         await onComplete("", undefined);
 
-        // Check if OpenAI is the problem — give customer a specific message
+        // Use OpenAI SDK error classes — more reliable than string matching
+        const { APIConnectionError, APIConnectionTimeoutError } =
+          await import("openai");
         const isOpenAIError =
-          err instanceof Error &&
-          (err.message.includes("OpenAI") ||
-            err.message.includes("fetch") ||
-            err.message.includes("network") ||
-            err.message.includes("timeout"));
+          err instanceof APIConnectionError ||
+          err instanceof APIConnectionTimeoutError;
 
         const errorMessage = isOpenAIError
           ? "Mohon maaf, asisten AI sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi. 🙏"

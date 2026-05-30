@@ -22,65 +22,80 @@ interface ProcessRequestBody {
   s3Key?: unknown;
 }
 
-// Times out after 55 seconds — gives Vercel's 60s limit a 5s safety buffer
-// Returns a rejected promise so Promise.race picks it up
-function createTimeoutPromise(ms: number): Promise<never> {
+// Creates a timeout that aborts the controller after ms milliseconds
+// AbortController.abort() signals runProcessingPipeline to stop between stages
+// Returns a promise that rejects when the timeout fires
+function createTimeoutPromise(
+  ms: number,
+  controller: AbortController,
+): Promise<never> {
   return new Promise((_, reject) =>
-    setTimeout(
-      () => reject(new Error(`Processing timed out after ${ms}ms`)),
-      ms,
-    ),
+    setTimeout(() => {
+      // Signal the pipeline to stop at the next abort check
+      controller.abort();
+      reject(new Error(`Processing timed out after ${ms}ms`));
+    }, ms),
   );
 }
 
 // Runs the full processing pipeline — extracted so it can race against a timeout
+// Accepts AbortSignal — checks it between stages so timeout stops work promptly
+// Never calls markFailed() directly — outer POST catch owns that side effect
 async function runProcessingPipeline(
   orgId: string,
   document: { id: number; name: string },
   s3Key: string,
-  markFailed: () => Promise<void>,
-): Promise<{ textChunks: { content: string }[]; embeddings: number[][] }> {
+  signal: AbortSignal,
+): Promise<{ textChunks: { content: string }[] }> {
   // ── Stage 1: Download ──
   let fileBuffer: Buffer;
   try {
-    fileBuffer = await downloadFromS3(s3Key);
-  } catch {
-    await markFailed();
-    throw new Error("Failed to download file");
+    // Pass signal so S3 download aborts if timeout fires
+    fileBuffer = await downloadFromS3(s3Key, signal);
+  } catch (err) {
+    // Re-throw as a named error so outer catch can log it correctly
+    throw new Error(
+      `Failed to download file: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
+
+  // Check abort between every stage — stops work immediately on timeout
+  if (signal.aborted) throw new Error("Processing timed out after 55000ms");
 
   // ── Stage 2: Parse ──
-  let rawText: string;
-  try {
-    rawText = await parseFile(fileBuffer, document.name);
-  } catch (err) {
-    await markFailed();
-    throw err;
-  }
+  // Errors bubble naturally — outer catch in POST owns markFailed()
+  const rawText = await parseFile(fileBuffer, document.name);
 
   if (!rawText.trim()) {
-    await markFailed();
     throw new Error("Document appears to be empty");
   }
+
+  if (signal.aborted) throw new Error("Processing timed out after 55000ms");
 
   // ── Stage 3: Chunk ──
   const textChunks = chunkText(rawText);
 
   if (textChunks.length === 0) {
-    await markFailed();
     throw new Error("No chunks produced from document");
   }
 
-  // ── Stage 4: Embed ──
+  if (signal.aborted) throw new Error("Processing timed out after 55000ms");
+
+  // ── Stage 4: Embed — batched, signal checked between batches ──
   let embeddings: number[][];
   try {
-    embeddings = await batchedAsync(textChunks, 10, (chunk) =>
-      embedText(chunk.content),
+    embeddings = await batchedAsync(textChunks, 10, async (chunk) => {
+      // Check abort before each batch item — stops embedding mid-way on timeout
+      if (signal.aborted) throw new Error("Processing timed out after 55000ms");
+      return embedText(chunk.content);
+    });
+  } catch (err) {
+    throw new Error(
+      `Failed to generate embeddings: ${err instanceof Error ? err.message : String(err)}`,
     );
-  } catch {
-    await markFailed();
-    throw new Error("Failed to generate embeddings");
   }
+
+  if (signal.aborted) throw new Error("Processing timed out after 55000ms");
 
   // ── Stage 5: Bulk insert chunks ──
   const chunkRows = textChunks.map((chunk, i) => ({
@@ -92,12 +107,13 @@ async function runProcessingPipeline(
 
   try {
     await db.insert(chunks).values(chunkRows);
-  } catch {
-    await markFailed();
-    throw new Error("Failed to store chunks");
+  } catch (err) {
+    throw new Error(
+      `Failed to store chunks: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
-  return { textChunks, embeddings };
+  return { textChunks };
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -169,11 +185,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // ── Stages 1–5: Download → Parse → Chunk → Embed → Insert ──
   // Wrapped in a 55s timeout — Vercel cuts functions at 60s
+
+  // AbortController — signals the pipeline to stop between stages on timeout
+  const controller = new AbortController();
+
   let pipelineResult: Awaited<ReturnType<typeof runProcessingPipeline>>;
   try {
     pipelineResult = await Promise.race([
-      runProcessingPipeline(orgId, document, s3Key, markFailed),
-      createTimeoutPromise(55_000),
+      runProcessingPipeline(orgId, document, s3Key, controller.signal),
+      createTimeoutPromise(55_000, controller),
     ]);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message.includes("timed out");
