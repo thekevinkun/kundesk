@@ -3,6 +3,7 @@
 
 import { and, eq, gte, lt, desc, lte, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { cacheDelete, CacheKeys } from "@/lib/redis";
 import { orgs, payments, promoCodes } from "@/lib/db/schema";
 import type {
   BillingPageData,
@@ -75,7 +76,12 @@ export async function activateSubscription(
       hasUsedFirstPurchase: true,
     })
     .where(eq(orgs.id, orgId));
+
+  // Invalidate both org cache keys — plan and status changed
+  await Promise.all([cacheDelete(CacheKeys.orgById(orgId))]);
 }
+
+// Marks a subscription as past_due
 
 // Marks a subscription as past_due — called by cron when payment link is ignored
 // Business owner has 3 days to pay before moving to suspended
@@ -84,6 +90,9 @@ export async function markPastDue(orgId: string): Promise<void> {
     .update(orgs)
     .set({ subscriptionStatus: "past_due" })
     .where(eq(orgs.id, orgId));
+
+  // Invalidate org cache — subscription status changed
+  await cacheDelete(CacheKeys.orgById(orgId));
 }
 
 // Suspends a subscription — called by cron after 7 days unpaid
@@ -93,6 +102,9 @@ export async function suspendSubscription(orgId: string): Promise<void> {
     .update(orgs)
     .set({ subscriptionStatus: "suspended" })
     .where(eq(orgs.id, orgId));
+
+  // Invalidate org cache — subscription status changed
+  await cacheDelete(CacheKeys.orgById(orgId));
 }
 
 // Cancels a subscription — called when owner explicitly cancels
@@ -105,6 +117,9 @@ export async function cancelSubscription(orgId: string): Promise<void> {
       nextBillingDate: null,
     })
     .where(eq(orgs.id, orgId));
+
+  // Invalidate org cache — subscription status changed
+  await cacheDelete(CacheKeys.orgById(orgId));
 }
 
 // Fetches all orgs where nextBillingDate falls within today — used by renewal cron

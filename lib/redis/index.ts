@@ -115,12 +115,14 @@ export async function checkAuthRateLimit(ip: string): Promise<RateLimitResult> {
   };
 }
 
-// Generic cache get/set — used for response caching in Phase 4+
+// Generic cache get/set — used for response caching
 export async function cacheGet(key: string): Promise<string | null> {
   const redis = await getRedis();
   return redis.get<string>(key);
 }
 
+// Sets a cached value with TTL (in seconds)
+// used for caching expensive responses like embeddings or LLM output
 export async function cacheSet(
   key: string,
   value: string,
@@ -128,4 +130,110 @@ export async function cacheSet(
 ): Promise<void> {
   const redis = await getRedis();
   await redis.set(key, value, { ex: ttlSeconds });
+}
+
+// Deletes a cached key immediately — used for cache invalidation on writes
+// Called whenever org or chatbot data changes so stale data is never served
+export async function cacheDelete(key: string): Promise<void> {
+  const redis = await getRedis();
+  await redis.del(key);
+}
+
+// Cache key helpers — centralized so naming is never inconsistent
+export const CacheKeys = {
+  // Keyed by slug — used in chat route (entry point is always slug)
+  orgBySlug: (slug: string) => `kundesk:cache:org:slug:${slug}`,
+  // Keyed by orgId — used for invalidation from billing/chatbot actions
+  orgById: (orgId: string) => `kundesk:cache:org:id:${orgId}`,
+  // Keyed by orgId — chatbot config rarely changes
+  chatbot: (orgId: string) => `kundesk:cache:chatbot:${orgId}`,
+} as const;
+
+// Org cache TTL — 5 minutes
+// Short because messagesUsed, messagesLimit, subscriptionStatus change frequently
+const ORG_TTL = 300;
+
+// Chatbot cache TTL — 10 minutes
+// Longer because config changes are intentional and infrequent
+const CHATBOT_TTL = 600;
+
+// Org shape stored in cache — only the fields chat route actually needs
+export interface CachedOrg {
+  id: string;
+  slug: string;
+  name: string | null;
+  plan: string;
+  subscriptionStatus: string;
+  messagesUsed: number;
+  messagesLimit: number;
+  ownerEmail: string | null;
+}
+
+// Chatbot shape stored in cache — full config needed to build system prompt
+export interface CachedChatbot {
+  id: number;
+  orgId: string;
+  name: string;
+  language: string;
+  tone: string;
+  greetingMessage: string | null;
+  systemPrompt: string | null;
+  accentColor: string;
+  quickReplies: string | null;
+  isActive: boolean;
+}
+
+// Returns cached org or fetches from Neon and caches it
+// Stores under both slug and orgId keys — so invalidation works from either side
+export async function getCachedOrg(
+  slug: string,
+  fetchFn: () => Promise<CachedOrg | null>,
+): Promise<CachedOrg | null> {
+  const slugKey = CacheKeys.orgBySlug(slug);
+
+  // Try cache first
+  const cached = await cacheGet(slugKey);
+  if (cached) {
+    try {
+      return JSON.parse(cached) as CachedOrg;
+    } catch {
+      // Corrupted cache entry — fall through to DB fetch
+    }
+  }
+
+  // Cache miss — fetch from DB
+  const org = await fetchFn();
+  if (!org) return null;
+
+  // Store under both keys so invalidation works from orgId side too
+  const serialized = JSON.stringify(org);
+  await Promise.all([
+    cacheSet(slugKey, serialized, ORG_TTL),
+    cacheSet(CacheKeys.orgById(org.id), serialized, ORG_TTL),
+  ]);
+
+  return org;
+}
+
+// Returns cached chatbot or fetches from Neon and caches it
+export async function getCachedChatbot(
+  orgId: string,
+  fetchFn: () => Promise<CachedChatbot | null>,
+): Promise<CachedChatbot | null> {
+  const key = CacheKeys.chatbot(orgId);
+
+  const cached = await cacheGet(key);
+  if (cached) {
+    try {
+      return JSON.parse(cached) as CachedChatbot;
+    } catch {
+      // Corrupted cache entry — fall through to DB fetch
+    }
+  }
+
+  const chatbot = await fetchFn();
+  if (!chatbot) return null;
+
+  await cacheSet(key, JSON.stringify(chatbot), CHATBOT_TTL);
+  return chatbot;
 }

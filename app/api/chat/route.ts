@@ -7,8 +7,13 @@ import { trackEvent } from "@/lib/posthog";
 import { sendUsageWarningEmail } from "@/lib/email";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import { retrieveContext, buildSystemPrompt } from "@/lib/ai/rag";
-import { checkChatRateLimit, checkOrgMessageLimit } from "@/lib/redis";
 import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
+import {
+  checkChatRateLimit,
+  checkOrgMessageLimit,
+  getCachedOrg,
+  getCachedChatbot,
+} from "@/lib/redis";
 import {
   triggerOrgEvent,
   triggerConversationMessage,
@@ -163,23 +168,51 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 3. Resolve org ──
-  const [org] = await db
-    .select()
-    .from(orgs)
-    .where(eq(orgs.slug, orgSlug))
-    .limit(1);
+  // ── 3. Resolve org — cache first, Neon on miss ──
+  // Cached under both slug and orgId keys — TTL 5 minutes
+  const org = await getCachedOrg(orgSlug, async () => {
+    const [row] = await db
+      .select({
+        id: orgs.id,
+        slug: orgs.slug,
+        name: orgs.name,
+        plan: orgs.plan,
+        subscriptionStatus: orgs.subscriptionStatus,
+        messagesUsed: orgs.messagesUsed,
+        messagesLimit: orgs.messagesLimit,
+        ownerEmail: orgs.ownerEmail,
+      })
+      .from(orgs)
+      .where(eq(orgs.slug, orgSlug))
+      .limit(1);
+    return row ?? null;
+  });
 
   if (!org) {
     return errorResponse("Not found", 404);
   }
 
-  // ── 4. Fetch chatbot ──
-  const [chatbot] = await db
-    .select()
-    .from(chatbots)
-    .where(and(eq(chatbots.orgId, org.id), eq(chatbots.isActive, true)))
-    .limit(1);
+  // ── 4. Fetch chatbot — cache first, Neon on miss ──
+  // Cached under orgId — TTL 10 minutes
+  const chatbot = await getCachedChatbot(org.id, async () => {
+    const [row] = await db
+      .select({
+        id: chatbots.id,
+        orgId: chatbots.orgId,
+        name: chatbots.name,
+        language: chatbots.language,
+        tone: chatbots.tone,
+        greetingMessage: chatbots.greetingMessage,
+        systemPrompt: chatbots.systemPrompt,
+        accentColor: chatbots.accentColor,
+        quickReplies: chatbots.quickReplies,
+        isActive: chatbots.isActive,
+      })
+      .from(chatbots)
+      .where(and(eq(chatbots.orgId, org.id), eq(chatbots.isActive, true)))
+      .limit(1);
+    return row ?? null;
+  });
 
   if (!chatbot) {
     return errorResponse("Not found", 404);
@@ -222,8 +255,13 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Fetch conversation + handoffStatus in one query — no second round trip
   const [existingConversation] = await db
-    .select({ id: conversations.id, channelToken: conversations.channelToken })
+    .select({
+      id: conversations.id,
+      channelToken: conversations.channelToken,
+      handoffStatus: conversations.handoffStatus,
+    })
     .from(conversations)
     .where(
       and(
@@ -233,22 +271,9 @@ export async function POST(request: NextRequest) {
     )
     .limit(1);
 
-  // Fetch current handoff status once — reused by both 6b and 7
+  // Derive handoff status directly from the single query above
   // null means no existing conversation yet
-  const currentHandoffStatus = existingConversation
-    ? ((
-        await db
-          .select({ handoffStatus: conversations.handoffStatus })
-          .from(conversations)
-          .where(
-            and(
-              eq(conversations.id, existingConversation.id),
-              eq(conversations.orgId, org.id),
-            ),
-          )
-          .limit(1)
-      )[0]?.handoffStatus ?? null)
-    : null;
+  const currentHandoffStatus = existingConversation?.handoffStatus ?? null;
 
   // ── 6b. Handoff request detection — runs before conversation creation ──
   // Handles both first-message and existing-conversation handoff requests

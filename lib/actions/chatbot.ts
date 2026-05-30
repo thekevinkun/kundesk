@@ -7,8 +7,9 @@
 import { z } from "zod/v4";
 import { eq, gt, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireOrg } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { requireOrg } from "@/lib/auth";
+import { cacheDelete, CacheKeys } from "@/lib/redis";
 import {
   chatbots,
   conversations,
@@ -79,6 +80,9 @@ export async function saveChatbotConfig(
       ),
     );
 
+  // Invalidate chatbot cache — next chat request fetches fresh config from Neon
+  await cacheDelete(CacheKeys.chatbot(orgId));
+
   // Revalidate dashboard so stat cards and bot status panel reflect new config
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/chatbot");
@@ -107,6 +111,9 @@ export async function saveAccentColor(
     .update(chatbots)
     .set({ accentColor: result.data })
     .where(eq(chatbots.orgId, orgId));
+
+  // Invalidate chatbot cache — accent color change must reflect immediately
+  await cacheDelete(CacheKeys.chatbot(orgId));
 
   // Revalidate so BotStatusPanel and chatbot config page reflect new color
   revalidatePath("/dashboard");
@@ -142,6 +149,9 @@ export async function saveQuickReplies(
       quickReplies: result.data.length > 0 ? JSON.stringify(result.data) : null,
     })
     .where(eq(chatbots.orgId, orgId));
+
+  // Invalidate chatbot cache — next chat request fetches fresh config from Neon
+  await cacheDelete(CacheKeys.chatbot(orgId));
 
   revalidatePath("/dashboard/chatbot");
 
