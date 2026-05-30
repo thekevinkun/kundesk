@@ -2,7 +2,7 @@
 // Called in parallel from dashboard page.tsx via Promise.all
 // Never called without orgId — requireOrg() enforces this upstream
 
-import { eq, ne, count, countDistinct, and, sql } from "drizzle-orm";
+import { eq, ne, lt, count, countDistinct, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   orgs,
@@ -656,4 +656,22 @@ export async function findConversationPage(
   // position 0 → target is newest → page 1
   // position 20 with limit 20 → target is first item on page 2
   return Math.ceil((position + 1) / limit);
+}
+
+// Deletes messages older than retentionDays across all orgs
+// Called by the daily retention cron — reduces PII exposure over time
+// Returns count of deleted messages for logging
+export async function deleteOldMessages(
+  retentionDays: number,
+): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - retentionDays);
+
+  // Delete messages older than cutoff — global cleanup, not tenant-scoped
+  const result = await db
+    .delete(messages)
+    .where(lt(messages.createdAt, cutoff))
+    .returning({ id: messages.id });
+
+  return result.length;
 }

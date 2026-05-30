@@ -46,7 +46,7 @@ const FooterSection = () => {
                 <li key={label}>
                   <Link
                     href={href}
-                    className="text-[14px] font-bold text-[#888] hover:text-[var(--color-brand)] transition-colors duration-200"
+                    className="text-[14px] font-bold text-[#888] hover:text-(--color-brand) transition-colors duration-200"
                   >
                     {label}
                   </Link>
@@ -69,13 +69,13 @@ const FooterSection = () => {
         <div className="flex items-center gap-6">
           {[
             { label: "Syarat & Ketentuan", href: "#" },
-            { label: "Kebijakan Privasi", href: "#" },
+            { label: "Kebijakan Privasi", href: "/privacy" },
             { label: "Kebijakan Refund", href: "#" },
           ].map(({ label, href }) => (
             <Link
               key={label}
               href={href}
-              className="text-[13px] text-[#555] hover:text-[var(--color-brand)] transition-colors duration-200"
+              className="text-[13px] text-[#555] hover:text-(--color-brand) transition-colors duration-200"
             >
               {label}
             </Link>

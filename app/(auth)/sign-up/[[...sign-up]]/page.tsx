@@ -5,7 +5,7 @@ import { SignUp } from "@clerk/nextjs";
 
 export default function SignUpPage(): React.ReactElement {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[var(--color-bg-page)]">
+    <main className="min-h-screen flex items-center justify-center bg-(--color-bg-page)">
       <SignUp />
     </main>
   );
