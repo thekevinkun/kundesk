@@ -9,6 +9,11 @@ export async function batchedAsync<T, R>(
   limit: number,
   fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error(
+      `batchedAsync: limit must be a positive integer, got ${limit}`,
+    );
+  }
   const results: R[] = new Array(items.length) as R[];
 
   // Process in slices of `limit` — each slice runs in parallel, slices run sequentially
