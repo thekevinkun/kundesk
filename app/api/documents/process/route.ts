@@ -28,14 +28,25 @@ interface ProcessRequestBody {
 function createTimeoutPromise(
   ms: number,
   controller: AbortController,
-): Promise<never> {
-  return new Promise((_, reject) =>
-    setTimeout(() => {
-      // Signal the pipeline to stop at the next abort check
-      controller.abort();
-      reject(new Error(`Processing timed out after ${ms}ms`));
-    }, ms),
-  );
+): {
+  promise: Promise<never>;
+  timeoutId: ReturnType<typeof setTimeout>;
+} {
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, ms);
+
+  const promise = new Promise<never>((_, reject) => {
+    controller.signal.addEventListener(
+      "abort",
+      () => {
+        reject(new Error(`Processing timed out after ${ms}ms`));
+      },
+      { once: true },
+    );
+  });
+
+  return { promise, timeoutId };
 }
 
 // Runs the full processing pipeline — extracted so it can race against a timeout
@@ -185,15 +196,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // ── Stages 1–5: Download → Parse → Chunk → Embed → Insert ──
   // Wrapped in a 55s timeout — Vercel cuts functions at 60s
-
   // AbortController — signals the pipeline to stop between stages on timeout
   const controller = new AbortController();
+
+  const { promise: timeoutPromise, timeoutId } = createTimeoutPromise(
+    55_000,
+    controller,
+  );
 
   let pipelineResult: Awaited<ReturnType<typeof runProcessingPipeline>>;
   try {
     pipelineResult = await Promise.race([
       runProcessingPipeline(orgId, document, s3Key, controller.signal),
-      createTimeoutPromise(55_000, controller),
+      timeoutPromise,
     ]);
   } catch (err) {
     const isTimeout = err instanceof Error && err.message.includes("timed out");
@@ -226,6 +241,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       { status: 500 },
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const { textChunks } = pipelineResult;
