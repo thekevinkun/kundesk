@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import FaqCard from "./FAQ/FaqCard";
+import FaqCard from "./faq/FaqCard";
 import { scrollReveal, landingStagger } from "@/lib/animations";
-import { FAQ_ITEMS } from "@/lib/landing-constants";
+import { FAQ_ITEMS } from "@/lib/constants/landing-constants";
 
 const FaqSection = () => {
   // Track which FAQ item is open — null means all closed

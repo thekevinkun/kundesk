@@ -130,18 +130,18 @@
 
   /* Custom scrollbar — subtle, branded */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-border);
+    background: color-mix(in srgb, var(--color-brand), transparent 30%);
     border-radius: 10px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-brand-mid);
+    background: var(--color-brand);
   }
 
   /* shadcn/ui CSS variables — must live in @layer base for compatibility */

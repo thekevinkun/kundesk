@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { scrollReveal, testiSlideVariants } from "@/lib/animations";
-import { TESTIMONIALS } from "@/lib/landing-constants";
+import { TESTIMONIALS } from "@/lib/constants/landing-constants";
 
 const TestimonialsSection = () => {
   const [current, setCurrent] = useState(0);

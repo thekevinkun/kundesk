@@ -6,13 +6,13 @@ import {
   AnalyticsPreview,
   TenantPreview,
   SecurityPreview,
-} from "@/components/landing/Features";
+} from "@/components/landing/features";
 import {
   scrollReveal,
   landingStagger,
   landingStaggerItem,
 } from "@/lib/animations";
-import { FEATURES } from "@/lib/landing-constants";
+import { FEATURES } from "@/lib/constants/landing-constants";
 
 // Map preview type from constants to component
 const PREVIEW_MAP = {

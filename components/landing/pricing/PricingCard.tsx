@@ -2,7 +2,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { landingStaggerItem } from "@/lib/animations";
-import { PRICING_PLANS } from "@/lib/landing-constants";
+import { PRICING_PLANS } from "@/lib/constants/landing-constants";
 import { formatRupiah } from "@/helpers/format";
 import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 import type { PlanName } from "@/types/billing";

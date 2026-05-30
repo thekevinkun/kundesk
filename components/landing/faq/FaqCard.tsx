@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { landingStaggerItem } from "@/lib/animations";
-import type { FaqItems } from "@/lib/landing-constants";
+import type { FaqItems } from "@/lib/constants/landing-constants";
 
 interface FaqCardItems extends FaqItems {
   isOpen: boolean;

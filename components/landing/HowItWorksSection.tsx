@@ -6,7 +6,7 @@ import {
   landingStagger,
   landingStaggerItem,
 } from "@/lib/animations";
-import { HOW_IT_WORKS_STEPS } from "@/lib/landing-constants";
+import { HOW_IT_WORKS_STEPS } from "@/lib/constants/landing-constants";
 
 const HowItWorksSection = () => {
   return (

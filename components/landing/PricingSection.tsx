@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import PricingCard from "./Pricing/PricingCard";
+import PricingCard from "./pricing/PricingCard";
 import { scrollReveal, landingStagger } from "@/lib/animations";
 import type { PlanName } from "@/types/billing";
 

@@ -69,7 +69,10 @@ const SidebarContent = ({
 
       {/* ── Nav sections ── */}
       <motion.nav
-        className="flex-1 px-3 py-4 overflow-y-auto"
+        className="flex-1 px-3 py-4 overflow-y-auto 
+          [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar]:h-[6px]
+          [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
+          hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"

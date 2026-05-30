@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
-import { DashboardCard, FloatCard } from "@/components/landing/Hero";
+import { DashboardCard, FloatCard } from "@/components/landing/hero";
 import { fadeUp, landingStagger, landingStaggerItem } from "@/lib/animations";
 
 interface HeroSectionProps {

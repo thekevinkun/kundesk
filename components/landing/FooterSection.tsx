@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { FOOTER_COLS } from "@/lib/landing-constants";
+import { FOOTER_COLS } from "@/lib/constants/landing-constants";
 
 // FooterSection is a Server Component — no interactivity needed
 const FooterSection = () => {

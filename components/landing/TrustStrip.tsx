@@ -1,6 +1,6 @@
 "use client";
 
-import { TRUST_LOGOS } from "@/lib/landing-constants";
+import { TRUST_LOGOS } from "@/lib/constants/landing-constants";
 
 // Duplicate array so the marquee loops seamlessly without a visible gap
 const MARQUEE_ITEMS = [...TRUST_LOGOS, ...TRUST_LOGOS];

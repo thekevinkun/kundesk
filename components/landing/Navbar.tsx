@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { fadeIn } from "@/lib/animations";
-import { NAV_LINKS } from "@/lib/landing-constants";
+import { NAV_LINKS } from "@/lib/constants/landing-constants";
 
 const Navbar = () => {
   const { isSignedIn } = useAuth();

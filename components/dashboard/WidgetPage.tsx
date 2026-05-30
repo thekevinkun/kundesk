@@ -327,7 +327,11 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                 </div>
 
                 {/* Chat body */}
-                <div className="bg-gray-50 h-full p-3 space-y-2 overflow-y-auto">
+                <div className="bg-gray-50 h-full p-3 space-y-2 overflow-y-auto
+                  [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar]:h-[5px]
+                  [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
+                  hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
+                >
                   {/* Greeting bubble */}
                   {data.greetingMessage && (
                     <div className="flex items-end gap-2">

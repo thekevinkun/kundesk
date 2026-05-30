@@ -184,7 +184,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       />
 
       <main
-        className="flex-1 overflow-y-auto px-4 py-4"
+        className="flex-1 px-4 py-4 overflow-y-auto 
+          [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar]:h-[5px]
+        [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
+        hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
         aria-live="polite"
         aria-label="Percakapan"
       >

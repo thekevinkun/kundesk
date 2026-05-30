@@ -24,7 +24,10 @@ interface NotificationPanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const NotificationPanel = ({ isOpen, onOpenChange }: NotificationPanelProps) => {
+const NotificationPanel = ({
+  isOpen,
+  onOpenChange,
+}: NotificationPanelProps) => {
   const { orgId } = useAuth();
   const [isMobileLayout, setIsMobileLayout] = useState(false);
 
@@ -121,7 +124,12 @@ const NotificationPanel = ({ isOpen, onOpenChange }: NotificationPanelProps) => 
       </div>
 
       {/* Notification list */}
-      <div className="max-h-full lg:max-h-[400px] flex-1 overflow-y-auto">
+      <div
+        className="max-h-full lg:max-h-[400px] flex-1 overflow-y-auto
+          [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar]:h-[5px]
+          [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
+          hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
+      >
         {notificationItems.length === 0 ? (
           <div className="py-12 text-center">
             <div className="text-3xl mb-2">🔔</div>
