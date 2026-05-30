@@ -247,6 +247,12 @@ export const conversations = pgTable(
       table.orgId,
       table.deliveryChannel,
     ),
+    // Composite — live handoff status queries (sidebar badge, conversations page)
+    // getPendingHandoffCount filters orgId + handoffStatus on every dashboard render
+    index("conversations_org_handoff_status_idx").on(
+      table.orgId,
+      table.handoffStatus,
+    ),
   ],
 );
 
@@ -359,8 +365,9 @@ export const notifications = pgTable(
   (table) => [
     // Index on orgId — all notification queries are scoped to org
     index("notifications_org_id_idx").on(table.orgId),
-    // Index on isRead — for unread count queries
-    index("notifications_is_read_idx").on(table.isRead),
+    // Composite — notifications fetched by org, ordered newest first
+    // Replaces standalone isRead index — orgId+createdAt covers the common fetch pattern
+    index("notifications_org_created_idx").on(table.orgId, table.createdAt),
   ],
 );
 
