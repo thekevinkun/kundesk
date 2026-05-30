@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import { requireOrg } from "@/lib/auth";
 import { embedText } from "@/lib/ai/embed";
 import { chunkText } from "@/helpers/chunk";
+import { batchedAsync } from "@/helpers/async";
 import { downloadFromS3 } from "@/lib/aws/s3";
 import { checkUploadRateLimit } from "@/lib/redis";
 import { documents, chunks } from "@/lib/db/schema";
@@ -143,12 +144,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // ── Stage 4: Embed ──
 
-  // Embed each chunk — in mock mode this is instant random vectors
-  // In real mode this calls OpenAI for each chunk (batching in Phase 8)
+  // Embed chunks in controlled batches — never all at once
+  // limit=10 means at most 10 simultaneous OpenAI calls
+  // Prevents rate limit errors and memory spikes on large documents
   let embeddings: number[][];
   try {
-    embeddings = await Promise.all(
-      textChunks.map((chunk) => embedText(chunk.content)),
+    embeddings = await batchedAsync(textChunks, 10, (chunk) =>
+      embedText(chunk.content),
     );
   } catch {
     await markFailed();
