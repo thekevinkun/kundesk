@@ -29,15 +29,23 @@ export async function PATCH(
 
   const notificationId = Number(id);
 
-  await db
-    .update(notifications)
-    .set({ isRead: true })
-    .where(
-      and(
-        eq(notifications.id, notificationId),
-        eq(notifications.orgId, orgId), // ← IDOR protection
-      ),
+  try {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.id, notificationId),
+          eq(notifications.orgId, orgId),
+        ),
+      );
+  } catch (err) {
+    // Non-critical — isRead is cosmetic, failing silently is acceptable
+    console.error(
+      `[PATCH /api/notifications/${notificationId}/read] DB error:`,
+      err,
     );
+  }
 
   return NextResponse.json<ApiResponse>({ ok: true, data: undefined });
 }

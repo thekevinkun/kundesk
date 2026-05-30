@@ -11,10 +11,15 @@ import type { ApiResponse } from "@/types/api";
 export async function PATCH(): Promise<NextResponse> {
   const { orgId } = await requireOrg();
 
-  await db
-    .update(notifications)
-    .set({ isRead: true })
-    .where(eq(notifications.orgId, orgId));
+  try {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.orgId, orgId));
+  } catch (err) {
+    // Non-critical — isRead is cosmetic, failing silently is acceptable
+    console.error("[PATCH /api/notifications/read-all] DB error:", err);
+  }
 
   return NextResponse.json<ApiResponse>({ ok: true, data: undefined });
 }
