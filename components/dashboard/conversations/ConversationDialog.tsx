@@ -20,7 +20,7 @@ const ROLE_CONFIG = {
     align: "justify-start",
     bubble:
       "bg-(--color-bg-page) text-(--color-text-700) rounded-2xl rounded-bl-sm border border-(--color-border)",
-    avatar: "🤖",
+    avatar: true,
   },
   human_agent: {
     label: "Staff",
@@ -264,7 +264,7 @@ const ConversationDialog = ({
                           alt="KUN"
                           width={18}
                           height={18}
-                          className="object-contain brightness-85 mb-0.5"
+                          className="object-contain brightness-[.85] mb-0.5"
                           aria-hidden="true"
                         />
                     ) : (

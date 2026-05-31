@@ -18,6 +18,8 @@ const ProfileSection = ({
   setName,
   handleSlugChange,
 }: ProfileSectionProps) => {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   return (
     <ConfigSection
       title="Profil Bisnis"
@@ -61,7 +63,7 @@ const ProfileSection = ({
 
           <div className="flex items-center gap-0">
             <span className="inline-flex items-center px-3 h-9 rounded-l-[10px] border border-r-0 border-(--color-border) bg-(--color-bg-page) text-[12.5px] text-(--color-text-400) font-mono select-none whitespace-nowrap">
-              kundesk.vercel.app/chat/
+              {appUrl}/chat/
             </span>
 
             <Input

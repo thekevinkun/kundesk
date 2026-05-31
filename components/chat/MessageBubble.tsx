@@ -43,7 +43,7 @@ const MessageBubble = ({
             alt="KUN"
             width={22}
             height={22}
-            className="object-contain brightness-85 mb-0.5"
+            className="object-contain brightness-[.85] mb-0.5"
             aria-hidden="true"
           />
         )

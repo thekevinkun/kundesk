@@ -33,7 +33,7 @@ const ChatHeader = ({ orgName, accentColor }: ChatHeaderProps) => {
         alt="KUN"
         width={32}
         height={32}
-        className="object-contain brightness-90"
+        className="object-contain brightness-[.90]"
       />
 
       <div>

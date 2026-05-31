@@ -71,8 +71,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? colorParam
       : chatbot.accentColor;
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://kundesk.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const chatUrl = `${appUrl}/chat/${org.slug}`;
 
   // Derive a lighter version of the accent for the panel header gradient
@@ -369,6 +368,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   kunImg.setAttribute('src', KUN_LOGO);
   kunImg.setAttribute('alt', 'KUN');
   kunImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+  kunImg.onerror = function() {
+    // Fallback to text if image fails to load
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = 'K';
+    avatarEl.style.cssText = 'background:rgba(255,255,255,0.2);border-radius:50%;border:2px solid rgba(255,255,255,0.3);';
+  };
   avatarEl.appendChild(kunImg);
 
   panel.appendChild(header);

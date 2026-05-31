@@ -43,8 +43,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
     );
   }
 
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://kundesk.vercel.app";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
   const chatUrl = `${appUrl}/chat/${data.orgSlug}`;
 
   // Script loads widget.js with org + color as query params
@@ -70,8 +69,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
           Widget & Embed
         </h1>
         <p className="text-[13px] text-(--color-text-500) mt-1">
-          Bagikan KUN ke pelanggan lewat QR code, link, atau embed di
-          website.
+          Bagikan KUN ke pelanggan lewat QR code, link, atau embed di website.
         </p>
       </div>
 
@@ -316,7 +314,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                     alt="KUN"
                     width={28}
                     height={28}
-                    className="object-contain brightness-90"
+                    className="object-contain brightness-[.90]"
                   />
                   <div>
                     <div className="text-white font-semibold text-[13px]">
@@ -343,7 +341,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                       alt="KUN"
                       width={18}
                       height={18}
-                      className="object-contain brightness-85 mb-0.5"
+                      className="object-contain brightness-[.85] mb-0.5"
                     />
 
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">
@@ -367,7 +365,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                       alt="KUN"
                       width={18}
                       height={18}
-                      className="object-contain brightness-85 mb-0.5"
+                      className="object-contain brightness-[.85] mb-0.5"
                     />
 
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">

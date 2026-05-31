@@ -27,6 +27,8 @@ const SlugChangeDialog = ({
   isPending,
   onConfirm,
 }: SlugChangeDialogProps) => {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -36,8 +38,8 @@ const SlugChangeDialog = ({
           </DialogTitle>
 
           <DialogDescription className="text-[13px] text-(--color-text-500) mt-1">
-            URL publik KUN kamu akan berubah. Semua QR code dan link lama
-            tidak akan berfungsi.
+            URL publik KUN kamu akan berubah. Semua QR code dan link lama tidak
+            akan berfungsi.
           </DialogDescription>
         </DialogHeader>
 
@@ -48,7 +50,7 @@ const SlugChangeDialog = ({
             </p>
 
             <p className="font-mono text-[12.5px] text-(--color-text-500) line-through">
-              kundesk.vercel.app/chat/{currentSlug}
+              {appUrl}/chat/{currentSlug}
             </p>
           </div>
 
@@ -58,7 +60,7 @@ const SlugChangeDialog = ({
             </p>
 
             <p className="font-mono text-[12.5px] text-(--color-brand-dark) font-semibold">
-              kundesk.vercel.app/chat/{newSlug}
+              {appUrl}/chat/{newSlug}
             </p>
           </div>
 
