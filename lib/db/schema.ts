@@ -91,20 +91,11 @@ export const chatbots = pgTable(
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
 
-    // Display name shown to customers in the chat widget
-    name: text("name").notNull().default("Assistant"),
-
     // Custom system prompt — overrides default if set
     systemPrompt: text("system_prompt"),
 
     // Response language — "id" | "en" | "both"
     language: text("language").notNull().default("id"),
-
-    // Conversation tone — "friendly" | "professional" | "formal"
-    tone: text("tone").notNull().default("friendly"),
-
-    // First message shown when customer opens the chat
-    greetingMessage: text("greeting_message"),
 
     // Hex color — synced to chat widget and QR code foreground color
     accentColor: text("accent_color").notNull().default("#069494"),

@@ -18,15 +18,15 @@ import {
 // ─── ChatHeader ───
 
 describe("ChatHeader", () => {
+  // name prop removed — KUN is always the name
   const defaultProps = {
-    name: "Sari Assistant",
     orgName: "Kedai Bu Sari",
     accentColor: "#069494",
   };
 
-  it("renders the bot name", () => {
+  it("renders KUN as the bot name", () => {
     render(<ChatHeader {...defaultProps} />);
-    expect(screen.getByText("Sari Assistant")).toBeInTheDocument();
+    expect(screen.getByText("KUN")).toBeInTheDocument();
   });
 
   it("renders the org name", () => {
@@ -34,15 +34,10 @@ describe("ChatHeader", () => {
     expect(screen.getByText("Kedai Bu Sari")).toBeInTheDocument();
   });
 
-  it("shows the first letter of bot name as avatar", () => {
+  it("shows KUN logo image as avatar", () => {
     render(<ChatHeader {...defaultProps} />);
-    // "Sari Assistant" → avatar shows "S"
-    expect(screen.getByText("S")).toBeInTheDocument();
-  });
-
-  it("shows correct avatar letter for different bot name", () => {
-    render(<ChatHeader {...defaultProps} name="Budi Helper" />);
-    expect(screen.getByText("B")).toBeInTheDocument();
+    const img = screen.getByAltText("KUN");
+    expect(img).toBeInTheDocument();
   });
 
   it("shows Online indicator", () => {
@@ -172,9 +167,9 @@ describe("ChatInput", () => {
 // ─── MessageBubble ───
 
 describe("MessageBubble", () => {
+  // botName prop removed — KUN is always the assistant name
   const defaultProps = {
     accentColor: "#069494",
-    botName: "Sari",
     isStreaming: false,
   };
 
@@ -213,11 +208,13 @@ describe("MessageBubble", () => {
     expect(screen.getByText("Halo, saya staff Bu Sari.")).toBeInTheDocument();
   });
 
-  it("shows AI avatar for assistant messages", () => {
+  it("shows KUN logo image as avatar for assistant messages", () => {
     render(
       <MessageBubble {...defaultProps} role="assistant" content="Hello" />,
     );
-    expect(screen.getByText("AI")).toBeInTheDocument();
+    // KUN logo replaces the old "AI" text avatar
+    const img = screen.getByAltText("KUN");
+    expect(img).toBeInTheDocument();
   });
 
   it("shows human avatar emoji for human_agent messages", () => {
@@ -239,16 +236,9 @@ describe("MessageBubble", () => {
     expect(screen.getByLabelText("Kamu: Halo")).toBeInTheDocument();
   });
 
-  it("aria-label includes bot name for assistant message", () => {
-    render(
-      <MessageBubble
-        {...defaultProps}
-        role="assistant"
-        content="Halo"
-        botName="Sari"
-      />,
-    );
-    expect(screen.getByLabelText("Sari: Halo")).toBeInTheDocument();
+  it("aria-label uses KUN for assistant message", () => {
+    render(<MessageBubble {...defaultProps} role="assistant" content="Halo" />);
+    expect(screen.getByLabelText("KUN: Halo")).toBeInTheDocument();
   });
 
   it("aria-label uses Staff for human_agent message", () => {

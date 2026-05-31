@@ -24,10 +24,7 @@ import { fadeUp, staggerContainer, staggerItem } from "@/lib/animations";
 
 // ── Current chatbot config — passed from Server Component ──
 interface ChatbotConfig {
-  name: string;
   language: string;
-  tone: string;
-  greetingMessage: string | null;
   systemPrompt: string | null;
   accentColor: string;
   isActive: boolean;
@@ -40,11 +37,9 @@ const formAction = async (
   _prevState: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> => {
+  // KUN owns name, tone, and greeting — only language, prompt, color are configurable
   return saveChatbotConfig({
-    name: formData.get("name"),
     language: formData.get("language"),
-    tone: formData.get("tone"),
-    greetingMessage: formData.get("greetingMessage") || undefined,
     systemPrompt: formData.get("systemPrompt") || undefined,
     accentColor: formData.get("accentColor"),
   });
@@ -77,12 +72,7 @@ const ConfigSection = ({
 // ── Main export ──
 const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
   // Local state for controlled inputs — initialized from server config
-  const [name, setName] = useState(config.name);
   const [language, setLanguage] = useState(config.language);
-  const [tone, setTone] = useState(config.tone);
-  const [greetingMessage, setGreetingMessage] = useState(
-    config.greetingMessage ?? "",
-  );
   const [systemPrompt, setSystemPrompt] = useState(config.systemPrompt ?? "");
   const [accentColor, setAccentColor] = useState(config.accentColor);
   // Parse quickReplies from JSON string — seeded from DB, never hardcoded
@@ -170,7 +160,7 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
     if (!state) return;
     if (state.ok) {
       toast.success("Konfigurasi disimpan", {
-        description: "Chatbot kamu sudah diperbarui.",
+        description: "KUN kamu sudah diperbarui.",
       });
     } else {
       toast.error("Gagal menyimpan", { description: state.error });
@@ -188,10 +178,10 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
         {/* Page header */}
         <div className="mb-6">
           <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
-            Konfigurasi Chatbot
+            Konfigurasi KUN
           </h1>
           <p className="text-[13px] text-(--color-text-500) mt-1">
-            Sesuaikan nama, bahasa, nada bicara, dan tampilan chatbot kamu.
+            Sesuaikan bahasa, quick replies, dan tampilan KUN untuk bisnis kamu.
           </p>
         </div>
 
@@ -199,7 +189,6 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
         <form action={action}>
           {/* Hidden inputs for Select values — Selects are controlled but form needs raw values */}
           <input type="hidden" name="language" value={language} />
-          <input type="hidden" name="tone" value={tone} />
           <input type="hidden" name="accentColor" value={accentColor} />
 
           <motion.div
@@ -208,107 +197,25 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
             animate="visible"
             className="space-y-4 max-w-2xl"
           >
-            {/* ── Identity section ── */}
+            {/* ── Behavior section — tone removed, KUN has fixed identity ── */}
             <ConfigSection
-              title="Identitas Bot"
-              description="Nama dan cara bot memperkenalkan diri ke pelanggan."
+              title="Bahasa"
+              description="Atur bahasa yang digunakan KUN saat berkomunikasi dengan pelanggan."
             >
-              <div className="space-y-4">
-                <div>
-                  <Label
-                    htmlFor="name"
-                    className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
-                  >
-                    Nama Bot
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Contoh: Sari Assistant"
-                    maxLength={50}
-                    className="input-base"
-                    aria-describedby="name-hint"
-                  />
-                  <p
-                    id="name-hint"
-                    className="text-[11.5px] text-(--color-text-400) mt-1"
-                  >
-                    Nama ini ditampilkan di header chat widget.
-                  </p>
-                </div>
-
-                <div>
-                  <Label
-                    htmlFor="greetingMessage"
-                    className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
-                  >
-                    Pesan Sambutan{" "}
-                    <span className="text-(--color-text-400) font-normal">
-                      (opsional)
-                    </span>
-                  </Label>
-                  <Textarea
-                    id="greetingMessage"
-                    name="greetingMessage"
-                    value={greetingMessage}
-                    onChange={(e) => setGreetingMessage(e.target.value)}
-                    placeholder="Halo! Ada yang bisa saya bantu hari ini? 😊"
-                    maxLength={300}
-                    rows={2}
-                    className="input-base resize-none"
-                    aria-describedby="greeting-hint"
-                  />
-                  <p
-                    id="greeting-hint"
-                    className="text-[11.5px] text-(--color-text-400) mt-1"
-                  >
-                    Pesan pertama yang dilihat pelanggan saat membuka chat.
-                  </p>
-                </div>
-              </div>
-            </ConfigSection>
-
-            {/* ── Behavior section ── */}
-            <ConfigSection
-              title="Bahasa & Nada Bicara"
-              description="Atur bagaimana bot berkomunikasi dengan pelanggan."
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
-                    Bahasa
-                  </Label>
-                  <Select value={language} onValueChange={setLanguage}>
-                    <SelectTrigger className="input-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
-                      <SelectItem value="en">🇬🇧 English</SelectItem>
-                      <SelectItem value="both">🇮🇩 ID + 🇬🇧 EN</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
-                    Nada Bicara
-                  </Label>
-                  <Select value={tone} onValueChange={setTone}>
-                    <SelectTrigger className="input-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="friendly">😊 Ramah</SelectItem>
-                      <SelectItem value="professional">
-                        💼 Profesional
-                      </SelectItem>
-                      <SelectItem value="formal">🎩 Formal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="max-w-[240px]">
+                <Label className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block">
+                  Bahasa
+                </Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="input-base">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="id">🇮🇩 Bahasa Indonesia</SelectItem>
+                    <SelectItem value="en">🇬🇧 English</SelectItem>
+                    <SelectItem value="both">🇮🇩 ID + 🇬🇧 EN</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </ConfigSection>
 
@@ -396,7 +303,7 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
             {/* ── Advanced section ── */}
             <ConfigSection
               title="System Prompt"
-              description="Instruksi tambahan untuk AI — hanya jika kamu tahu cara menggunakannya."
+              description="Instruksi tambahan untuk KUN — hanya jika kamu tahu cara menggunakannya."
             >
               <Textarea
                 id="systemPrompt"

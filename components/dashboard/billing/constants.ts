@@ -16,7 +16,7 @@ export interface PlanUIConfig {
 export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
   free: {
     label: "Free",
-    desc: "Untuk bisnis yang baru mulai menjajal AI",
+    desc: "Coba KUN gratis untuk bisnis yang baru mulai",
     color: "bg-(--color-bg-page)",
     icon: "🌱",
     features: [
@@ -34,7 +34,7 @@ export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
   },
   starter: {
     label: "Starter",
-    desc: "Untuk bisnis yang sudah aktif melayani pelanggan",
+    desc: "KUN siap melayani pelanggan bisnis kamu 24/7",
     color: "bg-(--color-brand-light)",
     icon: "⚡",
     features: [
@@ -49,7 +49,7 @@ export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
   },
   pro: {
     label: "Pro",
-    desc: "Untuk bisnis besar atau agensi yang kelola banyak klien",
+    desc: "KUN untuk bisnis besar atau agensi dengan banyak klien",
     color: "bg-(--color-brand-light)",
     icon: "🚀",
     features: [

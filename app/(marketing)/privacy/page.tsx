@@ -199,7 +199,7 @@ export default function PrivacyPage() {
             </p>
 
             <p className="text-sm text-(--color-text-500) mb-4">
-              Samarinda / Balikpapan, Kalimantan Timur, Indonesia
+              Samarinda, Kalimantan Timur, Indonesia
             </p>
 
             <a

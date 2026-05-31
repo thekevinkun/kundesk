@@ -200,10 +200,7 @@ export interface CachedOrg {
 export interface CachedChatbot {
   id: number;
   orgId: string;
-  name: string;
   language: string;
-  tone: string;
-  greetingMessage: string | null;
   systemPrompt: string | null;
   accentColor: string;
   quickReplies: string | null;

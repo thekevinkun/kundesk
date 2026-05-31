@@ -20,16 +20,8 @@ import {
 
 // ── Validation schema — matches chatbots table constraints ──
 const chatbotConfigSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Nama bot wajib diisi")
-    .max(50, "Nama terlalu panjang"),
+  // KUN owns name, tone, and greeting — only language, prompt, and color are configurable
   language: z.enum(["id", "en", "both"]),
-  tone: z.enum(["friendly", "professional", "formal"]),
-  greetingMessage: z
-    .string()
-    .max(300, "Pesan sambutan terlalu panjang")
-    .optional(),
   systemPrompt: z
     .string()
     .max(2000, "System prompt terlalu panjang")
@@ -59,17 +51,13 @@ export async function saveChatbotConfig(
     };
   }
 
-  const { name, language, tone, greetingMessage, systemPrompt, accentColor } =
-    result.data;
+  const { language, systemPrompt, accentColor } = result.data;
 
   await db
     .update(chatbots)
     .set({
-      name,
+      // KUN owns name, tone, and greeting — only these three are owner-configurable
       language,
-      tone,
-      // Empty string → null — keeps DB clean
-      greetingMessage: greetingMessage?.trim() ? greetingMessage.trim() : null,
       systemPrompt: systemPrompt?.trim() ? systemPrompt.trim() : null,
       accentColor,
     })
@@ -176,10 +164,7 @@ export async function saveQuickReplies(
 // ── Get current chatbot config ──
 // Called by the chatbot config page Server Component
 export async function getChatbotConfig(): Promise<{
-  name: string;
   language: string;
-  tone: string;
-  greetingMessage: string | null;
   systemPrompt: string | null;
   accentColor: string;
   isActive: boolean;
@@ -189,10 +174,8 @@ export async function getChatbotConfig(): Promise<{
 
   const [chatbot] = await db
     .select({
-      name: chatbots.name,
+      // KUN owns name, tone, and greeting — only fetch what owners can configure
       language: chatbots.language,
-      tone: chatbots.tone,
-      greetingMessage: chatbots.greetingMessage,
       systemPrompt: chatbots.systemPrompt,
       accentColor: chatbots.accentColor,
       isActive: chatbots.isActive,
@@ -258,18 +241,14 @@ export async function getPendingHandoffCount(): Promise<number> {
 // Returns everything needed to render embed code, QR, and live preview
 export async function getWidgetData(): Promise<{
   orgSlug: string;
-  chatbotName: string;
   accentColor: string;
-  greetingMessage: string | null;
 } | null> {
   const { orgId } = await requireOrg();
 
   const [result] = await db
     .select({
       slug: orgs.slug,
-      name: chatbots.name,
       accentColor: chatbots.accentColor,
-      greetingMessage: chatbots.greetingMessage,
     })
     .from(chatbots)
     .innerJoin(orgs, eq(orgs.id, chatbots.orgId))
@@ -280,8 +259,6 @@ export async function getWidgetData(): Promise<{
 
   return {
     orgSlug: result.slug,
-    chatbotName: result.name,
     accentColor: result.accentColor,
-    greetingMessage: result.greetingMessage,
   };
 }

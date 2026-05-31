@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -110,10 +111,10 @@ const ConversationDialog = ({
           method: "POST",
         });
         if (!res.ok) throw new Error("Failed");
-        toast.success("AI kembali menangani percakapan");
+        toast.success("KUN kembali menangani percakapan");
         onReturn();
       } catch {
-        toast.error("Gagal mengembalikan ke AI. Coba lagi.");
+        toast.error("Gagal mengembalikan ke KUN. Coba lagi.");
       }
     });
   };
@@ -210,7 +211,7 @@ const ConversationDialog = ({
               {isReturning ? (
                 <span className="animate-spin inline-block">⏳</span>
               ) : (
-                "↩ Kembalikan ke AI"
+                "↩ Kembalikan ke KUN"
               )}
             </button>
           )}
@@ -257,10 +258,20 @@ const ConversationDialog = ({
                   >
                     {/* Avatar — left side for non-user */}
                     {config.avatar && (
-                      <div className="w-6 h-6 rounded-full bg-(--color-bg-card) border border-(--color-border) flex items-center justify-center text-[11px] flex-shrink-0 mb-0.5">
+                      msg.role === "assistant" ? (
+                        <Image
+                          src="/images/kun_logo.png"
+                          alt="KUN"
+                          width={18}
+                          height={18}
+                          className="object-contain brightness-85 mb-0.5"
+                          aria-hidden="true"
+                        />
+                    ) : (
+                      <span className="text-white text-sm mb-1" aria-hidden="true">
                         {config.avatar}
-                      </div>
-                    )}
+                      </span>
+                    ))}
 
                     <div className="max-w-[85%] sm:max-w-[70%]">
                       {/* Role label */}
@@ -319,7 +330,7 @@ const ConversationDialog = ({
                 onClick={handleSend}
                 disabled={isSending || !replyContent.trim()}
                 className="btn-brand h-11 w-full px-4 text-[13px] font-semibold disabled:opacity-50 
-          disabled:cursor-not-allowed flex items-center justify-center gap-1.5 whitespace-nowrap sm:h-[60px] sm:w-auto"
+                  disabled:cursor-not-allowed flex items-center justify-center gap-1.5 whitespace-nowrap sm:h-[60px] sm:w-auto"
                 aria-label="Kirim balasan"
               >
                 {isSending ? (

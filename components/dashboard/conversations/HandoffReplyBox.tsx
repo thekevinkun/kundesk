@@ -49,10 +49,10 @@ const HandoffReplyBox = ({
 
         if (!res.ok) throw new Error("Failed to return to AI");
 
-        toast.success("AI kembali menangani percakapan");
+        toast.success("KUN kembali menangani percakapan");
         onReturn();
       } catch {
-        toast.error("Gagal mengembalikan ke AI. Coba lagi.");
+        toast.error("Gagal mengembalikan ke KUN. Coba lagi.");
       }
     });
   };
@@ -77,7 +77,7 @@ const HandoffReplyBox = ({
           disabled={isReturning}
           className="text-[11.5px] font-semibold text-(--color-text-500) hover:text-(--color-brand) transition-colors disabled:opacity-50"
         >
-          {isReturning ? "Mengembalikan..." : "↩ Kembalikan ke AI"}
+          {isReturning ? "Mengembalikan..." : "↩ Kembalikan ke KUN"}
         </button>
       </div>
 

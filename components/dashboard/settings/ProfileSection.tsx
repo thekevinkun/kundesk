@@ -21,7 +21,7 @@ const ProfileSection = ({
   return (
     <ConfigSection
       title="Profil Bisnis"
-      description="Nama dan URL publik chatbot kamu."
+      description="Nama dan URL publik KUN kamu."
     >
       <div className="space-y-4">
         <div>
@@ -61,7 +61,7 @@ const ProfileSection = ({
 
           <div className="flex items-center gap-0">
             <span className="inline-flex items-center px-3 h-9 rounded-l-[10px] border border-r-0 border-(--color-border) bg-(--color-bg-page) text-[12.5px] text-(--color-text-400) font-mono select-none whitespace-nowrap">
-              kundesk.app/chat/
+              kundesk.vercel.app/chat/
             </span>
 
             <Input
@@ -80,7 +80,7 @@ const ProfileSection = ({
             className="text-[11.5px] text-(--color-text-400) mt-1"
           >
             Hanya huruf kecil, angka, dan tanda hubung. Mengubah ini akan
-            mengubah URL publik chatbot kamu.
+            mengubah URL publik KUN kamu.
           </p>
         </div>
       </div>

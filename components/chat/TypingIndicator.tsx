@@ -1,18 +1,17 @@
-interface TypingIndicatorProps {
-  accentColor: string;
-}
+import Image from "next/image";
 
-const TypingIndicator = ({ accentColor }: TypingIndicatorProps) => {
+const TypingIndicator = () => {
   return (
     <div className="flex items-end gap-2 mb-4">
       {/* Bot avatar */}
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mb-1"
-        style={{ background: accentColor }}
+      <Image
+        src="/images/kun_logo.png"
+        alt="KUN"
+        width={22}
+        height={22}
+        className="object-contain brightness-85 mb-0.5"
         aria-hidden="true"
-      >
-        AI
-      </div>
+      />
 
       {/* Animated dots */}
       <div

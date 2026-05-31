@@ -1,3 +1,4 @@
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 
 // Animated cursor shown at the end of a streaming assistant message
@@ -14,7 +15,6 @@ interface MessageBubbleProps {
   content: string;
   isStreaming?: boolean | undefined;
   accentColor: string;
-  botName: string;
 }
 
 const MessageBubble = ({
@@ -22,7 +22,6 @@ const MessageBubble = ({
   content,
   isStreaming,
   accentColor,
-  botName,
 }: MessageBubbleProps) => {
   const isUser = role === "user";
   // human_agent renders on the left like assistant but with a different avatar
@@ -36,13 +35,18 @@ const MessageBubble = ({
     >
       {/* Avatar — AI bot or human staff, only for non-user messages */}
       {!isUser && (
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mb-1"
-          style={{ background: isHumanAgent ? "#6b7280" : accentColor }}
-          aria-hidden="true"
-        >
-          {isHumanAgent ? "👤" : "AI"}
-        </div>
+        isHumanAgent ? (
+          <span className="text-white mb-0.5" aria-hidden="true">👤</span>
+        ) : (
+          <Image
+            src="/images/kun_logo.png"
+            alt="KUN"
+            width={22}
+            height={22}
+            className="object-contain brightness-85 mb-0.5"
+            aria-hidden="true"
+          />
+        )
       )}
 
       {/* Bubble */}
@@ -53,7 +57,7 @@ const MessageBubble = ({
             : "rounded-2xl rounded-bl-sm text-gray-800"
         }`}
         style={{ background: isUser ? accentColor : "#f0f2f4" }}
-        aria-label={`${isUser ? "Kamu" : isHumanAgent ? "Staff" : botName}: ${content}`}
+        aria-label={`${isUser ? "Kamu" : isHumanAgent ? "Staff" : "KUN"}: ${content}`}
       >
         <div className="prose-bubble">
           <ReactMarkdown>{content}</ReactMarkdown>

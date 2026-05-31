@@ -26,11 +26,8 @@ export interface ChatMessage {
 
 // Shape of chatbot configuration used when building the system prompt and rendering the chat UI
 export type ChatbotConfig = {
-  name: string;
-  tone: "friendly" | "professional" | "formal";
   language: "id" | "en" | "both";
   accentColor: string;
-  greetingMessage: string | null;
   systemPrompt: string | null;
   quickReplies: string[] | null;
 };

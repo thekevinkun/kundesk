@@ -36,7 +36,7 @@ const SlugChangeDialog = ({
           </DialogTitle>
 
           <DialogDescription className="text-[13px] text-(--color-text-500) mt-1">
-            URL publik chatbot kamu akan berubah. Semua QR code dan link lama
+            URL publik KUN kamu akan berubah. Semua QR code dan link lama
             tidak akan berfungsi.
           </DialogDescription>
         </DialogHeader>
@@ -48,7 +48,7 @@ const SlugChangeDialog = ({
             </p>
 
             <p className="font-mono text-[12.5px] text-(--color-text-500) line-through">
-              kundesk.app/chat/{currentSlug}
+              kundesk.vercel.app/chat/{currentSlug}
             </p>
           </div>
 
@@ -58,7 +58,7 @@ const SlugChangeDialog = ({
             </p>
 
             <p className="font-mono text-[12.5px] text-(--color-brand-dark) font-semibold">
-              kundesk.app/chat/{newSlug}
+              kundesk.vercel.app/chat/{newSlug}
             </p>
           </div>
 

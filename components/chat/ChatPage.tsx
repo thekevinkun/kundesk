@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { useChatStore } from "@/stores/chat-store";
 import { useChatStream } from "@/hooks/use-chat-stream";
 import {
@@ -78,9 +79,12 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     if (!sessionId) setSessionId(crypto.randomUUID());
   }, [sessionId, setSessionId]);
 
-  // Show greeting message once on first load
+  // KUN greeting — hardcoded template, orgName injected at render time
+  // No longer comes from DB config — KUN owns the greeting
+  const kunGreeting = `Halo! Aku KUN, asisten virtual bisnis ini. Aku siap menjawab pertanyaan seputar ${orgName} berdasarkan informasi yang telah disiapkan. Ada yang bisa aku bantu?`;
+
   useEffect(() => {
-    if (hasGreeted || !config.greetingMessage || !sessionId) return;
+    if (hasGreeted || !sessionId) return;
 
     useChatStore.setState((state) => ({
       messages: [
@@ -88,14 +92,14 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         {
           localId: crypto.randomUUID(),
           role: "assistant" as const,
-          content: config.greetingMessage!,
+          content: kunGreeting,
           isStreaming: false,
         },
       ],
     }));
 
     setHasGreeted(true);
-  }, [hasGreeted, config.greetingMessage, sessionId]);
+  }, [hasGreeted, sessionId, kunGreeting]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -177,11 +181,8 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       className="flex flex-col h-screen bg-gray-50"
       style={{ "--accent": config.accentColor } as React.CSSProperties}
     >
-      <ChatHeader
-        name={config.name}
-        orgName={orgName}
-        accentColor={config.accentColor}
-      />
+      {/* KUN is always the name — no longer from config */}
+      <ChatHeader orgName={orgName} accentColor={config.accentColor} />
 
       <main
         className="flex-1 px-4 py-4 overflow-y-auto 
@@ -191,21 +192,22 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         aria-live="polite"
         aria-label="Percakapan"
       >
-        {/* Empty state — only shown when no greeting message is configured */}
-        {messages.length === 0 && !isLoading && !config.greetingMessage && (
+        {/* Empty state — only shown briefly before greeting fires */}
+        {messages.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mb-4"
-              style={{ background: config.accentColor }}
+            <Image
+              src="/images/kun_logo.png"
+              alt="KUN"
+              width={64}
+              height={64}
+              className="object-contain mb-4"
               aria-hidden="true"
-            >
-              {config.name.charAt(0).toUpperCase()}
-            </div>
+            />
             <h2 className="text-gray-800 font-semibold text-base mb-1">
-              Halo! Saya {config.name}
+              Halo! Aku KUN
             </h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              Tanyakan apa saja tentang {orgName}. Saya siap membantu!
+              Tanyakan apa saja tentang {orgName}. Aku siap membantu!
             </p>
           </div>
         )}
@@ -217,11 +219,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
             content={msg.content}
             isStreaming={msg.isStreaming}
             accentColor={config.accentColor}
-            botName={config.name}
           />
         ))}
 
-        {isLoading && <TypingIndicator accentColor={config.accentColor} />}
+        {isLoading && <TypingIndicator />}
 
         {error && errorType === "quota_exceeded" && (
           <QuotaExceededState error={error} accentColor={config.accentColor} />

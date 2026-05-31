@@ -24,13 +24,13 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
             Topik Pertanyaan
           </h2>
           <p className="text-[12px] text-(--color-text-400) mt-0.5">
-            Dikelompokkan berdasarkan makna oleh AI
+            Dikelompokkan berdasarkan makna oleh KUN
           </p>
         </div>
 
         {/* AI badge — tells owner this is smart grouping */}
         <span className="flex items-center gap-1 text-[10.5px] font-semibold text-(--color-brand) bg-(--color-brand-light) border border-(--color-brand-mid) px-2.5 py-1 rounded-full flex-shrink-0">
-          ✦ AI Grouped
+          ✦ Grouped by KUN
         </span>
       </div>
 

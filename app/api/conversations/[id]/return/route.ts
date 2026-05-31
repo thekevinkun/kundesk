@@ -104,8 +104,8 @@ export async function POST(
   await createNotification(
     orgId,
     "conversation_return",
-    "AI kembali menangani percakapan",
-    `${conversation.sessionId.slice(0, 8)}|AI melanjutkan percakapan`,
+    "KUN kembali menangani percakapan",
+    `${conversation.sessionId.slice(0, 8)}|KUN melanjutkan percakapan`,
     conversationId,
   ).catch(console.error);
 

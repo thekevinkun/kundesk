@@ -34,7 +34,7 @@ const StatusPill = ({ status }: { status: string }) => {
   return (
     <span className="badge-base badge-success">
       <span className="w-1.5 h-1.5 rounded-full bg-(--color-success)" />
-      AI
+      KUN
     </span>
   );
 };

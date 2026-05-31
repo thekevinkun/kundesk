@@ -75,6 +75,7 @@ const HandoffTrendChart = ({ data }: HandoffTrendChartProps) => {
             fill: true,
             backgroundColor: gradient,
             tension: 0.45,
+            clip: 8,
             pointRadius: 0,
             pointHoverRadius: 5,
             pointBackgroundColor: lineColor,
@@ -121,6 +122,14 @@ const HandoffTrendChart = ({ data }: HandoffTrendChartProps) => {
               padding: 8,
               font: { family: "var(--font-body)", size: 11 },
             },
+          },
+        },
+        layout: {
+          padding: {
+            top: 8,
+            right: 8,
+            left: 4,
+            bottom: 2,
           },
         },
         interaction: { mode: "index", intersect: false },

@@ -3,7 +3,6 @@
 // No auth required — public endpoint, org validated via slug
 
 import { type NextRequest, NextResponse } from "next/server";
-import { clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orgs, chatbots } from "@/lib/db/schema";
@@ -49,25 +48,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // Fetch org image from Clerk — available on the Organization object
-  // Falls back to null if Clerk API fails — widget shows initial letter instead
-  let orgImageUrl: string | null = null;
-  try {
-    const client = await clerkClient();
-    const clerkOrg = await client.organizations.getOrganization({
-      organizationId: org.id,
-    });
-    orgImageUrl = clerkOrg.imageUrl ?? null;
-  } catch {
-    // Non-fatal — widget still works without the image
-    orgImageUrl = null;
-  }
-
   const [chatbot] = await db
     .select({
+      // KUN owns the name — only accentColor and isActive needed here
       accentColor: chatbots.accentColor,
       isActive: chatbots.isActive,
-      name: chatbots.name,
     })
     .from(chatbots)
     .where(eq(chatbots.orgId, org.id))
@@ -101,9 +86,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   var CHAT_URL = ${JSON.stringify(chatUrl)};
   var COLOR = ${JSON.stringify(accentColor)};
-  var BOT_NAME = ${JSON.stringify(chatbot.name)};
+  var BOT_NAME = "KUN";
   var ORG_NAME = ${JSON.stringify(org.name)};
-  var ORG_IMAGE = ${JSON.stringify(orgImageUrl)};
+  var KUN_LOGO = ${JSON.stringify(`${appUrl}/images/kun_logo.png`)};
   var Z = 999999;
   var unreadCount = 0;
   var isOpen = false;
@@ -230,9 +215,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     /* ── Avatar in header ── */
     '#kd-avatar {',
-    '  width:40px; height:40px; border-radius:50%;',
-    '  background:rgba(255,255,255,0.2);',
-    '  border:2px solid rgba(255,255,255,0.4);',
+    '  width:40px; height:40px;',
     '  display:flex; align-items:center; justify-content:center;',
     '  font-size:18px; font-weight:800; color:white;',
     '  font-family:-apple-system,BlinkMacSystemFont,sans-serif;',
@@ -382,16 +365,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // Set avatar safely — image via setAttribute, fallback via textContent
   var avatarEl = header.querySelector('#kd-avatar');
-  if (ORG_IMAGE) {
-    var img = document.createElement('img');
-    img.setAttribute('src', ORG_IMAGE);
-    img.setAttribute('alt', ORG_NAME);
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
-    avatarEl.appendChild(img);
-  } else {
-    // textContent safely renders the first letter — no HTML interpretation
-    avatarEl.textContent = BOT_NAME.charAt(0).toUpperCase();
-  }
+  var kunImg = document.createElement('img');
+  kunImg.setAttribute('src', KUN_LOGO);
+  kunImg.setAttribute('alt', 'KUN');
+  kunImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+  avatarEl.appendChild(kunImg);
 
   panel.appendChild(header);
 

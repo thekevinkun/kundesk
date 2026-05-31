@@ -114,8 +114,8 @@ const AnalyticsPage = ({
         <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
           Analytics
         </h1>
-        <p className="text-[13px] max-w-sm sm:max-w-lg text-(--color-text-500) mt-1">
-          Pahami bagaimana pelanggan berinteraksi dengan chatbot kamu.
+        <p className="text-[13px] max-w-sm sm:max-w-full text-(--color-text-500) mt-1">
+          Pahami bagaimana pelanggan berinteraksi dengan bisnis kamu melalui KUN.
         </p>
       </div>
 
@@ -182,7 +182,7 @@ const AnalyticsPage = ({
                 Tren Response Time
               </h2>
               <p className="text-[12px] text-(--color-text-400) mt-0.5">
-                Rata-rata waktu respons AI per hari
+                Rata-rata waktu respons KUN per hari
               </p>
             </div>
             {responseTrend.length > 0 ? (

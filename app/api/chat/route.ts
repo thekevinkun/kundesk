@@ -127,7 +127,7 @@ function createOpenAIStream(
           err instanceof APIConnectionTimeoutError;
 
         const errorMessage = isOpenAIError
-          ? "Mohon maaf, asisten AI sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi. 🙏"
+          ? "Mohon maaf, KUN sedang tidak dapat dihubungi. Silakan coba beberapa saat lagi. 🙏"
           : "Terjadi gangguan saat memproses pesanmu. Silakan coba lagi.";
 
         controller.enqueue(
@@ -211,10 +211,7 @@ export async function POST(request: NextRequest) {
       .select({
         id: chatbots.id,
         orgId: chatbots.orgId,
-        name: chatbots.name,
         language: chatbots.language,
-        tone: chatbots.tone,
-        greetingMessage: chatbots.greetingMessage,
         systemPrompt: chatbots.systemPrompt,
         accentColor: chatbots.accentColor,
         quickReplies: chatbots.quickReplies,
@@ -532,13 +529,12 @@ export async function POST(request: NextRequest) {
   const contextChunks = await retrieveContext(message, org.id);
 
   // ── 12. Build system prompt ──
+  // Build system prompt — KUN's identity is hardcoded in buildSystemPrompt
+  // Only language, systemPrompt, and accentColor come from per-org config
   const systemPrompt = buildSystemPrompt(
     {
-      name: chatbot.name,
-      tone: chatbot.tone as "friendly" | "professional" | "formal",
       language: chatbot.language as "id" | "en" | "both",
       accentColor: chatbot.accentColor,
-      greetingMessage: chatbot.greetingMessage,
       systemPrompt: chatbot.systemPrompt,
       quickReplies: (() => {
         try {

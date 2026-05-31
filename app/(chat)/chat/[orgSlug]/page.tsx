@@ -48,14 +48,11 @@ export default async function ChatRoute({ params }: Props) {
   // No active chatbot — same notFound, no enumeration
   if (!chatbot) notFound();
 
+  // KUN owns name, tone, and greeting — only pass configurable fields
   const config: ChatbotConfig = {
-    name: chatbot.name,
-    tone: chatbot.tone as ChatbotConfig["tone"],
     language: chatbot.language as ChatbotConfig["language"],
     accentColor: chatbot.accentColor,
-    greetingMessage: chatbot.greetingMessage,
     systemPrompt: chatbot.systemPrompt,
-    // Parse quickReplies JSON safely — invalid JSON or null both result in null
     quickReplies: (() => {
       try {
         if (!chatbot.quickReplies) return null;

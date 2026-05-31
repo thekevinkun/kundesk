@@ -10,9 +10,7 @@ import { fadeUp } from "@/lib/animations";
 interface WidgetPageProps {
   data: {
     orgSlug: string;
-    chatbotName: string;
     accentColor: string;
-    greetingMessage: string | null;
   } | null;
 }
 
@@ -35,10 +33,10 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
         <div className="text-center">
           <div className="text-4xl mb-3">⚙️</div>
           <div className="text-[14px] font-semibold text-(--color-text-500)">
-            Chatbot belum dikonfigurasi
+            KUN belum dikonfigurasi
           </div>
           <div className="text-[12px] text-(--color-text-400) mt-1">
-            Buat chatbot dulu di halaman Konfigurasi
+            Aktifkan KUN dulu di halaman Konfigurasi
           </div>
         </div>
       </div>
@@ -68,11 +66,11 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
     <motion.div variants={fadeUp} initial="hidden" animate="visible">
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
+        <h1 className="text-[22px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
           Widget & Embed
         </h1>
         <p className="text-[13px] text-(--color-text-500) mt-1">
-          Bagikan chatbot kamu ke pelanggan lewat QR code, link, atau embed di
+          Bagikan KUN ke pelanggan lewat QR code, link, atau embed di
           website.
         </p>
       </div>
@@ -111,7 +109,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                     {/* QR image from our API route */}
                     <Image
                       src={`/api/qr/${data.orgSlug}?format=svg`}
-                      alt={`QR Code untuk ${data.chatbotName}`}
+                      alt={`QR Code untuk KUN`}
                       width={160}
                       height={160}
                       className="w-full h-full object-contain p-2"
@@ -131,12 +129,12 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                 {/* Instructions */}
                 <div className="flex-1 min-w-0">
                   <div className="text-[15px] font-bold text-(--color-text-900) mb-2">
-                    QR Code Chatbot
+                    QR Code KUN
                   </div>
                   <p className="text-[13px] text-(--color-text-500) leading-relaxed mb-4">
                     Cetak dan tempel di konter, menu, atau packaging. Pelanggan
                     scan kamera — langsung terbuka chat dengan{" "}
-                    <strong>{data.chatbotName}</strong>.
+                    <strong>KUN</strong>.
                   </p>
 
                   {/* Use cases */}
@@ -165,7 +163,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
           {activeTab === "link" && (
             <div className="card-base p-6">
               <div className="text-[15px] font-bold text-(--color-text-900) mb-2">
-                Link Publik Chatbot
+                Link Publik KUN
               </div>
               <p className="text-[13px] text-(--color-text-500) leading-relaxed mb-5">
                 Bagikan link ini ke pelanggan lewat WhatsApp, Instagram bio,
@@ -294,7 +292,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
           <div className="card-base overflow-hidden">
             <div className="px-5 pt-5 pb-3 border-b border-(--color-border-sm)">
               <div className="text-[13px] font-bold text-(--color-text-900)">
-                Preview Chatbot
+                Preview KUN
               </div>
               <div className="text-[11.5px] text-(--color-text-400) mt-0.5">
                 Tampilan yang dilihat pelanggan
@@ -312,12 +310,17 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                   className="px-4 py-3 flex items-center gap-3"
                   style={{ background: data.accentColor }}
                 >
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-[13px]">
-                    {data.chatbotName.charAt(0).toUpperCase()}
-                  </div>
+                  {/* KUN avatar in preview */}
+                  <Image
+                    src="/images/kun_logo.png"
+                    alt="KUN"
+                    width={28}
+                    height={28}
+                    className="object-contain brightness-90"
+                  />
                   <div>
                     <div className="text-white font-semibold text-[13px]">
-                      {data.chatbotName}
+                      KUN
                     </div>
                     <div className="text-white/70 text-[11px] flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-300 inline-block" />
@@ -327,25 +330,27 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                 </div>
 
                 {/* Chat body */}
-                <div className="bg-gray-50 h-full p-3 space-y-2 overflow-y-auto
+                <div
+                  className="bg-gray-50 h-full p-3 space-y-2 overflow-y-auto
                   [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar]:h-[5px]
                   [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
                   hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
                 >
-                  {/* Greeting bubble */}
-                  {data.greetingMessage && (
-                    <div className="flex items-end gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                        style={{ background: data.accentColor }}
-                      >
-                        AI
-                      </div>
-                      <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">
-                        {data.greetingMessage}
-                      </div>
+                  {/* KUN greeting preview — hardcoded since greeting is now fixed */}
+                  <div className="flex items-end gap-2">
+                    <Image
+                      src="/images/kun_logo.png"
+                      alt="KUN"
+                      width={18}
+                      height={18}
+                      className="object-contain brightness-85 mb-0.5"
+                    />
+
+                    <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">
+                      Halo! Aku KUN, asisten virtual bisnis ini. Ada yang bisa
+                      aku bantu?
                     </div>
-                  )}
+                  </div>
 
                   {/* Sample exchange */}
                   <div className="flex justify-end">
@@ -357,12 +362,14 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                     </div>
                   </div>
                   <div className="flex items-end gap-2">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                      style={{ background: data.accentColor }}
-                    >
-                      AI
-                    </div>
+                    <Image
+                      src="/images/kun_logo.png"
+                      alt="KUN"
+                      width={18}
+                      height={18}
+                      className="object-contain brightness-85 mb-0.5"
+                    />
+
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">
                       Kami buka setiap hari dari jam 08.00 hingga 22.00 WIB. Ada
                       lagi yang bisa saya bantu? 😊
@@ -376,11 +383,11 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
           {/* Quick stats */}
           <div className="card-base p-5">
             <div className="text-[13px] font-bold text-(--color-text-900) mb-3">
-              Info Chatbot
+              Info KUN
             </div>
             <div className="space-y-2.5">
               {[
-                { label: "Nama Bot", value: data.chatbotName },
+                { label: "Asisten AI", value: "KUN" },
                 { label: "URL Publik", value: `/${data.orgSlug}`, mono: true },
                 {
                   label: "Warna Brand",

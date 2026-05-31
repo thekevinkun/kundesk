@@ -472,9 +472,7 @@ export async function getConversationById(
 // ── Bot status data — chatbot config + document/chunk counts for status panel ──
 // Single query joining chatbots + aggregated document/chunk counts
 export async function getBotStatus(orgId: string): Promise<{
-  name: string;
   language: string;
-  tone: string;
   isActive: boolean;
   accentColor: string;
   documentCount: number;
@@ -483,9 +481,8 @@ export async function getBotStatus(orgId: string): Promise<{
   // Get chatbot config — one per org
   const [chatbot] = await db
     .select({
-      name: chatbots.name,
+      // KUN owns name and tone — only fetch what's still configurable per org
       language: chatbots.language,
-      tone: chatbots.tone,
       isActive: chatbots.isActive,
       accentColor: chatbots.accentColor,
     })

@@ -16,7 +16,7 @@ export const KPI_CARDS = [
   },
   {
     key: "resolutionRate",
-    label: "Diselesaikan AI",
+    label: "Diselesaikan KUN",
     icon: "✅",
     iconBg: "bg-[#d1fae5] dark:bg-[#14532d]",
     suffix: "%",
@@ -84,29 +84,29 @@ export function getHandoffInsightCopy(handoffRate: number): {
 } {
   if (handoffRate === 0) {
     return {
-      headline: "AI menangani semua percakapan",
+      headline: "KUN menangani semua percakapan",
       detail:
-        "Tidak ada pelanggan yang meminta bantuan admin bulan ini. Chatbot kamu bekerja sangat baik.",
+        "Tidak ada pelanggan yang meminta bantuan admin bulan ini. KUN bekerja sangat baik.",
       sentiment: "good",
     };
   }
   if (handoffRate < 5) {
     return {
       headline: "Tingkat handoff rendah — bagus",
-      detail: `${handoffRate}% pelanggan meminta bantuan langsung. Ini normal dan sehat — berarti AI menangani pertanyaan umum dengan baik.`,
+      detail: `${handoffRate}% pelanggan meminta bantuan langsung. Ini normal dan sehat — berarti KUN menangani pertanyaan umum dengan baik.`,
       sentiment: "good",
     };
   }
   if (handoffRate < 15) {
     return {
       headline: "Perlu perhatian — tambah dokumen",
-      detail: `${handoffRate}% pelanggan tidak puas dengan jawaban AI. Coba upload lebih banyak dokumen atau perluas FAQ kamu.`,
+      detail: `${handoffRate}% pelanggan tidak puas dengan jawaban KUN. Coba upload lebih banyak dokumen atau perluas FAQ kamu.`,
       sentiment: "warn",
     };
   }
   return {
     headline: "Tingkat handoff tinggi — perlu tindakan",
-    detail: `${handoffRate}% pelanggan meminta admin. AI kamu kekurangan informasi — segera perbarui dokumen dan FAQ.`,
+    detail: `${handoffRate}% pelanggan meminta admin. KUN mungkin kekurangan informasi — segera perbarui dokumen dan FAQ.`,
     sentiment: "alert",
   };
 }

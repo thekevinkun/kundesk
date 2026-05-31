@@ -129,7 +129,7 @@ const DocumentsPage = () => {
             Dokumen
           </h1>
           <p className="text-[13px] text-(--color-text-500) mt-1">
-            Upload menu, FAQ, atau daftar harga — AI kamu akan mempelajarinya
+            Upload menu, FAQ, atau daftar harga — KUN akan mempelajarinya
             otomatis.
           </p>
         </div>

@@ -60,7 +60,7 @@ const SplitDonut = ({
     chartRef.current = new Chart(canvas, {
       type: "doughnut",
       data: {
-        labels: ["Diselesaikan AI", "Minta Admin"],
+        labels: ["Diselesaikan KUN", "Minta Admin"],
         datasets: [
           {
             data: hasData ? [aiCount, handoffCount] : [1, 0],
@@ -111,7 +111,7 @@ const SplitDonut = ({
           {aiPct}%
         </span>
         <span className="text-[10px] text-(--color-text-400) font-medium mt-0.5">
-          AI
+          KUN
         </span>
       </div>
     </div>
@@ -161,7 +161,7 @@ const HandoffInsightCard = ({
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-(--color-brand) flex-shrink-0" />
               <span className="text-[12px] text-(--color-text-500) font-medium">
-                AI ({aiCount.toLocaleString("id-ID")})
+                KUN ({aiCount.toLocaleString("id-ID")})
               </span>
             </div>
             <div className="flex items-center gap-2">

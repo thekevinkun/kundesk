@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
 import { XIcon } from "lucide-react";
@@ -158,7 +159,16 @@ const NotificationPanel = ({
                       : "bg-(--color-bg-page)"
                   }`}
                 >
-                  {notifIcon(notif.type)}
+                  {notif.type === "conversation_return" ? (
+                    <Image
+                      src="/images/kun_logo.png"
+                      alt="KUN"
+                      width={20}
+                      height={20}
+                      className="object-contain brightness-80"
+                    />
+                  ) 
+                    : notifIcon(notif.type)}
                 </div>
 
                 {/* Content */}

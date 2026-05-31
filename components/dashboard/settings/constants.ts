@@ -25,7 +25,7 @@ export const PLAN_BADGE: Record<string, PlanBadge> = {
 export const DELETE_ITEMS = [
   "Semua dokumen yang diupload",
   "Seluruh riwayat percakapan",
-  "Konfigurasi chatbot",
+  "Konfigurasi KUN",
   "Data billing dan langganan",
   "Akses ke dashboard ini",
 ];

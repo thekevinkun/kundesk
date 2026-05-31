@@ -68,9 +68,7 @@ interface DashboardOverviewProps {
   weeklyMessages: number[];
   currentYear: number;
   botStatus: {
-    name: string;
     language: string;
-    tone: string;
     isActive: boolean;
     accentColor: string;
     documentCount: number;
@@ -234,7 +232,7 @@ const DashboardOverview = ({
             label="Avg. Response Time"
             changeDirection={stats.avgResponseTime ? "up" : "neutral"}
             changeLabel={
-              stats.avgResponseTime ? "Rata-rata AI" : "Belum ada data"
+              stats.avgResponseTime ? "Rata-rata KUN" : "Belum ada data"
             }
           />
         </motion.div>
@@ -298,9 +296,7 @@ const DashboardOverview = ({
         <div className="mt-4">
           <BotStatusPanel
             orgSlug={orgSlug}
-            name={botStatus.name}
             language={botStatus.language}
-            tone={botStatus.tone}
             isActive={botStatus.isActive}
             accentColor={botStatus.accentColor}
             documentCount={botStatus.documentCount}

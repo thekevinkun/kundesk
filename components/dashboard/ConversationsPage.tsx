@@ -210,7 +210,7 @@ const ConversationsPage = ({
           Percakapan
         </h1>
         <p className="text-[13px] text-(--color-text-500) mt-1">
-          Semua percakapan pelanggan dengan chatbot kamu.
+          Semua percakapan dengan pelanggan kamu.
         </p>
       </div>
 

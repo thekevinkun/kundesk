@@ -11,18 +11,9 @@ const languageLabel: Record<string, string> = {
   both: "🇮🇩 ID + 🇬🇧 EN",
 };
 
-// ── Tone label ──
-const toneLabel: Record<string, string> = {
-  friendly: "Ramah",
-  professional: "Profesional",
-  formal: "Formal",
-};
-
 interface BotStatusPanelProps {
   orgSlug: string;
-  name: string;
   language: string;
-  tone: string;
   isActive: boolean;
   accentColor: string;
   documentCount: number;
@@ -49,9 +40,7 @@ const StatusRow = ({
 
 const BotStatusPanel = ({
   orgSlug,
-  name,
   language,
-  tone,
   isActive,
   documentCount,
   totalChunks,
@@ -82,7 +71,7 @@ const BotStatusPanel = ({
       {/* Card header — title + live indicator */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-(--color-border-sm)">
         <div className="text-[15px] font-bold text-(--color-text-900)">
-          Status Chatbot
+          Status KUN
         </div>
         {/* Live indicator — green pulse when active */}
         <div
@@ -133,11 +122,11 @@ const BotStatusPanel = ({
 
       {/* Status rows */}
       <div>
-        <StatusRow label="Nama Bot">{name}</StatusRow>
+        {/* KUN is always the name — no longer per-org */}
+        <StatusRow label="Asisten AI">KUN</StatusRow>
         <StatusRow label="Bahasa">
           {languageLabel[language] ?? language}
         </StatusRow>
-        <StatusRow label="Nada Bicara">{toneLabel[tone] ?? tone}</StatusRow>
         <StatusRow label="Dokumen">
           {documentCount} file · {totalChunks.toLocaleString("id-ID")} chunks
         </StatusRow>

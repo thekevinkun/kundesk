@@ -21,7 +21,7 @@ const DangerZoneSection = ({ onDeleteClick }: DangerZoneSectionProps) => {
 
           <p className="text-[12.5px] text-(--color-text-500) leading-relaxed">
             Menghapus akun akan menghapus semua dokumen, percakapan, konfigurasi
-            chatbot, dan data bisnis kamu secara permanen. Tindakan ini tidak
+            KUN, dan data bisnis kamu secara permanen. Tindakan ini tidak
             dapat dibatalkan.
           </p>
         </div>

@@ -116,11 +116,9 @@ export async function POST(req: Request) {
             .insert(chatbots)
             .values({
               orgId: data.id,
-              name: `${data.name}'s Assistant`,
+              // KUN owns name, tone, and greeting — no longer per-org
               systemPrompt: null,
               language: "id",
-              tone: "friendly",
-              greetingMessage: `Halo! Saya adalah ${data.name}'s Assistant, asisten virtual bisnis ini. Saya siap menjawab pertanyaan seputar ${data.name} berdasarkan informasi yang telah disiapkan. Ada yang bisa saya bantu?`,
               quickReplies: JSON.stringify([
                 "Jam buka hari ini sampai jam berapa?",
                 "Cara ordernya bagaimana?",
