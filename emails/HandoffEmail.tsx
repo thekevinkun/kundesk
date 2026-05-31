@@ -1,6 +1,3 @@
-// Email sent to business owner when a customer requests human support
-// Triggered when conversation:takeover fires — gives owner the dashboard link
-
 import {
   Html,
   Head,
@@ -12,6 +9,7 @@ import {
   Button,
   Hr,
 } from "@react-email/components";
+import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
 interface HandoffEmailProps {
   orgName: string;
@@ -165,8 +163,7 @@ const footer_text = {
 
 HandoffEmail.preview = {
   orgName: "Kun Borneo",
-  logoUrl:
-    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  logoUrl: EMAIL_PREVIEW_LOGO_URL,
   sessionId: "12345",
   lastMessage: "Saya butuh bantuan dengan pesanan saya.",
   conversationUrl: "https://app.kundesk.com/dashboard/conversations/12345",

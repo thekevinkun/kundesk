@@ -11,6 +11,7 @@ import {
   Text,
   Img,
 } from "@react-email/components";
+import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
 interface PastDueEmailProps {
   orgName: string;
@@ -34,24 +35,25 @@ export default function PastDueEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={140}
+            width={148}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
 
           <Heading style={styles.heading}>Pembayaran Tertunggak</Heading>
 
-          <Text style={styles.text}>Halo <strong>{orgName}</strong>,</Text>
+          <Text style={styles.text}>
+            Halo <strong>{orgName}</strong>,
+          </Text>
 
           <Text style={styles.text}>
             Pembayaran Kundesk sebesar <strong>{amount}</strong> belum kami
-            terima. Fitur chatbot kamu saat ini dibatasi hingga pembayaran
-            diselesaikan.
+            terima. KUN saat ini dibatasi hingga pembayaran diselesaikan.
           </Text>
 
           <Text style={styles.text}>
             Selesaikan pembayaran sekarang untuk memulihkan akses penuh dan
-            memastikan pelanggan kamu tetap terlayani 24/7.
+            memastikan KUN kembali melayani pelanggan kamu 24/7.
           </Text>
 
           <Section style={styles.btnSection}>
@@ -138,6 +140,5 @@ PastDueEmail.PreviewProps = {
   orgName: "Kun Borneo",
   amount: "Rp149.000",
   billingUrl: "http://localhost:3000/dashboard/billing",
-  logoUrl:
-    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  logoUrl: EMAIL_PREVIEW_LOGO_URL,
 };

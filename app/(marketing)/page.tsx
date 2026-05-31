@@ -8,17 +8,17 @@ import type { PlanName } from "@/types/billing";
 export const metadata: Metadata = {
   title: "AI Customer Service untuk Bisnis Indonesia",
   description:
-    "Upload dokumen bisnis kamu — menu, FAQ, harga. Kundesk membangun chatbot AI yang menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
+    "Kenalkan KUN — AI asisten virtual dari Kundesk. Upload dokumen bisnis kamu, dan KUN siap menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
   openGraph: {
     title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Upload dokumen bisnis kamu — menu, FAQ, harga. Kundesk membangun chatbot AI yang menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
+      "Kenalkan KUN — AI asisten virtual dari Kundesk. Upload dokumen bisnis kamu, dan KUN siap menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
     type: "website",
   },
   twitter: {
     title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Upload dokumen bisnis kamu — menu, FAQ, harga. Kundesk membangun chatbot AI yang menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
+      "Kenalkan KUN — AI asisten virtual dari Kundesk yang menjawab pelanggan bisnis kamu 24/7. Tanpa coding.",
   },
 };
 
@@ -61,8 +61,16 @@ export default async function MarketingPage() {
     operatingSystem: "Web",
     url: "https://kundesk.vercel.app",
     description:
-      "Platform AI customer service untuk bisnis Indonesia. Upload dokumen, aktifkan chatbot, layani pelanggan 24/7.",
+      "Platform AI customer service untuk bisnis Indonesia. Ditenagai oleh KUN — AI asisten virtual yang menjawab pelanggan 24/7 berdasarkan dokumen bisnis kamu.",
     inLanguage: "id",
+    // KUN as a named AI assistant — helps search engines understand the product
+    featureList: [
+      "KUN AI asisten virtual",
+      "RAG pipeline berbasis dokumen bisnis",
+      "QR Code customer service",
+      "Embed widget untuk website",
+      "Bahasa Indonesia native",
+    ],
     offers: {
       "@type": "AggregateOffer",
       priceCurrency: "IDR",

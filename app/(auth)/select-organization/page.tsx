@@ -35,7 +35,7 @@ export default function SelectOrganizationPage() {
           </h1>
           <p className="text-sm text-(--color-text-500) leading-relaxed">
             Organisasi adalah ruang kerja bisnismu di Kundesk. <br />
-            Semua dokumen dan chatbot tersimpan di sini.
+            KUN dan semua dokumen tersimpan di sini.
           </p>
         </motion.div>
 

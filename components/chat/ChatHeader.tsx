@@ -27,17 +27,16 @@ const ChatHeader = ({ orgName, accentColor }: ChatHeaderProps) => {
       style={{ background: accentColor }}
     >
       {/* KUN avatar — gold logo on white circle background */}
-
       <Image
         src="/images/kun_logo.png"
         alt="KUN"
         width={32}
         height={32}
-        className="object-contain brightness-[.90]"
+        className="w-8.5 h-8.5 object-contain brightness-[.90]"
       />
 
       <div>
-        <h1 className="text-white text-sm font-semibold leading-tight">KUN</h1>
+        <h1 className="text-white text-sm font-semibold leading-tight">Talk with KUN</h1>
         <p className="text-white/75 text-xs">{orgName}</p>
       </div>
 

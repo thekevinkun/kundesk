@@ -23,7 +23,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
   return (
     <section
       id="home"
-      className="relative min-h-screen flex flex-col items-center justify-center pt-[128px] overflow-hidden bg-white"
+      className="relative min-h-screen flex flex-col items-center justify-center pt-[118px] sm:pt-[120px] overflow-hidden bg-white"
     >
       {/* Subtle radial glow behind headline */}
       <div
@@ -41,6 +41,28 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
         initial="hidden"
         animate="visible"
       >
+        {/* KUN intro badge — appears above headline */}
+        <motion.div
+          variants={landingStaggerItem}
+          className="flex justify-center mb-7"
+        >
+          <div
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border 
+            border-(--color-brand-mid) bg-(--color-brand-light) text-(--color-brand-dark)"
+          >
+            <Image
+              src="/images/kun_logo.png"
+              alt="KUN"
+              width={20}
+              height={20}
+              className="w-5.5 h-5.5 object-contain brightness-[.85]"
+            />
+            <span className="text-[10.5px] sm:text-[12px] font-semibold tracking-[-0.01em]">
+              Kenalkan KUN — asisten AI bisnis kamu
+            </span>
+          </div>
+        </motion.div>
+
         {/* Headline — serif italic accent on key word */}
         <motion.h1
           variants={landingStaggerItem}
@@ -71,8 +93,10 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
         >
           Upload dokumen bisnis kamu — menu, FAQ, harga.
           <br />
-          Kundesk membangun chatbot AI yang menjawab pelanggan kamu 24/7,
-          akurat, dan dalam Bahasa Indonesia.
+          <span className="text-(--color-text-900) font-semibold">
+            KUN
+          </span>{" "}
+          siap menjawab pelanggan kamu 24/7, akurat, dan dalam Bahasa Indonesia.
         </motion.p>
 
         {/* CTA buttons */}
@@ -137,11 +161,11 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           style={{ height: "520px" }}
         >
           {/* Hero scenic background */}
-          <Image 
+          <Image
             src="/images/bg-hero-market.png"
             alt="Market scenic background"
             fill
-            sizes="100vw"
+            sizes="(max-width: 900px) 100vw, 900px"
             className="object-cover"
             priority
           />
@@ -152,15 +176,25 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           {/* ── Floating card: top center — live status ── */}
           <FloatCard
             delay={0}
-            className="top-[8%] left-1/2 -translate-x-1/2 px-4 py-2.5 flex items-center gap-2.5 whitespace-nowrap"
+            className="top-[5.5%] left-1/2 -translate-x-1/2 px-4 py-2.5 flex flex-col items-center gap-1 whitespace-nowrap"
           >
-            <span className="w-2 h-2 rounded-full bg-(--color-brand) animate-pulse flex-shrink-0" />
-            <div>
-              <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
-                Sari Assistant sedang online
-              </div>
-              <div className="text-[8.5px] sm:text-[1] text-(--color-text-400)">
-                142 percakapan hari ini ⚡
+            <Image
+              src="/images/kun_logo.png"
+              alt="KUN"
+              width={24}
+              height={24}
+              className="w-[24px] h-[24px] object-contain brightness-[.85]"
+            />
+
+            <div className="flex items-center gap-2.5 whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full bg-(--color-brand) animate-pulse flex-shrink-0" />
+              <div>
+                <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
+                  KUN sedang online
+                </div>
+                <div className="text-[9px] text-(--color-text-400)">
+                  142 percakapan hari ini ⚡
+                </div>
               </div>
             </div>
           </FloatCard>
@@ -177,7 +211,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
               <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
                 Dijawab otomatis
               </div>
-              <div className="text-[8.5px] sm:text-[1] text-(--color-text-400)">
+              <div className="text-[9px] text-(--color-text-400)">
                 97.3% akurasi bulan ini
               </div>
             </div>
@@ -185,7 +219,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
 
           {/* ── Floating card: right — active businesses ── */}
           <FloatCard delay={2.5} className="top-[24%] right-[3%] px-3.5 py-3">
-            <div className="text-[8.5px] sm:text-[1] text-(--color-text-400) mb-1.5">
+            <div className="text-[9px] text-(--color-text-400) mb-1.5">
               Bisnis yang aktif
             </div>
 
@@ -217,7 +251,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
             <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
               {formattedCount} bisnis aktif
             </div>
-            <div className="text-[8.5px] sm:text-[1] text-(--color-text-400) mt-0.5">
+            <div className="text-[9px] text-(--color-text-400) mt-0.5">
               Kelola CS mereka pakai Kundesk
             </div>
           </FloatCard>

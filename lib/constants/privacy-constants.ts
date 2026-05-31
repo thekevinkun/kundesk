@@ -1,4 +1,4 @@
-export const PRIVACY_LAST_UPDATED = "Juni 2026";
+export const PRIVACY_LAST_UPDATED = "Mei 2026";
 
 export const DATA_COLLECTION_SECTIONS = [
   {
@@ -14,7 +14,7 @@ export const DATA_COLLECTION_SECTIONS = [
   },
   {
     title: "Data Percakapan Pelanggan",
-    description: "Pesan yang dikirim pelanggan ke chatbot bisnis Anda:",
+    description: "Pesan yang dikirim pelanggan ke KUN di bisnis Anda:",
     items: [
       "Isi pesan (teks)",
       "Session ID anonim",
@@ -25,7 +25,7 @@ export const DATA_COLLECTION_SECTIONS = [
   },
   {
     title: "Data Dokumen",
-    description: "Dokumen yang Anda upload sebagai basis pengetahuan chatbot:",
+    description: "Dokumen yang Anda upload sebagai basis pengetahuan KUN:",
     items: ["Isi dokumen (PDF, TXT, DOCX)", "Nama file", "Ukuran file"],
   },
   {
@@ -37,7 +37,7 @@ export const DATA_COLLECTION_SECTIONS = [
 ];
 
 export const DATA_USAGE_ITEMS = [
-  "Menjalankan layanan chatbot AI berdasarkan dokumen bisnis Anda",
+  "Menjalankan layanan KUN AI berdasarkan dokumen bisnis Anda",
   "Memproses pembayaran langganan melalui Midtrans",
   "Mengirimkan email transaksional (tagihan, peringatan penggunaan, notifikasi)",
   "Menampilkan analitik penggunaan di dashboard Anda",

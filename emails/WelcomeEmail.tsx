@@ -11,6 +11,7 @@ import {
   Text,
   Img,
 } from "@react-email/components";
+import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
 interface WelcomeEmailProps {
   orgName: string;
@@ -32,7 +33,7 @@ export default function WelcomeEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={140}
+            width={148}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
@@ -42,9 +43,10 @@ export default function WelcomeEmail({
           </Heading>
 
           <Text style={styles.text}>
-            Akun bisnis kamu sudah aktif. Sekarang kamu bisa mulai upload dokumen 
-            seperti <strong>menu,</strong> <strong>FAQ,</strong> dan <strong>daftar harga. </strong> 
-            Chatbot AI kamu akan siap membantu menjawab pelanggan dalam hitungan menit.
+            Akun bisnis kamu sudah aktif. Sekarang kamu bisa mulai upload
+            dokumen seperti <strong>menu,</strong> <strong>FAQ,</strong> dan{" "}
+            <strong>daftar harga.</strong> <strong>KUN</strong> sebagai asisten
+            AI kamu akan siap menjawab pelanggan dalam hitungan menit.
           </Text>
 
           <Text style={styles.text}>
@@ -144,6 +146,5 @@ const styles = {
 WelcomeEmail.PreviewProps = {
   orgName: "Kun Borneo",
   dashboardUrl: "http://localhost:3000/dashboard",
-  logoUrl:
-    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  logoUrl: EMAIL_PREVIEW_LOGO_URL,
 };

@@ -124,18 +124,18 @@ const DashboardCard = () => {
           >
             {/* Logo */}
             <div
-              className="px-2 pb-2 mb-1 border-b"
+              className="pb-2 mb-1 border-b"
               style={{ borderColor: "#f0f2f4" }}
             >
               <Image
-                src="/images/logo_kundesk.png"
+                src="/images/logo_kundesk_with_kun.png"
                 alt="Kundesk"
-                width={80}
-                height={24}
-                className="w-20 h-6 object-contain"
+                width={88}
+                height={32}
+                className="w-22 h-7 object-contain"
               />
 
-              <h3 className="mt-2 ml-2 text-[9px] font-semibold">
+              <h3 className="mt-3 ml-2 text-[8.5px] font-semibold">
                 🍽️ Kedai Bu Sari
               </h3>
             </div>

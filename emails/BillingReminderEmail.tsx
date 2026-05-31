@@ -11,6 +11,7 @@ import {
   Text,
   Img,
 } from "@react-email/components";
+import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
 interface BillingReminderEmailProps {
   orgName: string;
@@ -36,19 +37,21 @@ export default function BillingReminderEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={140}
+            width={148}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
 
           <Heading style={styles.heading}>Pengingat Tagihan</Heading>
 
-          <Text style={styles.text}>Halo <strong>{orgName}</strong>,</Text>
+          <Text style={styles.text}>
+            Halo <strong>{orgName}</strong>,
+          </Text>
 
           <Text style={styles.text}>
             Tagihan Kundesk kamu sebesar <strong>{amount}</strong> jatuh tempo
             pada <strong>{dueDate}</strong>. Pastikan pembayaran selesai tepat
-            waktu agar layanan chatbot kamu tidak terganggu.
+            waktu agar KUN tetap aktif melayani pelanggan kamu.
           </Text>
 
           <Section style={styles.btnSection}>
@@ -134,6 +137,5 @@ BillingReminderEmail.PreviewProps = {
   amount: "Rp149.000",
   dueDate: "15 Juni 2026",
   redirectUrl: "http://localhost:3000/dashboard/billing",
-  logoUrl:
-    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  logoUrl: EMAIL_PREVIEW_LOGO_URL,
 };

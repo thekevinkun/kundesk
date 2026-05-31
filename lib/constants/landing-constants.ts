@@ -81,15 +81,15 @@ export const FEATURES = [
   {
     id: "rag",
     icon: "💬",
-    name: "RAG — AI yang Tahu Bisnismu",
-    desc: "AI kami hanya menjawab berdasarkan dokumen yang kamu upload. Tidak ada halusinasi, tidak ada jawaban asal — hanya fakta dari bisnismu sendiri.",
+    name: "KUN Tahu Bisnismu",
+    desc: "KUN hanya menjawab berdasarkan dokumen yang kamu upload. Tidak ada halusinasi, tidak ada jawaban asal — hanya fakta dari bisnismu sendiri.",
     preview: "rag" as const,
   },
   {
     id: "analytics",
     icon: "📊",
     name: "Analytics Real-Time",
-    desc: "Lihat apa yang paling sering ditanyakan, jam sibuk, dan topik paling banyak dicari pelanggan kamu — semua dalam satu dashboard.",
+    desc: "Lihat apa yang paling sering ditanyakan ke KUN, jam sibuk, dan topik paling banyak dicari pelanggan kamu — semua dalam satu dashboard.",
     preview: "analytics" as const,
   },
   {
@@ -119,14 +119,14 @@ export const HOW_IT_WORKS_STEPS = [
   {
     step: 2,
     icon: "⚙️",
-    title: "Konfigurasi Chatbot",
-    desc: "Beri nama, pilih bahasa dan nada bicara. Sesuaikan warna dengan brand bisnis kamu. Semuanya bisa diubah kapan saja tanpa coding.",
+    title: "Konfigurasi KUN",
+    desc: "Pilih bahasa, tambahkan quick replies, dan sesuaikan warna brand bisnis kamu. Semuanya bisa diubah kapan saja tanpa coding.",
   },
   {
     step: 3,
     icon: "🚀",
     title: "Bagikan & Aktifkan",
-    desc: "Bagikan QR code, tempel di counter atau Instagram bio. Chatbot langsung aktif — menjawab pelanggan 24/7 tanpa kamu harus standby.",
+    desc: "Bagikan QR code, tempel di counter atau Instagram bio. KUN langsung aktif — menjawab pelanggan 24/7 tanpa kamu harus standby.",
   },
 ] as const;
 
@@ -135,7 +135,7 @@ export const TESTIMONIALS = [
   {
     id: 1,
     quote:
-      "Sebelum pakai Kundesk, saya harus balas WhatsApp pelanggan sampai tengah malam. Sekarang chatbot yang kerja, saya tinggal tidur. Omzet naik karena respon lebih cepat dan akurat.",
+      "Sebelum pakai Kundesk, saya harus balas WhatsApp pelanggan sampai tengah malam. Sekarang KUN yang kerja, saya tinggal tidur. Omzet naik karena respon lebih cepat dan akurat.",
     name: "Bu Sari Wulandari",
     role: "Pemilik Kedai Bu Sari, Samarinda",
     initials: "BS",
@@ -143,7 +143,7 @@ export const TESTIMONIALS = [
   {
     id: 2,
     quote:
-      "Pasien sering nanya jadwal dokter dan harga konsultasi di luar jam kerja. Dengan Kundesk, semua pertanyaan itu terjawab otomatis dari data klinik kami sendiri. Tidak ada jawaban yang salah.",
+      "Pasien sering nanya jadwal dokter dan harga konsultasi di luar jam kerja. KUN menjawab semua pertanyaan itu otomatis dari data klinik kami sendiri. Sama sekali tidak ada jawaban yang salah.",
     name: "dr. Reza Kurniawan",
     role: "Direktur Klinik Sehat Mandiri, Balikpapan",
     initials: "RK",
@@ -162,6 +162,7 @@ export interface FaqItems {
   id: number;
   question: string;
   answer: string;
+  hasPrivacyLink?: boolean;
 }
 
 // ── FAQ items ──
@@ -170,37 +171,44 @@ export const FAQ_ITEMS: FaqItems[] = [
     id: 1,
     question: "Apa itu Kundesk dan bagaimana cara kerjanya?",
     answer:
-      "Kundesk adalah platform AI customer service untuk bisnis Indonesia. Kamu upload dokumen bisnis kamu (menu, FAQ, daftar harga), lalu kami membuat chatbot yang menjawab pertanyaan pelanggan berdasarkan dokumen tersebut — bukan dari internet umum. Hasilnya akurat dan relevan untuk bisnismu.",
+      "Kundesk adalah platform AI customer service untuk bisnis Indonesia. Kamu upload dokumen bisnis kamu (menu, FAQ, daftar harga), lalu KUN — asisten AI kami — menjawab pertanyaan pelanggan berdasarkan dokumen tersebut secara otomatis. Hasilnya akurat dan relevan untuk bisnismu.",
   },
   {
     id: 2,
-    question: "Apakah saya perlu kemampuan coding untuk setup Kundesk?",
+    question: "Siapa itu KUN?",
     answer:
-      "Tidak sama sekali. Upload dokumen, konfigurasi nama chatbot, lalu bagikan QR code atau link ke pelanggan kamu. Selesai dalam 5 menit tanpa menyentuh kode apapun.",
+      "KUN adalah asisten AI dari Kundesk yang bertugas menjawab pertanyaan pelanggan bisnis kamu 24/7. KUN belajar dari dokumen yang kamu upload — menu, FAQ, daftar harga — dan hanya menjawab berdasarkan informasi tersebut. Tidak ada jawaban asal, tidak ada halusinasi. KUN adalah wajah AI dari bisnis kamu.",
   },
   {
     id: 3,
-    question: "Seberapa akurat jawaban chatbot saya?",
+    question: "Apakah saya perlu kemampuan coding untuk setup Kundesk?",
     answer:
-      "Rata-rata 97.3% pertanyaan terjawab dengan akurat berdasarkan dokumen yang kamu upload. Chatbot hanya menjawab dari sumber yang kamu berikan — jika informasi tidak ada, chatbot akan menyarankan pelanggan untuk menghubungi kamu langsung.",
+      "Tidak sama sekali. Upload dokumen, konfigurasi KUN, lalu bagikan QR code atau link ke pelanggan kamu. Selesai dalam 5 menit tanpa menyentuh kode apapun.",
   },
   {
     id: 4,
-    question: "Apakah data bisnis saya aman?",
+    question: "Seberapa akurat jawaban KUN?",
     answer:
-      "Ya, sangat aman. Setiap bisnis memiliki database yang sepenuhnya terisolasi. Dokumen kamu disimpan di AWS S3 dengan enkripsi, dan tidak ada bisnis lain yang bisa mengakses data kamu. Kami menggunakan keamanan berlapis termasuk rate limiting dan webhook verification.",
+      "Rata-rata 97.3% pertanyaan terjawab dengan akurat berdasarkan dokumen yang kamu upload. KUN hanya menjawab dari sumber yang kamu berikan — jika informasi tidak ada, KUN akan menyarankan pelanggan untuk menghubungi kamu langsung.",
   },
   {
     id: 5,
+    question: "Apakah data bisnis saya aman?",
+    answer:
+      "Ya, sangat aman. Setiap bisnis memiliki database yang sepenuhnya terisolasi. Dokumen kamu disimpan di AWS S3 dengan enkripsi, dan tidak ada bisnis lain yang bisa mengakses data kamu. Kami menggunakan keamanan berlapis termasuk rate limiting dan webhook verification.",
+    hasPrivacyLink: true,
+  },
+  {
+    id: 6,
     question: "Bisa tidak saya upgrade atau downgrade plan kapan saja?",
     answer:
       "Bisa. Upgrade langsung aktif. Downgrade berlaku di awal periode billing berikutnya. Tidak ada penalti, tidak ada kontrak jangka panjang.",
   },
   {
-    id: 6,
-    question: "Apakah chatbot bisa berbicara dalam Bahasa Indonesia?",
+    id: 7,
+    question: "Apakah KUN bisa berbicara dalam Bahasa Indonesia?",
     answer:
-      "Tentu. Kundesk dioptimalkan untuk Bahasa Indonesia termasuk bahasa gaul dan campuran Bahasa-Inggris yang umum digunakan pelanggan Indonesia. Kamu juga bisa pilih mode bilingual (ID + EN) untuk bisnis yang melayani pelanggan asing.",
+      "Tentu. KUN dioptimalkan untuk Bahasa Indonesia termasuk bahasa gaul dan campuran Bahasa Inggris yang umum digunakan pelanggan Indonesia. Kamu juga bisa pilih mode bilingual (ID + EN) untuk bisnis yang melayani pelanggan asing.",
   },
 ] as const;
 
@@ -230,6 +238,7 @@ export const FOOTER_COLS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Produk",
     links: [
+      { label: "Kenalkan KUN", href: "#home" },
       { label: "Fitur", href: "#features" },
       { label: "Harga", href: "#pricing" },
       { label: "API Docs", href: "#" },

@@ -11,6 +11,7 @@ import {
   Img,
   Button,
 } from "@react-email/components";
+import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
 interface OrgDeletionEmailProps {
   orgName: string;
@@ -32,7 +33,7 @@ export default function OrgDeletionEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={140}
+            width={148}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
@@ -41,7 +42,7 @@ export default function OrgDeletionEmail({
 
           <Text style={styles.text}>
             Kami mengkonfirmasi bahwa akun bisnis <strong>{orgName}</strong> dan
-            seluruh data dokumen, percakapan, serta konfigurasi chatbot, telah
+            seluruh data dokumen, percakapan, serta konfigurasi KUN, telah
             dihapus secara permanen dari sistem <strong>Kundesk</strong>.
           </Text>
 
@@ -62,8 +63,8 @@ export default function OrgDeletionEmail({
           </Section>
 
           <Text style={styles.text}>
-            Terima kasih sudah menggunakan <strong>Kundesk</strong>. Semoga bisnis kamu terus
-            berkembang. 🙏
+            Terima kasih sudah menggunakan <strong>Kundesk</strong>. Semoga
+            bisnis kamu terus berkembang. 🙏
           </Text>
 
           <Text style={styles.text}>
@@ -140,7 +141,6 @@ const styles = {
 
 OrgDeletionEmail.PreviewProps = {
   orgName: "Kun Borneo",
-  logoUrl:
-    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  logoUrl: EMAIL_PREVIEW_LOGO_URL,
   signUpUrl: "http://localhost:3000/signup",
 };

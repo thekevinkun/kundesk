@@ -86,6 +86,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   var CHAT_URL = ${JSON.stringify(chatUrl)};
   var COLOR = ${JSON.stringify(accentColor)};
   var BOT_NAME = "KUN";
+  var BOT_NAME_LABEL = "Talk with KUN"; 
   var ORG_NAME = ${JSON.stringify(org.name)};
   var KUN_LOGO = ${JSON.stringify(`${appUrl}/images/kun_logo.png`)};
   var Z = 999999;
@@ -354,12 +355,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     '<div id="kd-header-text">' +
       '<div id="kd-bot-name"></div>' +
       '<div id="kd-org-name"></div>' +
-      '<div id="kd-status"><div id="kd-status-dot"></div><span>Online — siap membantu</span></div>' +
+      '<div id="kd-status"><div id="kd-status-dot"></div><span>Online</span></div>' +
     '</div>' +
     '<button id="kd-close" aria-label="Tutup chat">&#x2715;</button>';
 
   // Set text content safely — textContent never interprets HTML
-  header.querySelector('#kd-bot-name').textContent = BOT_NAME;
+  header.querySelector("#kd-bot-name").textContent = BOT_NAME_LABEL;
   header.querySelector('#kd-org-name').textContent = ORG_NAME;
 
   // Set avatar safely — image via setAttribute, fallback via textContent

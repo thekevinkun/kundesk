@@ -57,8 +57,7 @@ const TestimonialsSection = () => {
           </em>
         </h2>
         <p className="text-[16px] text-(--color-text-500) leading-relaxed">
-          Ribuan pemilik bisnis sudah merasakan manfaat Kundesk — dari warung
-          sampai klinik.
+          Ribuan pemilik bisnis sudah merasakan manfaat Kundesk — dari warung sampai klinik.
         </p>
       </motion.div>
 

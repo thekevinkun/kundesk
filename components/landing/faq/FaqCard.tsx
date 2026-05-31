@@ -6,9 +6,18 @@ import type { FaqItems } from "@/lib/constants/landing-constants";
 interface FaqCardItems extends FaqItems {
   isOpen: boolean;
   toggle: () => void;
+  // Optional suffix rendered after answer — used for links that can't live in plain strings
+  answerSuffix?: React.ReactNode;
 }
 
-const FaqCard = ({ id, question, answer, isOpen, toggle }: FaqCardItems) => {
+const FaqCard = ({
+  id,
+  question,
+  answer,
+  answerSuffix,
+  isOpen,
+  toggle,
+}: FaqCardItems) => {
   return (
     <motion.div
       id={`${id}`}
@@ -89,6 +98,7 @@ const FaqCard = ({ id, question, answer, isOpen, toggle }: FaqCardItems) => {
           >
             <p className="px-6 pb-5 text-[14px] text-(--color-text-500) leading-[1.7]">
               {answer}
+              {answerSuffix && <span className="ml-1">{answerSuffix}</span>}
             </p>
           </motion.div>
         )}

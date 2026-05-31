@@ -36,8 +36,9 @@ export const metadata: Metadata = {
     template: "%s | Kundesk",
   },
   description:
-    "Upload dokumen bisnis kamu, aktifkan chatbot AI, dan layani pelanggan 24/7 — tanpa coding. Dibangun untuk UMKM Indonesia.",
+    "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Tanpa coding.",
   keywords: [
+    "KUN AI",
     "AI chatbot Indonesia",
     "customer service otomatis",
     "chatbot UMKM",
@@ -45,6 +46,7 @@ export const metadata: Metadata = {
     "AI customer service",
     "chatbot Bahasa Indonesia",
     "kundesk",
+    "kun borneo",
   ],
   authors: [{ name: "Kun Borneo", url: "https://kundesk.vercel.app" }],
   creator: "Kun Borneo",
@@ -73,7 +75,7 @@ export const metadata: Metadata = {
     siteName: "Kundesk",
     title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Upload dokumen bisnis kamu, aktifkan chatbot AI, dan layani pelanggan 24/7 — tanpa coding. Dibangun untuk UMKM Indonesia.",
+      "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Tanpa coding.",
     images: [
       {
         url: "/og-image.png",
@@ -89,7 +91,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Upload dokumen bisnis kamu, aktifkan chatbot AI, dan layani pelanggan 24/7 — tanpa coding.",
+      "Kenalkan KUN — AI customer service yang menjawab pelanggan bisnis kamu 24/7. Tanpa coding.",
     images: ["/og-image.png"],
     creator: "@kunborneo",
   },

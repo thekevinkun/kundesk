@@ -34,23 +34,23 @@ const SidebarContent = ({
   return (
     <div className="flex flex-col h-dvh">
       {/* ── Logo + Org Switcher ── */}
-      <div className="px-6 py-5 border-b border-(--color-border) flex-shrink-0">
-        <div className="mb-3">
+      <div className="py-5 border-b border-(--color-border) flex-shrink-0">
+        <div className="px-6 mb-3">
           <Image
             // Switch logo automatically based on theme
             src={
               resolvedTheme === "dark"
-                ? "/images/logo_kundesk_white.png"
-                : "/images/logo_kundesk.png"
+                ? "/images/logo_kundesk_with_kun_white.png"
+                : "/images/logo_kundesk_with_kun.png"
             }
             alt="Kundesk"
             width={132}
-            height={40}
-            className="w-33 h-10 object-contain"
+            height={48}
+            className="w-33 h-12 object-contain"
             priority
           />
         </div>
-        <div className="text-[11px] text-(--color-text-400) mb-3">
+        <div className="px-6 text-[11px] text-(--color-text-400) mb-3">
           AI Customer Service
         </div>
         {/* Clerk org switcher — lets owner switch between orgs */}
@@ -59,7 +59,7 @@ const SidebarContent = ({
           afterSelectOrganizationUrl="/dashboard"
           appearance={{
             elements: {
-              rootBox: "w-full",
+              rootBox: "w-full px-4",
               organizationSwitcherTrigger:
                 "w-full justify-start px-2 py-1.5 rounded-[10px] border border-(--color-border) bg-(--color-bg-page) hover:bg-(--color-bg-card) text-sm font-medium text-(--color-text-700) transition-all",
             },

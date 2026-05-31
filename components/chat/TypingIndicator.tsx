@@ -9,7 +9,7 @@ const TypingIndicator = () => {
         alt="KUN"
         width={22}
         height={22}
-        className="object-contain brightness-[.85] mb-0.5"
+        className="w-6.5 h-6.5 object-contain brightness-[.85] mb-0.5"
         aria-hidden="true"
       />
 

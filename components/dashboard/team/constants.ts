@@ -45,7 +45,7 @@ export const AVATAR_COLORS: { bg: string; text: string }[] = [
 export const EMPTY_STATE = {
   title: "Belum ada anggota tim",
   description:
-    "Undang anggota tim untuk mengelola percakapan dan chatbot bersama.",
+    "Undang anggota tim untuk mengelola percakapan bersama dengan KUN.",
 } as const;
 
 // ── Page header copy ──

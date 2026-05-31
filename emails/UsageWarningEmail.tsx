@@ -1,5 +1,3 @@
-// Usage warning — sent when org hits 80% of their monthly message quota
-
 import {
   Body,
   Button,
@@ -13,6 +11,7 @@ import {
   Text,
   Img,
 } from "@react-email/components";
+import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
 interface UsageWarningEmailProps {
   orgName: string;
@@ -40,24 +39,26 @@ export default function UsageWarningEmail({
           <Img
             src={logoUrl}
             alt="Kundesk"
-            width={140}
+            width={148}
             height="auto"
             style={{ marginBottom: "32px", display: "block" }}
           />
 
           <Heading style={styles.heading}>Peringatan Kuota Pesan</Heading>
 
-          <Text style={styles.text}>Halo <strong>{orgName}</strong>,</Text>
-
           <Text style={styles.text}>
-            Kuota pesan bulan ini sudah <strong>{percentage}%</strong> terpakai
-            — {used} dari {limit} pesan. Jika kuota habis, chatbot kamu akan
-            berhenti menjawab pelanggan hingga bulan depan.
+            Halo <strong>{orgName}</strong>,
           </Text>
 
           <Text style={styles.text}>
-            Upgrade sekarang untuk mendapatkan lebih banyak kuota dan tidak
-            kehilangan satu pun pertanyaan pelanggan.
+            Kuota pesan bulan ini sudah <strong>{percentage}%</strong> terpakai
+            — {used} dari {limit} pesan. Jika kuota habis, KUN akan berhenti
+            menjawab pelanggan hingga bulan depan.
+          </Text>
+
+          <Text style={styles.text}>
+            Upgrade sekarang untuk mendapatkan lebih banyak kuota dan pastikan
+            KUN tidak melewatkan satu pun pertanyaan pelanggan.
           </Text>
 
           <Section style={styles.btnSection}>
@@ -140,6 +141,5 @@ UsageWarningEmail.PreviewProps = {
   used: 800,
   limit: 1000,
   billingUrl: "http://localhost:3000/dashboard/billing",
-  logoUrl:
-    "https://res.cloudinary.com/ddvmmonre/image/upload/v1779608718/logo_kundesk_meizty.png",
+  logoUrl: EMAIL_PREVIEW_LOGO_URL,
 };

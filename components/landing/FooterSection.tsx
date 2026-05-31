@@ -16,19 +16,19 @@ const FooterSection = () => {
           {/* Logo */}
           <div className="mb-4">
             <Image
-              src="/images/logo_kundesk_white.png"
+              src="/images/logo_kundesk_with_kun_white.png"
               alt="Kundesk"
-              width={120}
-              height={32}
-              className="w-30 h-8 object-contain"
+              width={128}
+              height={40}
+              className="w-32 h-12 object-contain"
             />
           </div>
           <p
             className="text-[13.5px] leading-[1.7] max-w-[260px]"
             style={{ color: "#666" }}
           >
-            Platform AI customer service untuk bisnis Indonesia. Upload dokumen,
-            aktifkan chatbot, dan layani pelanggan 24/7 — tanpa coding.
+            Platform AI customer service untuk bisnis Indonesia. Ditenagai KUN —
+            asisten AI yang menjawab pelanggan bisnis kamu 24/7, tanpa coding.
           </p>
         </div>
 

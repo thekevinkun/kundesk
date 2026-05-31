@@ -4,7 +4,7 @@ import { ChatbotConfigPage } from "@/components/dashboard";
 import { getChatbotConfig } from "@/lib/actions/chatbot";
 
 export const metadata: Metadata = {
-  title: "Konfigurasi Chatbot",
+  title: "Konfigurasi KUN",
 };
 
 export default async function ChatbotConfigRoute() {

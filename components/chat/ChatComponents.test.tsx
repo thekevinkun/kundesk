@@ -26,7 +26,7 @@ describe("ChatHeader", () => {
 
   it("renders KUN as the bot name", () => {
     render(<ChatHeader {...defaultProps} />);
-    expect(screen.getByText("KUN")).toBeInTheDocument();
+    expect(screen.getByText("Talk with KUN")).toBeInTheDocument();
   });
 
   it("renders the org name", () => {

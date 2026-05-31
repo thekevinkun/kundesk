@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import FaqCard from "./faq/FaqCard";
+import { FaqCard } from "@/components/landing/faq";
 import { scrollReveal, landingStagger } from "@/lib/animations";
 import { FAQ_ITEMS } from "@/lib/constants/landing-constants";
 
@@ -63,6 +64,20 @@ const FaqSection = () => {
               question={item.question}
               isOpen={isOpen}
               toggle={() => toggle(item.id)}
+              // Privacy link suffix — only for the data safety FAQ
+              answerSuffix={
+                item.hasPrivacyLink ? (
+                  <>
+                    Lengkapnya kunjungi laman{" "}
+                    <Link
+                      href="/privacy"
+                      className="text-(--color-text-400) hover:text-(--color-brand) underline underline-offset-2 transition-colors duration-200"
+                    >
+                      Kebijakan Privasi.
+                    </Link>
+                  </>
+                ) : undefined
+              }
             />
           );
         })}

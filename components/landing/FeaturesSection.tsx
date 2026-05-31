@@ -54,8 +54,8 @@ const FeaturesSection = () => {
           </em>
         </h2>
         <p className="text-[16px] text-[#888] leading-relaxed">
-          Semua yang kamu butuhkan untuk mengotomatiskan layanan pelanggan —
-          dari AI yang tahu bisnis kamu sampai analytics real-time.
+          Semua yang KUN butuhkan untuk melayani pelanggan bisnis kamu — dari AI
+          yang tahu dokumen bisnismu sampai analytics real-time.
         </p>
       </motion.div>
 
@@ -76,8 +76,10 @@ const FeaturesSection = () => {
               className="group relative bg-[#181818] border border-[#2a2a2a] rounded-2xl p-8 transition-all duration-300 hover:border-[rgba(6,148,148,0.35)] hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden"
             >
               {/* Top shimmer line on hover */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(6,148,148,0.5)] 
-                to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div
+                className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(6,148,148,0.5)] 
+                to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              />
 
               {/* Mini UI preview */}
               <Preview />
