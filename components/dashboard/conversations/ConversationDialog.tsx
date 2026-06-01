@@ -61,6 +61,9 @@ const ConversationDialog = ({
   // Ref for the scrollable message container — we scroll this directly, not the page
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Track last processed Pusher message id — prevents double-append on remount
+  const lastProcessedMessageId = useRef<number | null>(null);
+
   // Read-only when expired — no replies, no actions, just history
   const canReply =
     !isExpired &&
@@ -149,15 +152,20 @@ const ConversationDialog = ({
   }, [conversationId]);
 
   // Append new message from Pusher — arrives via parent prop
+  // lastProcessedMessageId ref prevents double-append on remount (pending→human transition)
   useEffect(() => {
     if (!newMessage) return;
+    // Skip if we already processed this exact message id — handles remount after status change
+    if (lastProcessedMessageId.current === newMessage.id) return;
+    lastProcessedMessageId.current = newMessage.id;
+
     setMsgs((prev) => {
-      // Deduplicate by content + role — optimistic message may already be showing
+      // Deduplicate by id — server-confirmed message may already be optimistically shown
       const isDuplicate = prev.some(
         (m) =>
-          // hard dedupe for server-confirmed duplicates
+          // Hard dedupe — same server id
           m.id === newMessage.id ||
-          // optimistic dedupe only for temporary local staff messages
+          // Optimistic dedupe — temporary local staff message with same content + timing
           (m.role === "human_agent" &&
             newMessage.role === "human_agent" &&
             m.id > 1_000_000_000_000 &&
@@ -189,7 +197,8 @@ const ConversationDialog = ({
     >
       <div className="border-t border-(--color-border) bg-(--color-bg-page)">
         {/* Dialog header */}
-        <div className="flex flex-col gap-2 px-4 py-3 border-b border-(--color-border-sm) 
+        <div
+          className="flex flex-col gap-2 px-4 py-3 border-b border-(--color-border-sm) 
           sm:flex-row sm:items-center sm:justify-between sm:px-5"
         >
           <div className="flex flex-wrap items-center gap-2">
@@ -257,8 +266,8 @@ const ConversationDialog = ({
                     className={`flex items-end gap-2 ${config.align}`}
                   >
                     {/* Avatar — left side for non-user */}
-                    {config.avatar && (
-                      msg.role === "assistant" ? (
+                    {config.avatar &&
+                      (msg.role === "assistant" ? (
                         <Image
                           src="/images/kun_logo.png"
                           alt="KUN"
@@ -267,11 +276,14 @@ const ConversationDialog = ({
                           className="w-5.5 h-5.5 object-contain brightness-[.85] mb-0.5"
                           aria-hidden="true"
                         />
-                    ) : (
-                      <span className="text-white text-sm mb-1" aria-hidden="true">
-                        {config.avatar}
-                      </span>
-                    ))}
+                      ) : (
+                        <span
+                          className="text-white text-sm mb-1"
+                          aria-hidden="true"
+                        >
+                          {config.avatar}
+                        </span>
+                      ))}
 
                     <div className="max-w-[85%] sm:max-w-[70%]">
                       {/* Role label */}
