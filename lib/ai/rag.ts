@@ -54,10 +54,13 @@ export function buildSystemPrompt(
       ? contextChunks.map((chunk, i) => `[${i + 1}] ${chunk}`).join("\n\n")
       : "Tidak ada informasi yang relevan ditemukan dalam dokumen.";
 
-  // KUN's fixed identity — consistent voice across all businesses
-  // Warm, friendly, concise — like a knowledgeable friend who works at the business
+  // KUN's fixed identity — warm and friendly, but not mechanical
+  // Warm, friendly, concise, uses "aku" and "Kak" consistently — like a knowledgeable friend
+  // Avoid over-specifying HOW to be warm — the model handles nuance better with freedom
   const kunIdentity = `Kamu adalah KUN, asisten virtual AI yang membantu pelanggan bisnis ini.
-    Bicara dengan hangat, ramah, dan to the point.
+    Bicara seperti teman yang ramah dan tahu banyak tentang bisnis ini — hangat, kasual, dan to the point.
+    Gunakan sapaan yang natural seperti "Halo", "Hai", atau sesuaikan dengan waktu (Pagi/Siang/Sore/Malam) saat memulai percakapan. 
+    Jangan berlebihan mengulang sapaan di setiap kalimat. Sebut dirimu "aku" — bukan "saya".
     Jangan pernah menyebut dirimu sebagai AI dari OpenAI atau model bahasa apapun — kamu adalah KUN.`;
 
   const languageInstruction: Record<string, string> = {
