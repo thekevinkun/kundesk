@@ -19,10 +19,17 @@ import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 // ── Total messages sent to this org's chatbot ──
 // Counts ALL roles (user + assistant + human_agent) — full volume metric
 export async function getTotalMessages(orgId: string): Promise<number> {
-  const [result] = await db.select({ total: count() }).from(messages).where(
-    // Always scope to org first — tenant isolation
-    eq(messages.orgId, orgId),
-  );
+  const [result] = await db
+    .select({ total: count() })
+    .from(messages)
+    .where(
+      and(
+        eq(messages.orgId, orgId),
+        // Count customer messages only — "user" role represents real inbound demand
+        // assistant and human_agent are responses, not customer contacts
+        eq(messages.role, "user"),
+      ),
+    );
 
   return result?.total ?? 0;
 }
@@ -32,20 +39,16 @@ export async function getTotalMessages(orgId: string): Promise<number> {
 export async function getAnsweredRate(orgId: string): Promise<number> {
   // Run both counts in parallel — no need to wait for one before the other
   const [totalResult, assistantResult] = await Promise.all([
+    // Base: customer messages only — same denominator as getTotalMessages
     db
       .select({ total: count() })
       .from(messages)
-      .where(eq(messages.orgId, orgId)),
+      .where(and(eq(messages.orgId, orgId), eq(messages.role, "user"))),
+    // Numerator: AI replies only — human_agent replies don't count as "auto-answered"
     db
       .select({ total: count() })
       .from(messages)
-      .where(
-        and(
-          eq(messages.orgId, orgId),
-          // Only count AI responses — not user messages or human_agent messages
-          eq(messages.role, "assistant"),
-        ),
-      ),
+      .where(and(eq(messages.orgId, orgId), eq(messages.role, "assistant"))),
   ]);
 
   const total = totalResult[0]?.total ?? 0;
@@ -54,7 +57,8 @@ export async function getAnsweredRate(orgId: string): Promise<number> {
   // Avoid division by zero — return 0 if no messages yet
   if (total === 0) return 0;
 
-  return Math.round((answered / total) * 1000) / 10; // e.g. 97.3
+  // e.g. 97.3 — what percentage of customer messages KUN handled automatically
+  return Math.round((answered / total) * 1000) / 10;
 }
 
 // ── Unique visitors — distinct sessionIds across all conversations ──
@@ -84,6 +88,7 @@ export async function getDailyMessageTrend(
           DATE_TRUNC('day', timezone(${timezone}, created_at AT TIME ZONE 'UTC')) AS local_day
         FROM messages
         WHERE org_id = ${orgId}
+          AND role = 'user'
       )
       SELECT
         TO_CHAR(local_day, 'DD/MM') AS date,
@@ -127,6 +132,7 @@ export async function getMonthlyMessageComparison(
           EXTRACT(MONTH FROM timezone(${timezone}, created_at AT TIME ZONE 'UTC'))::int AS month
         FROM messages
         WHERE org_id = ${orgId}
+          AND role = 'user'
       )
       SELECT
         year,
@@ -169,6 +175,7 @@ export async function getWeeklyMessages(
           DATE_TRUNC('week', timezone(${timezone}, created_at AT TIME ZONE 'UTC')) AS local_week
         FROM messages
         WHERE org_id = ${orgId}
+          AND role = 'user'
       )
       SELECT
         dow,
@@ -187,6 +194,38 @@ export async function getWeeklyMessages(
   }
 
   return week;
+}
+
+// ── Chart data bundle — all three time-series queries in one call ──
+// Returned together so the client can refetch all charts in a single server action call
+export async function getDashboardCharts(
+  orgId: string,
+  timezone: string,
+): Promise<{
+  dailyTrend: { date: string; count: number }[];
+  monthlyCurrent: number[];
+  monthlyPrevious: number[];
+  weeklyMessages: number[];
+  currentYear: number;
+}> {
+  const [dailyTrend, monthlyComparison, weeklyMessages] = await Promise.all([
+    getDailyMessageTrend(orgId, timezone),
+    getMonthlyMessageComparison(orgId, timezone),
+    getWeeklyMessages(orgId, timezone),
+  ]);
+
+  // Derive year in owner's timezone — same logic as dashboard page.tsx
+  const currentYear = new Date(
+    new Date().toLocaleString("en-US", { timeZone: timezone }),
+  ).getFullYear();
+
+  return {
+    dailyTrend,
+    monthlyCurrent: monthlyComparison.current,
+    monthlyPrevious: monthlyComparison.previous,
+    weeklyMessages,
+    currentYear,
+  };
 }
 
 // ── Recent conversations — last 10 for dashboard overview table ──

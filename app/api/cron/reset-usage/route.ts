@@ -3,10 +3,11 @@
 // Protected by CRON_SECRET header — rejects all other callers
 
 import { NextRequest, NextResponse } from "next/server";
+import { count, ne } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
-import { count } from "drizzle-orm";
+import { createNotification } from "@/lib/db/queries/dashboard";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   // ── Auth: verify cron secret header ──
@@ -28,11 +29,30 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: "No orgs found", reset: 0 });
     }
 
-    // Bulk reset — single UPDATE with no WHERE clause resets all orgs at once
-    // Applies to all plans including free — consistent behavior, no exceptions
+    // Fetch all org IDs — needed to create per-org notifications after reset
+    // Only non-cancelled orgs — cancelled orgs don't need reset notifications
+    const activeOrgs = await db
+      .select({ id: orgs.id })
+      .from(orgs)
+      .where(ne(orgs.subscriptionStatus, "cancelled"));
+
+    // Bulk reset — single UPDATE resets all orgs at once
     await db.update(orgs).set({ messagesUsed: 0 });
 
     console.log(`[cron/reset-usage] Reset messagesUsed for ${total} org(s)`);
+
+    // Notify each org — fire in background, don't block cron response
+    // createNotification also fires Pusher so open dashboards update live
+    Promise.all(
+      activeOrgs.map((org) =>
+        createNotification(
+          org.id,
+          "quota_reset",
+          "Kuota pesan direset",
+          "Kuota bulan baru siap digunakan",
+        ).catch(console.error),
+      ),
+    ).catch(console.error);
 
     return NextResponse.json({
       message: "Usage reset complete",

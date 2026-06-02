@@ -8,6 +8,7 @@ import { StatCard } from "@/components/dashboard";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
 import { getDashboardStats } from "@/lib/actions/dashboard";
+import { getDashboardChartData } from "@/lib/actions/dashboard";
 import type { DashboardStats } from "@/lib/actions/dashboard";
 
 // ── Dynamic imports — Chart.js only loads after shell renders ──
@@ -122,16 +123,13 @@ const DashboardOverview = ({
   const queryClient = useQueryClient();
 
   // ── Stats query — seeded with server data, refetches when usage:updated fires ──
-  // initialData means no loading state on first render — all four cards show immediately
   const { data: stats } = useQuery({
     queryKey: ["dashboard", "stats"],
     queryFn: getDashboardStats,
     initialData: initialStats,
-    // staleTime inherited from QueryProvider (30s) — background refetch after that
   });
 
-  // ── Usage bar state — also lives in a query so it updates live ──
-  // Separate from stats query because messagesUsed comes from orgs table, not messages
+  // ── Usage bar state ──
   const { data: usageData } = useQuery({
     queryKey: ["dashboard", "usage"],
     queryFn: async () => ({
@@ -144,13 +142,30 @@ const DashboardOverview = ({
     },
   });
 
-  // ── Pusher: invalidate both queries when a message is processed ──
-  // All four stat cards + usage bar update in one shot
+  // ── Chart data query — seeded with server props, refetches when usage:updated fires ──
+  // Separate from stats query — chart series data is timezone-sensitive and heavier
+  const { data: chartData } = useQuery({
+    queryKey: ["dashboard", "charts"],
+    queryFn: getDashboardChartData,
+    initialData: {
+      dailyTrend,
+      monthlyCurrent,
+      monthlyPrevious,
+      weeklyMessages,
+      currentYear,
+    },
+    // Charts don't need to be as fresh as stat cards — 60s stale time reduces DB load
+    staleTime: 60_000,
+  });
+
+  // ── Pusher: invalidate all queries when a message is processed ──
   const handleUsageUpdated = useCallback(
     (payload: { messagesUsed: number; messagesLimit: number }) => {
-      // Invalidate stats — triggers refetch of all four stat values
+      // Stat cards — total messages, answered rate, unique visitors, response time
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
-      // Update usage bar directly with the payload — no extra DB round trip needed
+      // Charts — daily trend, weekly bar, monthly line all need new data point
+      void queryClient.invalidateQueries({ queryKey: ["dashboard", "charts"] });
+      // Usage bar — set directly from payload, no extra DB round trip needed
       queryClient.setQueryData(["dashboard", "usage"], {
         messagesUsed: payload.messagesUsed,
         messagesLimit: payload.messagesLimit,
@@ -264,7 +279,7 @@ const DashboardOverview = ({
             }
           />
           <div className="px-5 pt-3 pb-5">
-            <AreaChart data={dailyTrend} />
+            <AreaChart data={chartData.dailyTrend} />
           </div>
         </div>
       </div>
@@ -275,10 +290,10 @@ const DashboardOverview = ({
           <CardHeader title="Total Pesan Bulanan" />
           <div className="px-5 pt-3 pb-5">
             <LineChart
-              current={monthlyCurrent}
-              previous={monthlyPrevious}
-              currentYear={currentYear}
-              previousYear={currentYear - 1}
+              current={chartData.monthlyCurrent}
+              previous={chartData.monthlyPrevious}
+              currentYear={chartData.currentYear}
+              previousYear={chartData.currentYear - 1}
             />
           </div>
         </div>
@@ -286,7 +301,7 @@ const DashboardOverview = ({
         <div className="card-base">
           <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
           <div className="px-5 pt-3 pb-5">
-            <BarChart data={weeklyMessages} />
+            <BarChart data={chartData.weeklyMessages} />
           </div>
         </div>
       </div>

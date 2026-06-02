@@ -6,8 +6,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orgs, processedWebhooks, promoCodes } from "@/lib/db/schema";
 import { verifyMidtransSignature } from "@/lib/midtrans";
+import { createNotification } from "@/lib/db/queries/dashboard";
+import { orgs, processedWebhooks, promoCodes } from "@/lib/db/schema";
 import { activateSubscription, insertPayment } from "@/lib/db/queries/billing";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 
@@ -182,6 +183,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     plan,
     order_id,
   });
+
+  // Notify dashboard — owner sees confirmation of their upgrade immediately
+  const planLabel = plan === "pro" ? "Pro" : "Starter";
+  createNotification(
+    org.id,
+    "plan_upgraded",
+    `Plan berhasil diupgrade ke ${planLabel}`,
+    `Pembayaran dikonfirmasi · ${order_id}`,
+  ).catch(console.error);
 
   return NextResponse.json({ message: "OK" }, { status: 200 });
 }

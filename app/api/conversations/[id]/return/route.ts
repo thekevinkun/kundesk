@@ -38,6 +38,7 @@ export async function POST(
       id: conversations.id,
       handoffStatus: conversations.handoffStatus,
       sessionId: conversations.sessionId,
+      channelToken: conversations.channelToken, // ← needed to notify customer widget
     })
     .from(conversations)
     .where(
@@ -96,9 +97,12 @@ export async function POST(
   }
 
   // Notify dashboard — conversation badge goes back to green
-  await triggerConversationReturn(orgId, { conversationId }).catch(
-    console.error,
-  );
+  // Pass channelToken so the customer widget's ChatPage also gets the return event
+  await triggerConversationReturn(
+    orgId,
+    { conversationId },
+    conversation.channelToken,
+  ).catch(console.error);
 
   // Notify owner — AI has resumed handling
   await createNotification(

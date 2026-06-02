@@ -12,6 +12,8 @@ import {
   getAvgResponseTime,
   findConversationPage,
 } from "@/lib/db/queries/dashboard";
+import { getOwnerTimezone } from "@/lib/timezone";
+import { getDashboardCharts } from "@/lib/db/queries/dashboard";
 
 export interface DashboardStats {
   totalMessages: number;
@@ -44,4 +46,18 @@ export async function getConversationPageAction(
   // orgId from server session — never from client input
   const { orgId } = await requireOrg();
   return findConversationPage(conversationId, orgId);
+}
+
+// ── Chart data server action — called by TanStack Query when usage:updated fires ──
+// Returns all three time-series datasets so charts refresh after each new message
+export async function getDashboardChartData(): Promise<{
+  dailyTrend: { date: string; count: number }[];
+  monthlyCurrent: number[];
+  monthlyPrevious: number[];
+  weeklyMessages: number[];
+  currentYear: number;
+}> {
+  const { orgId } = await requireOrg();
+  const timezone = await getOwnerTimezone();
+  return getDashboardCharts(orgId, timezone);
 }

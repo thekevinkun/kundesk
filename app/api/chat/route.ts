@@ -7,7 +7,13 @@ import { trackEvent } from "@/lib/posthog";
 import { sendUsageWarningEmail } from "@/lib/email";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import { retrieveContext, buildSystemPrompt } from "@/lib/ai/rag";
-import { orgs, chatbots, conversations, messages } from "@/lib/db/schema";
+import {
+  orgs,
+  chatbots,
+  conversations,
+  messages,
+  processedWebhooks,
+} from "@/lib/db/schema";
 import {
   checkChatRateLimit,
   checkOrgMessageLimit,
@@ -417,10 +423,38 @@ export async function POST(request: NextRequest) {
         conversationId,
         role: "user",
         content: message,
-        // Tells the dashboard Pusher hook this is a human-mode message
-        // Routes to chat icon dot, not bell panel
         handoffStatus: currentHandoffStatus ?? "human",
       }).catch(console.error);
+
+      // Increment messagesUsed for human-mode customer messages — quota counts
+      // inbound customer demand regardless of who replies (AI or staff)
+      await db
+        .update(orgs)
+        .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
+        .where(
+          and(
+            eq(orgs.id, org.id),
+            // Same atomic guard as AI mode — never exceed limit
+            sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
+          ),
+        );
+
+      // Fetch updated counts for Pusher payload
+      const [orgAfterHuman] = await db
+        .select({
+          messagesUsed: orgs.messagesUsed,
+          messagesLimit: orgs.messagesLimit,
+        })
+        .from(orgs)
+        .where(eq(orgs.id, org.id))
+        .limit(1);
+
+      if (orgAfterHuman) {
+        triggerUsageUpdated(org.id, {
+          messagesUsed: orgAfterHuman.messagesUsed,
+          messagesLimit: orgAfterHuman.messagesLimit,
+        }).catch(console.error);
+      }
 
       // Silent stream — no AI message, just done signal with handoff status
       // Customer sees their bubble, nothing else — like WhatsApp human handoff
@@ -450,9 +484,40 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── 8. Plan limit check — after handoff bypass, before conversation creation ──
-  // Checked here so we never create phantom conversations that get immediately rejected
+  // ── 8. Plan limit check ──
   if (org.messagesUsed >= org.messagesLimit) {
+    // Fire quota-full notification once per billing period — not on every blocked request
+    // Key includes year+month so it resets automatically after the monthly cron zeros usage
+    const now = new Date();
+    const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const quotaFullKey = `QUOTA-FULL-${org.id}-${billingPeriod}`;
+
+    // Check + insert in background — don't block the 402 response
+    db.select({ id: processedWebhooks.id })
+      .from(processedWebhooks)
+      .where(
+        and(
+          eq(processedWebhooks.source, "midtrans"),
+          eq(processedWebhooks.externalId, quotaFullKey),
+        ),
+      )
+      .then(async ([alreadyFired]) => {
+        if (!alreadyFired) {
+          await db.insert(processedWebhooks).values({
+            externalId: quotaFullKey,
+            source: "midtrans",
+          });
+          // Notify dashboard — owner needs to act (upgrade or wait for reset)
+          await createNotification(
+            org.id,
+            "quota_full",
+            "Kuota pesan habis",
+            `Pelanggan tidak dapat chat sampai kuota direset atau plan diupgrade`,
+          );
+        }
+      })
+      .catch(console.error);
+
     return errorResponse(
       "Batas pesan bulanan telah tercapai. Silakan upgrade plan Anda.",
       402,
@@ -523,7 +588,16 @@ export async function POST(request: NextRequest) {
     .orderBy(desc(messages.createdAt))
     .limit(6);
 
-  const conversationHistory = recentMessages.reverse() as ConversationTurn[];
+  // Remap human_agent → assistant before sending to OpenAI
+  // OpenAI rejects any role outside "user" | "assistant" at runtime —
+  // the TypeScript cast was hiding this bug. Staff replies become "assistant"
+  // so KUN still has full context of what was said during the handoff period.
+  const conversationHistory = recentMessages.reverse().map((m) => ({
+    role: (m.role === "human_agent" ? "assistant" : m.role) as
+      | "user"
+      | "assistant",
+    content: m.content,
+  }));
 
   // ── 11. RAG context ──
   const contextChunks = await retrieveContext(message, org.id);
@@ -610,6 +684,7 @@ export async function POST(request: NextRequest) {
       if (updatedOrg[0]) {
         const { messagesUsed: used, messagesLimit: limit } = updatedOrg[0];
         if (used === Math.floor(limit * 0.8)) {
+          // Email — existing behavior
           sendUsageWarningEmail(
             org.ownerEmail ?? "",
             org.name ?? "",
@@ -619,6 +694,36 @@ export async function POST(request: NextRequest) {
           ).catch((err) =>
             console.error("[chat] Failed to send usage warning email:", err),
           );
+
+          // Dashboard notification — same idempotency pattern as quota_full
+          // Key resets naturally each billing period (year-month changes)
+          const now = new Date();
+          const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const warnKey = `QUOTA-WARN-${org.id}-${billingPeriod}`;
+
+          db.select({ id: processedWebhooks.id })
+            .from(processedWebhooks)
+            .where(
+              and(
+                eq(processedWebhooks.source, "midtrans"),
+                eq(processedWebhooks.externalId, warnKey),
+              ),
+            )
+            .then(async ([alreadyFired]) => {
+              if (!alreadyFired) {
+                await db.insert(processedWebhooks).values({
+                  externalId: warnKey,
+                  source: "midtrans",
+                });
+                await createNotification(
+                  org.id,
+                  "quota_warning",
+                  "Kuota pesan hampir habis",
+                  `${used} dari ${limit} pesan telah digunakan bulan ini`,
+                );
+              }
+            })
+            .catch(console.error);
         }
 
         // Fire usage:updated — dashboard stat cards and usage bar update live

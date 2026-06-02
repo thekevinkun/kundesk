@@ -17,6 +17,10 @@ const notifIcon = (type: string): string => {
   if (type === "conversation_return") return "🤖";
   if (type === "message_new") return "✉️";
   if (type === "handoff_message") return "✍️";
+  if (type === "quota_warning") return "⚠️";
+  if (type === "quota_full") return "🚫";
+  if (type === "quota_reset") return "🔄";
+  if (type === "plan_upgraded") return "🎉";
   return "🔔";
 };
 
@@ -167,8 +171,9 @@ const NotificationPanel = ({
                       height={20}
                       className="object-contain brightness-80"
                     />
-                  ) 
-                    : notifIcon(notif.type)}
+                  ) : (
+                    notifIcon(notif.type)
+                  )}
                 </div>
 
                 {/* Content */}

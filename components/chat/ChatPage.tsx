@@ -149,6 +149,12 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         }
       });
 
+      // Staff returned control to AI — update ChatInput immediately
+      // Without this, handoffStatus stays "human" in chat-store forever
+      channel.bind("conversation:return", () => {
+        setHandoffStatus("ai");
+      });
+
       cleanup = () => {
         channel.unbind_all();
         pusher.unsubscribe(channelName);

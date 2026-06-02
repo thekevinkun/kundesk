@@ -134,8 +134,19 @@ export async function triggerConversationTakeover(
 export async function triggerConversationReturn(
   orgId: string,
   payload: ConversationReturnPayload,
+  channelToken?: string,
 ): Promise<void> {
+  // Dashboard — badge goes back to green
   await triggerOrgEvent(orgId, "conversation:return", payload);
+  // Customer widget — ChatInput must also know AI has resumed
+  // channelToken is optional so existing callers without it don't break
+  if (channelToken) {
+    await triggerPublicConversationEvent(
+      channelToken,
+      "conversation:return",
+      payload,
+    );
+  }
 }
 
 // Fires when a new message is added:
