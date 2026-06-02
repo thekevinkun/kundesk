@@ -94,13 +94,20 @@ const RecentConversationsPanel = ({
   // Track seen IDs — deduplicate Pusher new conversation events
   const seenIdsRef = useRef(new Set(initialConversations.map((c) => c.id)));
 
+  // Reset state when initialConversations changes — handles org switch
+  // useState initializer only runs on mount; subsequent prop changes are ignored
+  useEffect(() => {
+    setConversations(sortConversations(initialConversations));
+    seenIdsRef.current = new Set(initialConversations.map((c) => c.id));
+  }, [initialConversations]);
+
   // New conversation prepended from Pusher
   useEffect(() => {
     if (!newConversation) return;
     if (seenIdsRef.current.has(newConversation.id)) return;
     seenIdsRef.current.add(newConversation.id);
     setConversations((prev) =>
-      sortConversations([newConversation, ...prev].slice(0, 5)),
+      sortConversations([newConversation, ...prev]).slice(0, 10),
     );
   }, [newConversation]);
 

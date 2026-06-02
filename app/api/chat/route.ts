@@ -148,6 +148,64 @@ function createOpenAIStream(
   });
 }
 
+// Check quota thresholds and notify org if needed
+async function checkAndNotifyQuotaThresholds(
+  orgId: string,
+  messagesUsed: number,
+  messagesLimit: number,
+): Promise<void> {
+  const now = new Date();
+  const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  if (messagesUsed >= messagesLimit) {
+    const quotaFullKey = `QUOTA-FULL-${orgId}-${billingPeriod}`;
+    const [alreadyFiredFull] = await db
+      .select({ id: processedWebhooks.id })
+      .from(processedWebhooks)
+      .where(
+        and(
+          eq(processedWebhooks.source, "quota"),
+          eq(processedWebhooks.externalId, quotaFullKey),
+        ),
+      );
+    if (!alreadyFiredFull) {
+      await db.insert(processedWebhooks).values({
+        externalId: quotaFullKey,
+        source: "quota",
+      });
+      await createNotification(
+        orgId,
+        "quota_full",
+        "Kuota pesan habis",
+        `Pelanggan tidak dapat chat sampai kuota direset atau plan diupgrade`,
+      ).catch(console.error);
+    }
+  } else if (messagesUsed >= Math.floor(messagesLimit * 0.8)) {
+    const warnKey = `QUOTA-WARN-${orgId}-${billingPeriod}`;
+    const [alreadyFiredWarn] = await db
+      .select({ id: processedWebhooks.id })
+      .from(processedWebhooks)
+      .where(
+        and(
+          eq(processedWebhooks.source, "quota"),
+          eq(processedWebhooks.externalId, warnKey),
+        ),
+      );
+    if (!alreadyFiredWarn) {
+      await db.insert(processedWebhooks).values({
+        externalId: warnKey,
+        source: "quota",
+      });
+      await createNotification(
+        orgId,
+        "quota_warning",
+        "Kuota pesan hampir habis",
+        `${messagesUsed} dari ${messagesLimit} pesan telah digunakan bulan ini`,
+      ).catch(console.error);
+    }
+  }
+}
+
 // ─── Main handler ───
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -345,6 +403,10 @@ export async function POST(request: NextRequest) {
         channelToken = inserted[0].channelToken;
       }
 
+      // Intentional: handoff requests are not quota-blocked even when limit is reached.
+      // A customer asking for human help at the quota wall must still reach staff —
+      // blocking them with a 402 at this moment is worse UX than the billing gap.
+      // The atomic guard below still prevents the counter from exceeding the limit.
       // Save customer message so staff sees what triggered the request
       await db.insert(messages).values({
         orgId: org.id,
@@ -382,59 +444,11 @@ export async function POST(request: NextRequest) {
           messagesLimit: orgAfterHandoffRequest.messagesLimit,
         }).catch(console.error);
 
-        // Reuse the same warning thresholds as the other message paths.
-        const used = orgAfterHandoffRequest.messagesUsed;
-        const limit = orgAfterHandoffRequest.messagesLimit;
-        const now = new Date();
-        const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-        if (used >= limit) {
-          const quotaFullKey = `QUOTA-FULL-${org.id}-${billingPeriod}`;
-          const [alreadyFiredFull] = await db
-            .select({ id: processedWebhooks.id })
-            .from(processedWebhooks)
-            .where(
-              and(
-                eq(processedWebhooks.source, "midtrans"),
-                eq(processedWebhooks.externalId, quotaFullKey),
-              ),
-            );
-          if (!alreadyFiredFull) {
-            await db.insert(processedWebhooks).values({
-              externalId: quotaFullKey,
-              source: "midtrans",
-            });
-            await createNotification(
-              org.id,
-              "quota_full",
-              "Kuota pesan habis",
-              `Pelanggan tidak dapat chat sampai kuota direset atau plan diupgrade`,
-            ).catch(console.error);
-          }
-        } else if (used === Math.floor(limit * 0.8)) {
-          const warnKey = `QUOTA-WARN-${org.id}-${billingPeriod}`;
-          const [alreadyFiredWarn] = await db
-            .select({ id: processedWebhooks.id })
-            .from(processedWebhooks)
-            .where(
-              and(
-                eq(processedWebhooks.source, "midtrans"),
-                eq(processedWebhooks.externalId, warnKey),
-              ),
-            );
-          if (!alreadyFiredWarn) {
-            await db.insert(processedWebhooks).values({
-              externalId: warnKey,
-              source: "midtrans",
-            });
-            await createNotification(
-              org.id,
-              "quota_warning",
-              "Kuota pesan hampir habis",
-              `${used} dari ${limit} pesan telah digunakan bulan ini`,
-            ).catch(console.error);
-          }
-        }
+        await checkAndNotifyQuotaThresholds(
+          org.id,
+          orgAfterHandoffRequest.messagesUsed,
+          orgAfterHandoffRequest.messagesLimit,
+        );
       }
 
       // Notify dashboard — urgent, staff needs to act
@@ -510,6 +524,10 @@ export async function POST(request: NextRequest) {
         handoffStatus: currentHandoffStatus ?? "human",
       }).catch(console.error);
 
+      // Intentional: human-mode messages increment quota but are never pre-blocked.
+      // If quota is already full, the atomic guard silently does nothing — the
+      // customer can still send messages to the staff member who took over.
+      // This is a deliberate UX decision, not a gap.
       // Increment messagesUsed for human-mode customer messages — quota counts
       // inbound customer demand regardless of who replies (AI or staff)
       await db
@@ -539,59 +557,11 @@ export async function POST(request: NextRequest) {
           messagesLimit: orgAfterHuman.messagesLimit,
         }).catch(console.error);
 
-        // Mirror the same quota threshold notifications as AI mode
-        const used = orgAfterHuman.messagesUsed;
-        const limit = orgAfterHuman.messagesLimit;
-        const now = new Date();
-        const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-        if (used >= limit) {
-          const quotaFullKey = `QUOTA-FULL-${org.id}-${billingPeriod}`;
-          const [alreadyFiredFull] = await db
-            .select({ id: processedWebhooks.id })
-            .from(processedWebhooks)
-            .where(
-              and(
-                eq(processedWebhooks.source, "midtrans"),
-                eq(processedWebhooks.externalId, quotaFullKey),
-              ),
-            );
-          if (!alreadyFiredFull) {
-            await db.insert(processedWebhooks).values({
-              externalId: quotaFullKey,
-              source: "midtrans",
-            });
-            await createNotification(
-              org.id,
-              "quota_full",
-              "Kuota pesan habis",
-              `Pelanggan tidak dapat chat sampai kuota direset atau plan diupgrade`,
-            ).catch(console.error);
-          }
-        } else if (used === Math.floor(limit * 0.8)) {
-          const warnKey = `QUOTA-WARN-${org.id}-${billingPeriod}`;
-          const [alreadyFiredWarn] = await db
-            .select({ id: processedWebhooks.id })
-            .from(processedWebhooks)
-            .where(
-              and(
-                eq(processedWebhooks.source, "midtrans"),
-                eq(processedWebhooks.externalId, warnKey),
-              ),
-            );
-          if (!alreadyFiredWarn) {
-            await db.insert(processedWebhooks).values({
-              externalId: warnKey,
-              source: "midtrans",
-            });
-            await createNotification(
-              org.id,
-              "quota_warning",
-              "Kuota pesan hampir habis",
-              `${used} dari ${limit} pesan telah digunakan bulan ini`,
-            ).catch(console.error);
-          }
-        }
+        await checkAndNotifyQuotaThresholds(
+          org.id,
+          orgAfterHuman.messagesUsed,
+          orgAfterHuman.messagesLimit,
+        );
       }
 
       // Silent stream — no AI message, just done signal with handoff status
@@ -651,7 +621,7 @@ export async function POST(request: NextRequest) {
       .from(processedWebhooks)
       .where(
         and(
-          eq(processedWebhooks.source, "midtrans"),
+          eq(processedWebhooks.source, "quota"),
           eq(processedWebhooks.externalId, quotaFullKey),
         ),
       );
@@ -659,8 +629,9 @@ export async function POST(request: NextRequest) {
     if (!alreadyFiredFull) {
       await db.insert(processedWebhooks).values({
         externalId: quotaFullKey,
-        source: "midtrans",
+        source: "quota",
       });
+
       await createNotification(
         org.id,
         "quota_full",
@@ -834,7 +805,7 @@ export async function POST(request: NextRequest) {
 
       if (updatedOrg[0]) {
         const { messagesUsed: used, messagesLimit: limit } = updatedOrg[0];
-        if (used === Math.floor(limit * 0.8)) {
+        if (used >= Math.floor(limit * 0.8)) {
           // Email — existing behavior
           sendUsageWarningEmail(
             org.ownerEmail ?? "",
@@ -846,34 +817,7 @@ export async function POST(request: NextRequest) {
             console.error("[chat] Failed to send usage warning email:", err),
           );
 
-          // Dashboard notification — same idempotency pattern as quota_full
-          // Key resets naturally each billing period (year-month changes)
-          const now = new Date();
-          const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-          const warnKey = `QUOTA-WARN-${org.id}-${billingPeriod}`;
-
-          const [alreadyFiredWarn] = await db
-            .select({ id: processedWebhooks.id })
-            .from(processedWebhooks)
-            .where(
-              and(
-                eq(processedWebhooks.source, "midtrans"),
-                eq(processedWebhooks.externalId, warnKey),
-              ),
-            );
-
-          if (!alreadyFiredWarn) {
-            await db.insert(processedWebhooks).values({
-              externalId: warnKey,
-              source: "midtrans",
-            });
-            await createNotification(
-              org.id,
-              "quota_warning",
-              "Kuota pesan hampir habis",
-              `${used} dari ${limit} pesan telah digunakan bulan ini`,
-            ).catch(console.error);
-          }
+          await checkAndNotifyQuotaThresholds(org.id, used, limit);
         }
 
         // Fire usage:updated — dashboard stat cards and usage bar update live

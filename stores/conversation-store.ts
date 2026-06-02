@@ -6,11 +6,14 @@ import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 const UNREAD_STORAGE_PREFIX = "kundesk:unread-conversations:"; // One browser key per org.
 
-const getUnreadStorageKey = (orgId: string) => `${UNREAD_STORAGE_PREFIX}${orgId}`; // Build the org-scoped storage key.
+const getUnreadStorageKey = (orgId: string) =>
+  `${UNREAD_STORAGE_PREFIX}${orgId}`; // Build the org-scoped storage key.
 
-const readUnreadConversationIds = (orgId: string) => { // Load unread IDs from browser storage.
+const readUnreadConversationIds = (orgId: string) => {
+  // Load unread IDs from browser storage.
   if (typeof window === "undefined") return new Set<number>(); // Server render has no window.
-  try { // Guard against malformed storage values.
+  try {
+    // Guard against malformed storage values.
     const raw = window.localStorage.getItem(getUnreadStorageKey(orgId)); // Read the org-specific payload.
     if (!raw) return new Set<number>(); // Missing storage means no unread conversations yet.
     const parsed = JSON.parse(raw) as unknown; // Parse the persisted array safely.
@@ -18,19 +21,24 @@ const readUnreadConversationIds = (orgId: string) => { // Load unread IDs from b
     return new Set( // Rebuild the Set so lookup stays O(1).
       parsed.filter((id): id is number => typeof id === "number"), // Keep only numeric conversation IDs.
     );
-  } catch { // Corrupt storage should not break the dashboard.
+  } catch {
+    // Corrupt storage should not break the dashboard.
     return new Set<number>(); // Fall back to an empty unread set.
   }
 };
 
-const writeUnreadConversationIds = (orgId: string, ids: Set<number>) => { // Persist unread IDs for the current org.
+const writeUnreadConversationIds = (orgId: string, ids: Set<number>) => {
+  // Persist unread IDs for the current org.
   if (typeof window === "undefined") return; // Skip browser storage during server render.
-  try { // Storage can fail in private mode or quota pressure.
-    window.localStorage.setItem( // Save the latest unread snapshot.
+  try {
+    // Storage can fail in private mode or quota pressure.
+    window.localStorage.setItem(
+      // Save the latest unread snapshot.
       getUnreadStorageKey(orgId), // Keep data isolated per org.
       JSON.stringify([...ids]), // Store a plain array so it survives refresh.
     );
-  } catch { // Persistence is best-effort only.
+  } catch {
+    // Persistence is best-effort only.
     void 0; // Ignore storage write failures so the UI still works.
   }
 };
@@ -78,6 +86,9 @@ export const useConversationStore = create<ConversationStore>((set) => ({
     set({
       activeOrgId: orgId,
       unreadConversationIds: readUnreadConversationIds(orgId),
+      unreadCount: 0,
+      hasPendingHandoff: false,
+      notificationItems: [],
     }),
 
   // Unread conversation IDs — row dot indicator
@@ -86,14 +97,16 @@ export const useConversationStore = create<ConversationStore>((set) => ({
     set((state) => {
       const next = new Set(state.unreadConversationIds); // Clone the Set before mutating it.
       next.add(id); // Mark this conversation as unread in the current org.
-      if (state.activeOrgId) writeUnreadConversationIds(state.activeOrgId, next); // Persist the new unread snapshot.
+      if (state.activeOrgId)
+        writeUnreadConversationIds(state.activeOrgId, next); // Persist the new unread snapshot.
       return { unreadConversationIds: next }; // Commit the updated Set to Zustand.
     }),
   clearUnreadConversation: (id) =>
     set((state) => {
       const next = new Set(state.unreadConversationIds); // Clone the Set before removing an item.
       next.delete(id); // Mark this conversation as read for the current org.
-      if (state.activeOrgId) writeUnreadConversationIds(state.activeOrgId, next); // Persist the cleared unread snapshot.
+      if (state.activeOrgId)
+        writeUnreadConversationIds(state.activeOrgId, next); // Persist the cleared unread snapshot.
       return { unreadConversationIds: next }; // Commit the updated Set to Zustand.
     }),
 

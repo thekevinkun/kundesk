@@ -57,7 +57,6 @@ const BarChart = dynamic(
 const RecentConversationsPanel = dynamic(
   () => import("@/components/dashboard/RecentConversationsPanel"),
   {
-    ssr: false,
     loading: () => (
       <div className="card-base h-full min-h-[300px] skeleton rounded-[14px]" />
     ),
