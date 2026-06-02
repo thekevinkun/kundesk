@@ -177,10 +177,8 @@ const DashboardOverview = ({
   const [newConversation, setNewConversation] =
     useState<ConversationRowType | null>(null);
 
-  const [latestPanelMessage, setLatestPanelMessage] = useState<{
-    conversationId: number;
-    content: string;
-  } | null>(null);
+  const [latestPanelMessage, setLatestPanelMessage] =
+    useState<ConversationRowType | null>(null); // Full row payload keeps the overview panel authoritative.
 
   const [latestStatusUpdate, setLatestStatusUpdate] = useState<{
     conversationId: number;
@@ -240,32 +238,17 @@ const DashboardOverview = ({
   // New message from Pusher — update existing row preview in panel
   const handleMessage = useCallback(
     async (payload: { conversationId: number; content?: string }) => {
-      if (payload.content) {
-        // Human-mode message — full payload available, update directly
-        setLatestPanelMessage({
-          conversationId: payload.conversationId,
-          content: payload.content,
-        });
-      } else {
-        // AI-mode ping — no content in payload, refetch the row to get latest state
-        // Same pattern as ConversationsPage.onConversationMessage
-        try {
-          const res = await fetch(
-            `/api/conversations/${payload.conversationId}`,
-          );
-          const json = (await res.json()) as {
-            ok: boolean;
-            data: ConversationRowType;
-          };
-          if (json.ok && json.data && json.data.lastMessage) {
-            setLatestPanelMessage({
-              conversationId: payload.conversationId,
-              content: json.data.lastMessage,
-            });
-          }
-        } catch {
-          // Non-critical — panel updates on next refresh
+      try {
+        const res = await fetch(`/api/conversations/${payload.conversationId}`); // Always refetch the row so the panel uses server timestamps and counts.
+        const json = (await res.json()) as {
+          ok: boolean;
+          data: ConversationRowType;
+        };
+        if (json.ok && json.data) {
+          setLatestPanelMessage(json.data); // Store the full conversation row, not a client-built partial.
         }
+      } catch {
+        // Non-critical — panel updates on next refresh.
       }
     },
     [],

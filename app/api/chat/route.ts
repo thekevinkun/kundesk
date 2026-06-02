@@ -148,31 +148,35 @@ function createOpenAIStream(
   });
 }
 
-// Check quota thresholds and notify org if needed
+// Insert a quota webhook marker once per billing period.
+// Returns true only when this request won the unique insert.
+async function insertQuotaWebhookOnce(externalId: string): Promise<boolean> {
+  const inserted = await db
+    .insert(processedWebhooks)
+    .values({
+      externalId,
+      source: "quota",
+    })
+    .onConflictDoNothing()
+    .returning({ id: processedWebhooks.id });
+
+  return inserted.length > 0;
+}
+
+// Check quota thresholds and notify org if needed.
+// Returns true only when the 80% warning is newly emitted for this billing period.
 async function checkAndNotifyQuotaThresholds(
   orgId: string,
   messagesUsed: number,
   messagesLimit: number,
-): Promise<void> {
+): Promise<boolean> {
   const now = new Date();
   const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   if (messagesUsed >= messagesLimit) {
     const quotaFullKey = `QUOTA-FULL-${orgId}-${billingPeriod}`;
-    const [alreadyFiredFull] = await db
-      .select({ id: processedWebhooks.id })
-      .from(processedWebhooks)
-      .where(
-        and(
-          eq(processedWebhooks.source, "quota"),
-          eq(processedWebhooks.externalId, quotaFullKey),
-        ),
-      );
-    if (!alreadyFiredFull) {
-      await db.insert(processedWebhooks).values({
-        externalId: quotaFullKey,
-        source: "quota",
-      });
+    const inserted = await insertQuotaWebhookOnce(quotaFullKey);
+    if (inserted) {
       await createNotification(
         orgId,
         "quota_full",
@@ -180,30 +184,22 @@ async function checkAndNotifyQuotaThresholds(
         `Pelanggan tidak dapat chat sampai kuota direset atau plan diupgrade`,
       ).catch(console.error);
     }
+    return false;
   } else if (messagesUsed >= Math.floor(messagesLimit * 0.8)) {
     const warnKey = `QUOTA-WARN-${orgId}-${billingPeriod}`;
-    const [alreadyFiredWarn] = await db
-      .select({ id: processedWebhooks.id })
-      .from(processedWebhooks)
-      .where(
-        and(
-          eq(processedWebhooks.source, "quota"),
-          eq(processedWebhooks.externalId, warnKey),
-        ),
-      );
-    if (!alreadyFiredWarn) {
-      await db.insert(processedWebhooks).values({
-        externalId: warnKey,
-        source: "quota",
-      });
+    const inserted = await insertQuotaWebhookOnce(warnKey);
+    if (inserted) {
       await createNotification(
         orgId,
         "quota_warning",
         "Kuota pesan hampir habis",
         `${messagesUsed} dari ${messagesLimit} pesan telah digunakan bulan ini`,
       ).catch(console.error);
+      return true;
     }
   }
+
+  return false;
 }
 
 // ─── Main handler ───
@@ -616,22 +612,8 @@ export async function POST(request: NextRequest) {
 
     // Await idempotency check — fire-and-forget risks losing the notification
     // if the serverless function exits before the promise resolves
-    const [alreadyFiredFull] = await db
-      .select({ id: processedWebhooks.id })
-      .from(processedWebhooks)
-      .where(
-        and(
-          eq(processedWebhooks.source, "quota"),
-          eq(processedWebhooks.externalId, quotaFullKey),
-        ),
-      );
-
-    if (!alreadyFiredFull) {
-      await db.insert(processedWebhooks).values({
-        externalId: quotaFullKey,
-        source: "quota",
-      });
-
+    const inserted = await insertQuotaWebhookOnce(quotaFullKey);
+    if (inserted) {
       await createNotification(
         org.id,
         "quota_full",
@@ -806,18 +788,21 @@ export async function POST(request: NextRequest) {
       if (updatedOrg[0]) {
         const { messagesUsed: used, messagesLimit: limit } = updatedOrg[0];
         if (used >= Math.floor(limit * 0.8)) {
-          // Email — existing behavior
-          sendUsageWarningEmail(
-            org.ownerEmail ?? "",
-            org.name ?? "",
-            used,
-            limit,
-            env.logoUrl,
-          ).catch((err) =>
-            console.error("[chat] Failed to send usage warning email:", err),
-          );
+          const shouldSendUsageWarningEmail = // Reuse the helper's idempotency gate for the email.
+            await checkAndNotifyQuotaThresholds(org.id, used, limit); // Only true when the warning is newly emitted.
 
-          await checkAndNotifyQuotaThresholds(org.id, used, limit);
+          if (shouldSendUsageWarningEmail) {
+            // Send the warning email once per billing period per org.
+            sendUsageWarningEmail(
+              org.ownerEmail ?? "",
+              org.name ?? "",
+              used,
+              limit,
+              env.logoUrl,
+            ).catch((err) =>
+              console.error("[chat] Failed to send usage warning email:", err),
+            );
+          }
         }
 
         // Fire usage:updated — dashboard stat cards and usage bar update live

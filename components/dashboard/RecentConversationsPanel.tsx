@@ -68,10 +68,7 @@ const sortConversations = (
 interface RecentConversationsPanelProps {
   initialConversations: ConversationRowType[];
   newConversation: ConversationRowType | null;
-  latestMessage: {
-    conversationId: number;
-    content: string;
-  } | null;
+  latestMessage: ConversationRowType | null;
   latestStatusUpdate: {
     conversationId: number;
     handoffStatus: string;
@@ -115,18 +112,13 @@ const RecentConversationsPanel = ({
   useEffect(() => {
     if (!latestMessage) return;
     setConversations((prev) =>
-      sortConversations(
-        prev.map((c) =>
-          c.id === latestMessage.conversationId
-            ? {
-                ...c,
-                lastMessage: latestMessage.content.slice(0, 80),
-                lastMessageAt: new Date(),
-                messageCount: c.messageCount + 1,
-              }
-            : c,
-        ),
-      ),
+      sortConversations([
+        {
+          ...latestMessage,
+          lastMessage: latestMessage.lastMessage?.slice(0, 80) ?? null,
+        },
+        ...prev.filter((c) => c.id !== latestMessage.id),
+      ]).slice(0, 10),
     );
   }, [latestMessage]);
 
