@@ -189,9 +189,27 @@ const NotificationPanel = ({
                   </div>
 
                   {(() => {
-                    const [sessionPart, messagePart] = (notif.body ?? "").split(
-                      "|",
-                    );
+                    const body = notif.body ?? "";
+                    const hasDelimiter = body.includes("|");
+
+                    if (!hasDelimiter) {
+                      // Plain body — quota/plan notifications, no session prefix
+                      return (
+                        <>
+                          <div className="text-[11.5px] text-(--color-text-500) mt-0.5">
+                            {body}
+                          </div>
+                          <div className="mt-1">
+                            <div className="text-[11px] text-(--color-text-400)">
+                              {formatRelativeTime(notif.createdAt)}
+                            </div>
+                          </div>
+                        </>
+                      );
+                    }
+
+                    // Session|message format — conversation notifications
+                    const [sessionPart, messagePart] = body.split("|");
                     return (
                       <>
                         {messagePart && (

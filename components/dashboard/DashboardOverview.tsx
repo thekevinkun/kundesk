@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -121,17 +121,20 @@ const DashboardOverview = ({
   initialMessagesLimit,
 }: DashboardOverviewProps) => {
   const queryClient = useQueryClient();
+  const chartInvalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // ── Stats query — seeded with server data, refetches when usage:updated fires ──
   const { data: stats } = useQuery({
-    queryKey: ["dashboard", "stats"],
+    queryKey: ["dashboard", orgId, "stats"],
     queryFn: getDashboardStats,
     initialData: initialStats,
   });
 
   // ── Usage bar state ──
   const { data: usageData } = useQuery({
-    queryKey: ["dashboard", "usage"],
+    queryKey: ["dashboard", orgId, "usage"],
     queryFn: async () => ({
       messagesUsed: initialMessagesUsed,
       messagesLimit: initialMessagesLimit,
@@ -145,7 +148,7 @@ const DashboardOverview = ({
   // ── Chart data query — seeded with server props, refetches when usage:updated fires ──
   // Separate from stats query — chart series data is timezone-sensitive and heavier
   const { data: chartData } = useQuery({
-    queryKey: ["dashboard", "charts"],
+    queryKey: ["dashboard", orgId, "charts"],
     queryFn: getDashboardChartData,
     initialData: {
       dailyTrend,
@@ -162,16 +165,28 @@ const DashboardOverview = ({
   const handleUsageUpdated = useCallback(
     (payload: { messagesUsed: number; messagesLimit: number }) => {
       // Stat cards — total messages, answered rate, unique visitors, response time
-      void queryClient.invalidateQueries({ queryKey: ["dashboard", "stats"] });
+      // Debounce chart invalidation — charts don't need to update on every message
+      // 10s window collapses bursts of messages into a single refetch
+      if (chartInvalidateTimer.current)
+        clearTimeout(chartInvalidateTimer.current);
+      chartInvalidateTimer.current = setTimeout(() => {
+        void queryClient.invalidateQueries({
+          queryKey: ["dashboard", orgId, "stats"],
+        });
+      }, 10_000);
+
       // Charts — daily trend, weekly bar, monthly line all need new data point
-      void queryClient.invalidateQueries({ queryKey: ["dashboard", "charts"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard", orgId, "charts"],
+      });
+
       // Usage bar — set directly from payload, no extra DB round trip needed
-      queryClient.setQueryData(["dashboard", "usage"], {
+      queryClient.setQueryData(["dashboard", orgId, "usage"], {
         messagesUsed: payload.messagesUsed,
         messagesLimit: payload.messagesLimit,
       });
     },
-    [queryClient],
+    [queryClient, orgId],
   );
 
   // Subscribe to org channel — Pusher reuses existing WebSocket, no second connection

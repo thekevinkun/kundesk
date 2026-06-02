@@ -41,9 +41,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     console.log(`[cron/reset-usage] Reset messagesUsed for ${total} org(s)`);
 
-    // Notify each org — fire in background, don't block cron response
-    // createNotification also fires Pusher so open dashboards update live
-    Promise.all(
+    // Await fan-out — serverless function must not exit before Pusher events fire
+    // Individual failures are caught per-org so one bad org doesn't block the rest
+    await Promise.all(
       activeOrgs.map((org) =>
         createNotification(
           org.id,
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           "Kuota bulan baru siap digunakan",
         ).catch(console.error),
       ),
-    ).catch(console.error);
+    );
 
     return NextResponse.json({
       message: "Usage reset complete",

@@ -186,7 +186,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Notify dashboard — owner sees confirmation of their upgrade immediately
   const planLabel = plan === "pro" ? "Pro" : "Starter";
-  createNotification(
+
+  // Await before returning 200 — Midtrans won't retry on 2xx, so if we
+  // fire-and-forget here and the insert fails, the notification is permanently lost
+  await createNotification(
     org.id,
     "plan_upgraded",
     `Plan berhasil diupgrade ke ${planLabel}`,

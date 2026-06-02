@@ -18,7 +18,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Keep data fresh for 30 seconds before refetching in background
+            // Keep data fresh for 60 seconds before refetching in background
             staleTime: 60 * 1000,
             // Retry failed queries once before showing error
             retry: 1,

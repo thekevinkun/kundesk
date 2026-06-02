@@ -136,16 +136,27 @@ export async function triggerConversationReturn(
   payload: ConversationReturnPayload,
   channelToken?: string,
 ): Promise<void> {
-  // Dashboard — badge goes back to green
-  await triggerOrgEvent(orgId, "conversation:return", payload);
-  // Customer widget — ChatInput must also know AI has resumed
-  // channelToken is optional so existing callers without it don't break
+  const publishes: Promise<void>[] = [
+    triggerOrgEvent(orgId, "conversation:return", payload),
+  ];
+
   if (channelToken) {
-    await triggerPublicConversationEvent(
-      channelToken,
-      "conversation:return",
-      payload,
+    publishes.push(
+      triggerPublicConversationEvent(
+        channelToken,
+        "conversation:return",
+        payload,
+      ),
     );
+  }
+
+  // Run both publishes concurrently — one failure doesn't suppress the other
+  const results = await Promise.allSettled(publishes);
+  const firstFailure = results.find(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
+  );
+  if (firstFailure) {
+    throw firstFailure.reason;
   }
 }
 
