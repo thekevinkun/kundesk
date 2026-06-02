@@ -142,8 +142,6 @@ const ConversationRow = ({
   const [isTakingOver, startTakeoverTransition] = useTransition();
   const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
 
-  const rowRef = useRef<HTMLTableRowElement>(null);
-
   const dialogRowRef = useRef<HTMLTableRowElement>(null);
 
   // Expired: all statuses expire after 24h of inactivity
@@ -235,19 +233,11 @@ const ConversationRow = ({
     <>
       {/* Main row — click anywhere to expand/collapse dialog */}
       <motion.tr
-        ref={rowRef}
+        ref={dialogRowRef}
         variants={staggerItem}
         onClick={() => {
           if (!isExpanded) {
-            const isPending =
-              convo.handoffStatus === "pending_handoff" ||
-              handoffStatus === "pending_handoff";
-
-            if (!isPending && !isExpired) {
-              // Non-pending, non-expired — clear unread dot on expand
-              if (hasUnread) clearUnreadConversation(convo.id);
-            }
-            // Expired and pending: no sign clearing on expand
+            if (!isExpired && hasUnread) clearUnreadConversation(convo.id); // Clear unread on open even while pending_handoff is still active.
           }
 
           onExpandedChange(!isExpanded);
@@ -258,7 +248,7 @@ const ConversationRow = ({
             : "hover:bg-(--color-bg-page)"
         } ${isExpanded ? "bg-(--color-bg-page)" : ""}`}
       >
-        {/* Expand chevron + unread dot */}
+        {/* Expand chevron + unread sign */}
         <td className="pl-4 pr-1 py-3.5 border-b border-(--color-border-sm) w-8">
           <div className="relative inline-flex items-center justify-center">
             <span
@@ -268,9 +258,14 @@ const ConversationRow = ({
             >
               ›
             </span>
-            {/* Unread dot — customer replied in human mode, staff hasn't seen it yet */}
+            {/* Unread sign — customer replied in human mode, staff hasn't seen it yet */}
             {hasUnread && !isExpanded && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-(--color-brand) animate-pulse" />
+              <span
+                className="absolute -top-4.5 -left-2.5 px-1.5 py-0.5 text-[9.5px] text-(--color-brand) 
+                bg-(--color-brand)/30 border border-(--color-brand) rounded-full animate-pulse"
+              >
+                New
+              </span>
             )}
           </div>
         </td>
@@ -337,7 +332,7 @@ const ConversationRow = ({
       </motion.tr>
 
       {/* Inline conversation dialog — slides open below the row */}
-      <tr ref={dialogRowRef}>
+      <tr>
         <td colSpan={6} className="p-0">
           <AnimatePresence>
             {isExpanded && (
@@ -456,39 +451,51 @@ export const ConversationMobileCard = ({
         queryKey: ["conversations", "pending-count"],
       });
     }
-  }, [convo.handoffStatus, convo.id, clearUnreadConversation, handoffStatus, isExpired, queryClient, setPendingHandoff]);
-
-  const isPending =
-    convo.handoffStatus === "pending_handoff" ||
-    handoffStatus === "pending_handoff";
+  }, [
+    convo.handoffStatus,
+    convo.id,
+    clearUnreadConversation,
+    handoffStatus,
+    isExpired,
+    queryClient,
+    setPendingHandoff,
+  ]);
 
   return (
     <div ref={cardRef} className="card-base overflow-hidden">
       <div
         className={`group cursor-pointer transition-colors ${
-          isExpired
-            ? "opacity-50"
-            : "hover:bg-(--color-bg-page)"
+          isExpired ? "opacity-50" : "hover:bg-(--color-bg-page)"
         } ${isExpanded ? "bg-(--color-bg-page)" : ""}`}
         onClick={() => {
-          if (!isExpanded && !isPending && !isExpired && hasUnread) {
-            clearUnreadConversation(convo.id);
-          }
+          if (!isExpanded && !isExpired && hasUnread)
+            clearUnreadConversation(convo.id); // Clear unread on open even while pending_handoff is still active.
           onExpandedChange(!isExpanded);
         }}
       >
         <div className="p-4">
           <div className="flex items-start gap-3">
-            <div className="relative mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-(--color-border) bg-(--color-bg-page)">
-              <span
-                className={`text-lg text-(--color-brand) transition-transform inline-block ${
-                  isExpanded ? "rotate-90" : ""
-                }`}
+            <div className="relative flex flex-shrink-0 items-center justify-center">
+              <div
+                className="relative mt-5 flex h-6 w-6 items-end justify-center 
+              rounded-full border border-(--color-border) bg-(--color-bg-page)"
               >
-                ›
-              </span>
+                <span
+                  className={`text-lg text-(--color-brand) transition-transform inline-block ${
+                    isExpanded ? "rotate-90" : ""
+                  }`}
+                >
+                  ›
+                </span>
+              </div>
+
               {hasUnread && !isExpanded && (
-                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-(--color-brand) animate-pulse" />
+                <span
+                  className="absolute -top-3 -left-2.5 px-1.5 py-0.5 text-[9.5px] text-(--color-brand) 
+                  bg-(--color-brand)/30 border border-(--color-brand) rounded-full animate-pulse"
+                >
+                  New
+                </span>
               )}
             </div>
 

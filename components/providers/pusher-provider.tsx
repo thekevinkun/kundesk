@@ -4,9 +4,10 @@
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react"; // useEffect hydrates unread state once the dashboard knows the org.
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
 import { useSoundNotification } from "@/hooks/use-sound-notification";
+import { useConversationStore } from "@/stores/conversation-store"; // Shared inbox state lives in Zustand.
 import type {
   TakeoverPayload,
   MessagePayload,
@@ -18,6 +19,13 @@ interface PusherProviderProps {
 
 export function PusherProvider({ orgId }: PusherProviderProps) {
   const { playNewMessage, playHandoffAlert } = useSoundNotification();
+  const hydrateUnreadConversationIds = useConversationStore( // Pull the hydration action from the store.
+    (s) => s.hydrateUnreadConversationIds, // Keep the unread Set in sync with browser storage.
+  );
+
+  useEffect(() => { // Hydrate once per org so refresh restores unread badges.
+    hydrateUnreadConversationIds(orgId); // Load the unread snapshot for the active org.
+  }, [hydrateUnreadConversationIds, orgId]); // Re-run only if the org changes.
 
   // New conversation started — always play new-message sound
   const handleConversationNew = useCallback(() => {

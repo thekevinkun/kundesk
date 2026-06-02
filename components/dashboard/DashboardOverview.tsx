@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { usePusherChannel } from "@/hooks/use-pusher-channel";
 import { getDashboardStats } from "@/lib/actions/dashboard";
 import { getDashboardChartData } from "@/lib/actions/dashboard";
 import type { DashboardStats } from "@/lib/actions/dashboard";
+import type { ConversationRow as ConversationRowType } from "@/types/api";
 
 // ── Dynamic imports — Chart.js only loads after shell renders ──
 const DonutCharts = dynamic(
@@ -53,6 +54,16 @@ const BarChart = dynamic(
   },
 );
 
+const RecentConversationsPanel = dynamic(
+  () => import("@/components/dashboard/RecentConversationsPanel"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="card-base h-full min-h-[300px] skeleton rounded-[14px]" />
+    ),
+  },
+);
+
 const BotStatusPanel = dynamic(
   () => import("@/components/dashboard/BotStatusPanel"),
   { ssr: false },
@@ -79,6 +90,7 @@ interface DashboardOverviewProps {
   // messagesUsed/Limit come from org table — separate from stats, updated via usage:updated
   initialMessagesUsed: number;
   initialMessagesLimit: number;
+  initialRecentConversations: ConversationRowType[];
 }
 
 // ── Card header — reused across all chart cards ──
@@ -119,6 +131,7 @@ const DashboardOverview = ({
   orgSlug,
   initialMessagesUsed,
   initialMessagesLimit,
+  initialRecentConversations,
 }: DashboardOverviewProps) => {
   const queryClient = useQueryClient();
   const chartInvalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(
@@ -161,6 +174,20 @@ const DashboardOverview = ({
     staleTime: 60_000,
   });
 
+  // ── Recent conversations — live-updated via Pusher ──
+  const [newConversation, setNewConversation] =
+    useState<ConversationRowType | null>(null);
+
+  const [latestPanelMessage, setLatestPanelMessage] = useState<{
+    conversationId: number;
+    content: string;
+  } | null>(null);
+
+  const [latestStatusUpdate, setLatestStatusUpdate] = useState<{
+    conversationId: number;
+    handoffStatus: string;
+  } | null>(null);
+
   // ── Pusher: invalidate all queries when a message is processed ──
   const handleUsageUpdated = useCallback(
     (payload: { messagesUsed: number; messagesLimit: number }) => {
@@ -189,9 +216,87 @@ const DashboardOverview = ({
     [queryClient, orgId],
   );
 
-  // Subscribe to org channel — Pusher reuses existing WebSocket, no second connection
-  usePusherChannel(orgId, { onUsageUpdated: handleUsageUpdated });
+  // New conversation from Pusher — fetch full row then pass to panel
+  const handleConversationNew = useCallback(
+    async (payload: { conversationId: number }) => {
+      try {
+        // Wait 2s before fetching — conversation:new fires before handleStreamComplete
+        // saves the first messages. Without delay, lastMessage comes back null.
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const res = await fetch(`/api/conversations/${payload.conversationId}`);
+        const json = (await res.json()) as {
+          ok: boolean;
+          data: ConversationRowType;
+        };
+        if (json.ok && json.data) {
+          setNewConversation(json.data);
+        }
+      } catch {
+        // Non-critical — panel updates on next refresh
+      }
+    },
+    [],
+  );
 
+  // New message from Pusher — update existing row preview in panel
+  const handleMessage = useCallback(
+    async (payload: { conversationId: number; content?: string }) => {
+      if (payload.content) {
+        // Human-mode message — full payload available, update directly
+        setLatestPanelMessage({
+          conversationId: payload.conversationId,
+          content: payload.content,
+        });
+      } else {
+        // AI-mode ping — no content in payload, refetch the row to get latest state
+        // Same pattern as ConversationsPage.onConversationMessage
+        try {
+          const res = await fetch(
+            `/api/conversations/${payload.conversationId}`,
+          );
+          const json = (await res.json()) as {
+            ok: boolean;
+            data: ConversationRowType;
+          };
+          if (json.ok && json.data && json.data.lastMessage) {
+            setLatestPanelMessage({
+              conversationId: payload.conversationId,
+              content: json.data.lastMessage,
+            });
+          }
+        } catch {
+          // Non-critical — panel updates on next refresh
+        }
+      }
+    },
+    [],
+  );
+
+  const handleTakeover = useCallback(
+    (payload: { conversationId: number; handoffStatus?: string }) => {
+      setLatestStatusUpdate({
+        conversationId: payload.conversationId,
+        handoffStatus: payload.handoffStatus ?? "human",
+      });
+    },
+    [],
+  );
+
+  const handleReturn = useCallback((payload: { conversationId: number }) => {
+    setLatestStatusUpdate({
+      conversationId: payload.conversationId,
+      handoffStatus: "ai",
+    });
+  }, []);
+
+  // Subscribe to org channel — Pusher reuses existing WebSocket, no second connection
+  usePusherChannel(orgId, {
+    onUsageUpdated: handleUsageUpdated,
+    onConversationNew: handleConversationNew,
+    onMessage: handleMessage,
+    onTakeover: handleTakeover,
+    onReturn: handleReturn,
+  });
   // Quota percentage for donut chart — derived from live usage data
   const quotaUsed = Math.min(
     ((usageData.messagesUsed ?? 0) / (usageData.messagesLimit || 1)) * 100,
@@ -299,25 +404,38 @@ const DashboardOverview = ({
         </div>
       </div>
 
-      {/* ── Charts row 2: Line + Bar ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
-        <div className="card-base">
-          <CardHeader title="Total Pesan Bulanan" />
-          <div className="px-5 pt-3 pb-5">
-            <LineChart
-              current={chartData.monthlyCurrent}
-              previous={chartData.monthlyPrevious}
-              currentYear={chartData.currentYear}
-              previousYear={chartData.currentYear - 1}
-            />
+      {/* ── Charts row 2: Line + Bar stacked left, Conversations panel right ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
+        {/* Left column — two charts stacked */}
+        <div className="flex flex-col gap-4">
+          <div className="card-base">
+            <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
+            <div className="px-5 pt-3 pb-5">
+              <BarChart data={chartData.weeklyMessages} />
+            </div>
+          </div>
+
+          <div className="card-base">
+            <CardHeader title="Total Pesan Bulanan" />
+            <div className="px-5 pt-3 pb-5">
+              <LineChart
+                current={chartData.monthlyCurrent}
+                previous={chartData.monthlyPrevious}
+                currentYear={chartData.currentYear}
+                previousYear={chartData.currentYear - 1}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="card-base">
-          <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
-          <div className="px-5 pt-3 pb-5">
-            <BarChart data={chartData.weeklyMessages} />
-          </div>
+        {/* Right column — recent conversations panel, matches left column height */}
+        <div className="lg:sticky lg:top-4">
+          <RecentConversationsPanel
+            initialConversations={initialRecentConversations}
+            newConversation={newConversation}
+            latestMessage={latestPanelMessage}
+            latestStatusUpdate={latestStatusUpdate}
+          />
         </div>
       </div>
 

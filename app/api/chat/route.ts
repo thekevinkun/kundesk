@@ -353,6 +353,90 @@ export async function POST(request: NextRequest) {
         content: message,
       });
 
+      // Increment quota for handoff requests too — Total Pesan and Kuota Pesan must match.
+      await db
+        .update(orgs)
+        .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
+        .where(
+          and(
+            eq(orgs.id, org.id),
+            // Same atomic guard as every other customer message path.
+            sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
+          ),
+        );
+
+      // Read back the updated quota so the dashboard gets the fresh count.
+      const [orgAfterHandoffRequest] = await db
+        .select({
+          messagesUsed: orgs.messagesUsed,
+          messagesLimit: orgs.messagesLimit,
+        })
+        .from(orgs)
+        .where(eq(orgs.id, org.id))
+        .limit(1);
+
+      if (orgAfterHandoffRequest) {
+        // Push live quota state so BotStatusPanel and stat cards stay aligned.
+        triggerUsageUpdated(org.id, {
+          messagesUsed: orgAfterHandoffRequest.messagesUsed,
+          messagesLimit: orgAfterHandoffRequest.messagesLimit,
+        }).catch(console.error);
+
+        // Reuse the same warning thresholds as the other message paths.
+        const used = orgAfterHandoffRequest.messagesUsed;
+        const limit = orgAfterHandoffRequest.messagesLimit;
+        const now = new Date();
+        const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+        if (used >= limit) {
+          const quotaFullKey = `QUOTA-FULL-${org.id}-${billingPeriod}`;
+          const [alreadyFiredFull] = await db
+            .select({ id: processedWebhooks.id })
+            .from(processedWebhooks)
+            .where(
+              and(
+                eq(processedWebhooks.source, "midtrans"),
+                eq(processedWebhooks.externalId, quotaFullKey),
+              ),
+            );
+          if (!alreadyFiredFull) {
+            await db.insert(processedWebhooks).values({
+              externalId: quotaFullKey,
+              source: "midtrans",
+            });
+            await createNotification(
+              org.id,
+              "quota_full",
+              "Kuota pesan habis",
+              `Pelanggan tidak dapat chat sampai kuota direset atau plan diupgrade`,
+            ).catch(console.error);
+          }
+        } else if (used === Math.floor(limit * 0.8)) {
+          const warnKey = `QUOTA-WARN-${org.id}-${billingPeriod}`;
+          const [alreadyFiredWarn] = await db
+            .select({ id: processedWebhooks.id })
+            .from(processedWebhooks)
+            .where(
+              and(
+                eq(processedWebhooks.source, "midtrans"),
+                eq(processedWebhooks.externalId, warnKey),
+              ),
+            );
+          if (!alreadyFiredWarn) {
+            await db.insert(processedWebhooks).values({
+              externalId: warnKey,
+              source: "midtrans",
+            });
+            await createNotification(
+              org.id,
+              "quota_warning",
+              "Kuota pesan hampir habis",
+              `${used} dari ${limit} pesan telah digunakan bulan ini`,
+            ).catch(console.error);
+          }
+        }
+      }
+
       // Notify dashboard — urgent, staff needs to act
       createNotification(
         org.id,

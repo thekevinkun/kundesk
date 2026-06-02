@@ -13,3 +13,4 @@ export { default as TeamPage } from "./TeamPage";
 export { default as StatCard } from "./StatCard";
 export { StatCardSkeleton } from "./StatCard";
 export { default as NotificationPanel } from "./NotificationPanel";
+export { default as RecentConversationsPanel } from "./RecentConversationsPanel";

@@ -11,6 +11,7 @@ import {
   getBotStatus,
   getOrgData,
   getAvgResponseTime,
+  getRecentConversations,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { DashboardOverview } from "@/components/dashboard";
@@ -39,6 +40,7 @@ export default async function DashboardPage() {
     initialAnsweredRate,
     initialUniqueVisitors,
     initialAvgResponseTime,
+    recentConversations,
   ] = await Promise.all([
     (await clerkClient()).organizations.getOrganization({
       organizationId: orgId!,
@@ -52,6 +54,7 @@ export default async function DashboardPage() {
     getAnsweredRate(orgId!),
     getUniqueVisitors(orgId!),
     getAvgResponseTime(orgId!),
+    getRecentConversations(orgId!),
   ]);
 
   // Derive current year in owner's local timezone — not server UTC
@@ -78,6 +81,7 @@ export default async function DashboardPage() {
       orgSlug={orgData?.slug ?? ""}
       initialMessagesUsed={orgData?.messagesUsed ?? 0}
       initialMessagesLimit={orgData?.messagesLimit ?? 100}
+      initialRecentConversations={recentConversations}
     />
   );
 }
