@@ -17,9 +17,9 @@ const RagPreview = () => {
         <Image
           src="/images/kun_logo.png"
           alt="KUN"
-          width={18}
-          height={18}
-          className="w-5 h-5 object-contain brightness-[.95]"
+          width={20}
+          height={20}
+          className="object-contain brightness-[.95]"
         />
         <div className="bg-[#2a2a2a] text-[#ddd] text-[11.5px] px-3 py-2 rounded-xl rounded-bl-sm max-w-[85%]">
           Tentu! Kami punya Nasi Goreng Sayur (Rp 25k), Gado-gado Spesial (Rp
@@ -31,9 +31,9 @@ const RagPreview = () => {
         <Image
           src="/images/kun_logo.png"
           alt="KUN"
-          width={18}
-          height={18}
-          className="w-5 h-5 object-contain brightness-[.95]"
+          width={20}
+          height={20}
+          className="object-contain brightness-[.95]"
         />
         <div className="flex gap-1 px-3 py-2 bg-[#2a2a2a] rounded-xl rounded-bl-sm w-fit">
           {[0, 1, 2].map((i) => (

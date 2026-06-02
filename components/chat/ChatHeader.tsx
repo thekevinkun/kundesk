@@ -30,9 +30,9 @@ const ChatHeader = ({ orgName, accentColor }: ChatHeaderProps) => {
       <Image
         src="/images/kun_logo.png"
         alt="KUN"
-        width={32}
-        height={32}
-        className="w-8.5 h-8.5 object-contain brightness-[.90]"
+        width={34}
+        height={34}
+        className="object-contain brightness-[.90]"
       />
 
       <div>

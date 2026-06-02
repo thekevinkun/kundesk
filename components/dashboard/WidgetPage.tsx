@@ -312,9 +312,9 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                   <Image
                     src="/images/kun_logo.png"
                     alt="KUN"
-                    width={28}
-                    height={28}
-                    className="w-8.5 h-8.5 object-contain brightness-[.90]"
+                    width={34}
+                    height={34}
+                    className="object-contain brightness-[.90]"
                   />
                   <div>
                     <div className="text-white font-semibold text-[13px]">
@@ -339,9 +339,9 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                     <Image
                       src="/images/kun_logo.png"
                       alt="KUN"
-                      width={18}
-                      height={18}
-                      className="w-5.5 h-5.5 object-contain brightness-[.85]"
+                      width={22}
+                      height={22}
+                      className="object-contain brightness-[.85]"
                     />
 
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">
@@ -363,9 +363,9 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                     <Image
                       src="/images/kun_logo.png"
                       alt="KUN"
-                      width={18}
-                      height={18}
-                      className="w-5.5 h-5.5 object-contain brightness-[.85]"
+                      width={22}
+                      height={22}
+                      className="object-contain brightness-[.85]"
                     />
 
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] text-gray-700 max-w-[80%] leading-relaxed shadow-sm">

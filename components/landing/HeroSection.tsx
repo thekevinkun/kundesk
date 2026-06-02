@@ -53,9 +53,9 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
             <Image
               src="/images/kun_logo.png"
               alt="KUN"
-              width={20}
-              height={20}
-              className="w-5.5 h-5.5 object-contain brightness-[.85]"
+              width={22}
+              height={22}
+              className="object-contain brightness-[.85]"
             />
             <span className="text-[10.5px] sm:text-[12px] font-semibold tracking-[-0.01em]">
               Kenalkan KUN — asisten AI bisnis kamu

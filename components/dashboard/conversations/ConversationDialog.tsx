@@ -271,9 +271,9 @@ const ConversationDialog = ({
                         <Image
                           src="/images/kun_logo.png"
                           alt="KUN"
-                          width={18}
-                          height={18}
-                          className="w-5.5 h-5.5 object-contain brightness-[.85] mb-0.5"
+                          width={22}
+                          height={22}
+                          className="object-contain brightness-[.85] mb-0.5"
                           aria-hidden="true"
                         />
                       ) : (

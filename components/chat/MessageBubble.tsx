@@ -41,9 +41,9 @@ const MessageBubble = ({
           <Image
             src="/images/kun_logo.png"
             alt="KUN"
-            width={22}
-            height={22}
-            className="w-6.5 h-6.5 object-contain brightness-[.85] mb-0.5"
+            width={26}
+            height={26}
+            className="object-contain brightness-[.85] mb-0.5"
             aria-hidden="true"
           />
         )
