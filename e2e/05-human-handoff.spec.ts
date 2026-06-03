@@ -204,3 +204,97 @@ test.describe("Human handoff — staff side", () => {
     expect(status).toBe(404);
   });
 });
+
+// ── Authenticated suite — dismiss flow ──
+test.describe("Human handoff — dismiss flow", () => {
+  test("staff can dismiss a pending_handoff conversation", async ({ page }) => {
+    await setupClerkTestingToken({ page });
+
+    await page.goto("/dashboard");
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+
+    // Step 1 — create a pending_handoff conversation via chat API
+    const sessionId = crypto.randomUUID();
+    const { conversationId, handoffStatus } = await sendChatMessage(
+      page,
+      "hubungi admin",
+      sessionId,
+    );
+
+    expect(conversationId).not.toBeNull();
+    expect(handoffStatus).toBe("pending_handoff");
+
+    // Wait for DB writes to settle
+    await page.waitForTimeout(1500);
+
+    // Step 2 — staff dismisses the conversation
+    const dismissData = await page.evaluate(async (id) => {
+      const res = await fetch(`/api/conversations/${id}/dismiss`, {
+        method: "POST",
+      });
+      return res.json() as Promise<{ ok: boolean }>;
+    }, conversationId!);
+
+    expect(dismissData.ok).toBe(true);
+
+    // Step 3 — verify status is back to ai
+    const afterDismissData = await page.evaluate(async (id) => {
+      const res = await fetch(`/api/conversations/${id}`);
+      return res.json() as Promise<{
+        ok: boolean;
+        data: { id: number; handoffStatus: string };
+      }>;
+    }, conversationId!);
+
+    expect(afterDismissData.data.handoffStatus).toBe("ai");
+  });
+
+  test("dismiss API returns 409 when conversation is not pending_handoff", async ({
+    page,
+  }) => {
+    await setupClerkTestingToken({ page });
+
+    await page.goto("/dashboard");
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+
+    // Step 1 — create a normal ai conversation (no handoff trigger)
+    const sessionId = crypto.randomUUID();
+    const { conversationId } = await sendChatMessage(
+      page,
+      "apa menu tersedia?",
+      sessionId,
+    );
+
+    expect(conversationId).not.toBeNull();
+
+    await page.waitForTimeout(1500);
+
+    // Step 2 — try to dismiss — should fail with 409 since status is ai not pending_handoff
+    const status = await page.evaluate(async (id) => {
+      const res = await fetch(`/api/conversations/${id}/dismiss`, {
+        method: "POST",
+      });
+      return res.status;
+    }, conversationId!);
+
+    expect(status).toBe(409);
+  });
+
+  test("dismiss API returns 400 for invalid conversation ID", async ({
+    page,
+  }) => {
+    await setupClerkTestingToken({ page });
+
+    await page.goto("/dashboard");
+    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+
+    const status = await page.evaluate(async () => {
+      const res = await fetch("/api/conversations/abc/dismiss", {
+        method: "POST",
+      });
+      return res.status;
+    });
+
+    expect(status).toBe(400);
+  });
+});
