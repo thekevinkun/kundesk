@@ -66,12 +66,12 @@ export function formatUtcOffset(date: Date): string {
 
 // Formats a date as relative time in Indonesian —
 // "Baru saja", "5 mnt lalu", "2 jam lalu", "3 hari lalu", "4 bulan lalu", "1 tahun lalu"
-export function formatRelativeTime(date: Date | string): string {
+export function formatRelativeTime(date: Date | string, now?: number): string {
   const d = date instanceof Date ? date : new Date(date);
 
   if (Number.isNaN(d.getTime())) return "—";
 
-  const diffMs = Math.max(0, Date.now() - d.getTime());
+  const diffMs = Math.max(0, (now ?? Date.now()) - d.getTime());
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
@@ -82,11 +82,9 @@ export function formatRelativeTime(date: Date | string): string {
   if (diffDays < 30) return `${diffDays} hari lalu`;
 
   const diffMonths = Math.floor(diffDays / 30);
-
   if (diffMonths < 12) return `${diffMonths} bulan lalu`;
 
   const diffYears = Math.floor(diffDays / 365);
-
   return `${diffYears} tahun lalu`;
 }
 

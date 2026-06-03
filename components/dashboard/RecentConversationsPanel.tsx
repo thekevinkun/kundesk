@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getConversationPageAction } from "@/lib/actions/dashboard";
 import { formatRelativeTime } from "@/helpers/format";
@@ -109,14 +109,6 @@ const RecentConversationsPanel = ({
     seenIdsRef.current = new Set(initialConversations.map((c) => c.id));
   }, [initialConversations]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(Date.now()); // Recompute expiry on a fixed tick so stale rows drop out automatically.
-    }, 60_000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
   // New conversation prepended from Pusher
   useEffect(() => {
     if (!newConversation) return;
@@ -159,9 +151,30 @@ const RecentConversationsPanel = ({
     );
   }, [latestStatusUpdate]);
 
-  const activeConversations = conversations.filter(
-    (convo) => !isExpiredConversation(convo, now), // Keep only conversations with activity inside the last 24 hours.
+  // Filter out expired conversations after sorting and updates
+  // keeps the list fresh without waiting for new Pusher events to trigger a re-render
+  const activeConversations = useMemo(
+    () => conversations.filter((convo) => !isExpiredConversation(convo, now)),
+    [conversations, now],
   );
+
+  // Fixed interval — keep relative time labels fresh every minute.
+  useEffect(() => {
+    const msUntilNextMinute = 60_000 - (Date.now() % 60_000); // Wait until the next real minute boundary.
+    let intervalId: number | null = null; // Hold the repeating timer after alignment.
+
+    const timeoutId = window.setTimeout(() => {
+      setNow(Date.now()); // Snap to the exact minute change first.
+      intervalId = window.setInterval(() => {
+        setNow(Date.now()); // Then keep ticking once per real minute.
+      }, 60_000);
+    }, msUntilNextMinute);
+
+    return () => {
+      window.clearTimeout(timeoutId); // Cancel the alignment wait on unmount.
+      if (intervalId) window.clearInterval(intervalId); // Stop the repeating minute tick if it started.
+    };
+  }, []);
 
   const handleClick = useCallback(
     async (conversationId: number) => {
@@ -243,6 +256,7 @@ const RecentConversationsPanel = ({
                     >
                       {formatRelativeTime(
                         convo.lastMessageAt ?? convo.createdAt,
+                        now,
                       )}
                     </span>
                   </div>

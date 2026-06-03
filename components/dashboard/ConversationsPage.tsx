@@ -9,7 +9,7 @@ import {
   ConversationMobileCard,
   ConversationEmptyState,
   ConversationEmptyStateCard,
-} from "./conversations";
+} from "@/components/dashboard/conversations";
 import { useConversationStore } from "@/stores/conversation-store";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
