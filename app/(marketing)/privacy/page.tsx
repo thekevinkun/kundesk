@@ -24,7 +24,7 @@ import {
 } from "@/lib/constants/privacy-constants";
 
 export const metadata: Metadata = {
-  title: "Kebijakan Privasi — Kundesk",
+  title: "Kebijakan Privasi",
   description:
     "Kebijakan privasi Kundesk — bagaimana kami mengumpulkan, menggunakan, dan melindungi data Anda.",
 };

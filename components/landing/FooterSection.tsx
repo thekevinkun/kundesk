@@ -68,9 +68,9 @@ const FooterSection = () => {
 
         <div className="flex items-center gap-6">
           {[
-            { label: "Syarat & Ketentuan", href: "#" },
+            { label: "Syarat & Ketentuan", href: "/syarat-ketentuan" },
             { label: "Kebijakan Privasi", href: "/privacy" },
-            { label: "Kebijakan Refund", href: "#" },
+            { label: "Kebijakan Refund", href: "/kebijakan-refund" },
           ].map(({ label, href }) => (
             <Link
               key={label}
