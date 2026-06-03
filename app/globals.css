@@ -429,6 +429,21 @@
     }
   }
 
+  @keyframes ping-slow {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.6;
+    }
+    70% {
+      transform: translate(-50%, -50%) scale(2.2);
+      opacity: 0;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(2.2);
+      opacity: 0;
+    }
+  }
+
   /* ── Reveal animation (landing page scroll) ── */
   .reveal {
     opacity: 0;

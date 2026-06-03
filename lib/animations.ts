@@ -211,3 +211,18 @@ export const testiSlideVariants = {
     transition: { duration: 0.3 },
   }),
 };
+
+// ── Chat bubble entrance — used in RagPreview looping animation ──
+// Bubbles slide in from their respective sides
+export const chatBubbleIn: Variants = {
+  hidden: { opacity: 0, y: 8, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+};

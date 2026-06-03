@@ -63,11 +63,11 @@ const Navbar = () => {
       {/* Logo */}
       <Link href="/" className="flex-shrink-0">
         <Image
-          src="/images/logo_kundesk.png"
+          src="/images/logo_kundesk_with_kun.png"
           alt="Kundesk"
-          width={136}
-          height={40}
-          className="w-34 h-10 object-contain"
+          width={132}
+          height={48}
+          className="w-28 h-10 md:w-33 md:h-12 object-contain"
           priority
         />
       </Link>

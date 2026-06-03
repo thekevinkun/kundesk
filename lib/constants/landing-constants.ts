@@ -84,6 +84,8 @@ export const FEATURES = [
     name: "KUN Tahu Bisnismu",
     desc: "KUN hanya menjawab berdasarkan dokumen yang kamu upload. Tidak ada halusinasi, tidak ada jawaban asal — hanya fakta dari bisnismu sendiri.",
     preview: "rag" as const,
+    layout: "wide" as const,
+    category: "AI Berbasis Dokumen",
   },
   {
     id: "analytics",
@@ -91,6 +93,8 @@ export const FEATURES = [
     name: "Analytics Real-Time",
     desc: "Lihat apa yang paling sering ditanyakan ke KUN, jam sibuk, dan topik paling banyak dicari pelanggan kamu — semua dalam satu dashboard.",
     preview: "analytics" as const,
+    layout: "wide" as const,
+    category: "Dashboard Analytics",
   },
   {
     id: "multitenant",
@@ -98,6 +102,8 @@ export const FEATURES = [
     name: "Multi-Tenant & Terisolasi",
     desc: "Setiap bisnis punya workspace tersendiri. Data satu bisnis tidak bisa diakses bisnis lain — dijamin dengan enkripsi dan isolasi penuh.",
     preview: "tenant" as const,
+    layout: "card" as const,
+    category: "Multi-Tenant",
   },
   {
     id: "security",
@@ -105,6 +111,8 @@ export const FEATURES = [
     name: "Keamanan Berlapis",
     desc: "Rate limiting, webhook verification, anti prompt-injection, dan AWS S3 presigned URLs — dirancang untuk melindungi data bisnis kamu.",
     preview: "security" as const,
+    layout: "card" as const,
+    category: "Keamanan",
   },
 ] as const;
 
