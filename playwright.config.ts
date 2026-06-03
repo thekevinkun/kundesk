@@ -26,7 +26,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
 
   // One worker locally to avoid Clerk rate limits, full parallelism on CI
-  workers: process.env.CI ? 4 : 1,
+  workers: process.env.CI ? 2 : 1,
 
   // HTML report — open with: npx playwright show-report
   reporter: "html",

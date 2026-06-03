@@ -237,7 +237,10 @@ const RecentConversationsPanel = ({
                     <span className="font-mono text-[10.5px] text-(--color-text-400) bg-(--color-bg-page) px-1.5 py-0.5 rounded-[4px] border border-(--color-border) flex-shrink-0">
                       #{convo.sessionId.slice(0, 8)}
                     </span>
-                    <span className="text-[10.5px] text-(--color-text-400) truncate">
+                    <span
+                      className="text-[10.5px] text-(--color-text-400) truncate"
+                      suppressHydrationWarning
+                    >
                       {formatRelativeTime(
                         convo.lastMessageAt ?? convo.createdAt,
                       )}
