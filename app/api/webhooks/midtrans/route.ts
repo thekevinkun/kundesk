@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { trackEvent } from "@/lib/posthog";
 import { verifyMidtransSignature } from "@/lib/midtrans";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import { orgs, processedWebhooks, promoCodes } from "@/lib/db/schema";
@@ -195,6 +196,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     `Plan berhasil diupgrade ke ${planLabel}`,
     `Pembayaran dikonfirmasi · ${order_id}`,
   ).catch(console.error);
+
+  // Track plan upgrades — core conversion event for SaaS growth tracking
+  trackEvent(org.id, "plan_upgraded", {
+    plan,
+    payment_type,
+    has_promo: promoId !== null,
+  });
 
   return NextResponse.json({ message: "OK" }, { status: 200 });
 }

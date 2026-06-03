@@ -6,6 +6,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
+import { trackEvent } from "@/lib/posthog";
 import { conversations } from "@/lib/db/schema";
 import { triggerConversationTakeover } from "@/lib/pusher";
 import { createNotification } from "@/lib/db/queries/dashboard";
@@ -95,6 +96,9 @@ export async function POST(
     conversationId,
     takenOverBy: userId,
   }).catch(console.error);
+
+  // Track when a staff member takes over a conversation — measures human handoff frequency
+  trackEvent(orgId, "human_handoff_taken");
 
   // Insert notification — staff took over a conversation
   await createNotification(

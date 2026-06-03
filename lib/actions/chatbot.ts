@@ -9,6 +9,7 @@ import { eq, gt, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
+import { trackEvent } from "@/lib/posthog";
 import { cacheDelete, CacheKeys } from "@/lib/redis";
 import {
   chatbots,
@@ -75,6 +76,14 @@ export async function saveChatbotConfig(
   } catch (err) {
     console.error("Failed to invalidate chatbot cache", err);
   }
+
+  // Track config saves — measures owner engagement with their chatbot setup
+  // Never log systemPrompt content — could contain business-sensitive information
+  trackEvent(orgId, "chatbot_configured", {
+    language,
+    has_custom_prompt: !!systemPrompt?.trim(),
+    accent_color: accentColor,
+  });
 
   // Revalidate dashboard so stat cards and bot status panel reflect new config
   revalidatePath("/dashboard");
