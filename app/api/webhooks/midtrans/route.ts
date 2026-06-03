@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { trackEvent } from "@/lib/posthog";
+import { trackEventImmediate } from "@/lib/posthog";
 import { verifyMidtransSignature } from "@/lib/midtrans";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import { orgs, processedWebhooks, promoCodes } from "@/lib/db/schema";
@@ -197,8 +197,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     `Pembayaran dikonfirmasi · ${order_id}`,
   ).catch(console.error);
 
-  // Track plan upgrades — core conversion event for SaaS growth tracking
-  trackEvent(org.id, "plan_upgraded", {
+  // Track plan upgrades — wait for delivery before ending the webhook response.
+  await trackEventImmediate(org.id, "plan_upgraded", {
     plan,
     payment_type,
     has_promo: promoId !== null,

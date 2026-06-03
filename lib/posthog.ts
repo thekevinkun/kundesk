@@ -44,3 +44,24 @@ export function trackEvent(
     },
   });
 }
+
+// Track a server-side event and wait for the HTTP send to complete.
+// Use this in short-lived serverless flows where a response can end the process early.
+export async function trackEventImmediate(
+  orgId: string,
+  event: string,
+  properties?: Record<string, unknown>,
+): Promise<void> {
+  const client = getPostHogClient();
+  if (!client) return;
+
+  // Await the capture promise to ensure the event is sent before the process can exit
+  await client.captureImmediate({
+    distinctId: orgId,
+    event,
+    properties: {
+      ...properties,
+      source: "server",
+    },
+  });
+}
