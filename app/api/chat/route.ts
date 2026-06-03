@@ -486,6 +486,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Track handoff requests — measures how often AI fails to satisfy customers
+      trackEvent(org.id, "handoff_requested", {
+        delivery_channel: "web_widget",
+        is_new_conversation: !existingConversation,
+      });
+
       return new Response(pendingStream, {
         headers: {
           "Content-Type": "text/event-stream",

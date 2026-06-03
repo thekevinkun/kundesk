@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireOrg } from "@/lib/auth";
+import { trackEvent } from "@/lib/posthog";
 import { embedText } from "@/lib/ai/embed";
 import { chunkText } from "@/helpers/chunk";
 import { batchedAsync } from "@/helpers/async";
@@ -264,6 +265,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     documentId: document.id,
     status: "ready",
     chunkCount: textChunks.length,
+  });
+
+  // Track successful document processing — measures knowledge base growth per org
+  trackEvent(orgId, "document_uploaded", {
+    chunk_count: textChunks.length,
+    file_type: document.name.split(".").pop()?.toLowerCase() ?? "unknown",
   });
 
   return NextResponse.json<ApiResponse<{ chunkCount: number }>>({
