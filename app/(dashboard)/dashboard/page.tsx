@@ -11,7 +11,7 @@ import {
   getBotStatus,
   getOrgData,
   getAvgResponseTime,
-  getRecentConversations,
+  getRecentActiveConversations,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { DashboardOverview } from "@/components/dashboard";
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
     getAnsweredRate(orgId!),
     getUniqueVisitors(orgId!),
     getAvgResponseTime(orgId!),
-    getRecentConversations(orgId!),
+    getRecentActiveConversations(orgId!),
   ]);
 
   // Derive current year in owner's local timezone — not server UTC

@@ -162,7 +162,7 @@ const RecentConversationsPanel = ({
   const displayed = conversations.slice(0, 5);
 
   return (
-    <div className="card-base flex flex-col overflow-hidden">
+    <div className="card-base flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-(--color-border-sm) flex-shrink-0">
         <div>
@@ -171,7 +171,7 @@ const RecentConversationsPanel = ({
           </div>
           <div className="text-[11px] text-(--color-text-400) mt-0.5">
             {pendingCount > 0
-              ? `${pendingCount} menunggu staff · ${conversations.length} total`
+              ? `${pendingCount} menunggu staff · ${conversations.length} percakapan aktif`
               : conversations.length > 0
                 ? `${conversations.length} percakapan aktif`
                 : "Semua percakapan tertangani"}
@@ -188,6 +188,7 @@ const RecentConversationsPanel = ({
       {/* List */}
       <div
         className="overflow-y-auto
+          flex-1 min-h-0
           [&::-webkit-scrollbar]:w-[4px]
           [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
           hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
@@ -196,11 +197,6 @@ const RecentConversationsPanel = ({
           <EmptyState />
         ) : (
           displayed.map((convo) => {
-            const isExpired =
-              convo.lastMessageAt !== null &&
-              Date.now() - new Date(convo.lastMessageAt).getTime() >
-                24 * 60 * 60 * 1000;
-
             const isPending = convo.handoffStatus === "pending_handoff";
 
             return (
@@ -208,8 +204,8 @@ const RecentConversationsPanel = ({
                 key={convo.id}
                 onClick={() => void handleClick(convo.id)}
                 className={`w-full text-left px-4 py-3.5 border-b border-(--color-border-sm) last:border-0 transition-colors hover:bg-(--color-bg-page) group ${
-                  isExpired ? "opacity-50" : ""
-                } ${isPending ? "bg-(--color-danger-bg)/40" : ""}`}
+                  isPending ? "bg-(--color-danger-bg)/40" : ""
+                }`}
                 aria-label={`Buka percakapan ${convo.sessionId.slice(0, 8)}`}
               >
                 {/* Top row: session ID + time + status */}
@@ -225,13 +221,7 @@ const RecentConversationsPanel = ({
                     </span>
                   </div>
                   <div className="flex-shrink-0">
-                    {isExpired ? (
-                      <span className="badge-base badge-neutral text-[10px] px-1.5 py-0.5">
-                        Kedaluwarsa
-                      </span>
-                    ) : (
-                      <StatusPill status={convo.handoffStatus} />
-                    )}
+                    <StatusPill status={convo.handoffStatus} />
                   </div>
                 </div>
 

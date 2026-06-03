@@ -278,18 +278,6 @@ export async function getRecentConversations(orgId: string): Promise<
           LIMIT 1
         ) AS last_message_at,
 
-        -- Last message content — truncated to 80 chars for preview
-        LEFT(
-          (
-            SELECT m.content
-            FROM ${messages} m
-            WHERE m.conversation_id = c.id
-            ORDER BY m.created_at DESC
-            LIMIT 1
-          ),
-          80
-        ) AS last_message,
-
         -- Total message count for this conversation
         (
           SELECT COUNT(*)::int
@@ -300,6 +288,108 @@ export async function getRecentConversations(orgId: string): Promise<
       FROM ${conversations} c
       WHERE c.org_id = ${orgId}
       ORDER BY c.created_at DESC
+    `,
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    handoffStatus: row.handoff_status,
+    deliveryChannel: row.delivery_channel,
+    createdAt: toDateSafe(row.created_at),
+    lastMessage: row.last_message,
+    lastMessageAt: row.last_message_at ? toDateSafe(row.last_message_at) : null,
+    messageCount: row.message_count,
+    takenOverBy: row.taken_over_by,
+    takenOverAt: row.taken_over_at ? toDateSafe(row.taken_over_at) : null,
+  }));
+}
+
+// ── Recent ACTIVE conversations — excludes expired (no activity in last 24h) ──
+// Used by RecentConversationsPanel — expired conversations are irrelevant there
+export async function getRecentActiveConversations(orgId: string): Promise<
+  {
+    id: number;
+    sessionId: string;
+    handoffStatus: HandoffStatus;
+    deliveryChannel: DeliveryChannel;
+    createdAt: Date;
+    lastMessage: string | null;
+    lastMessageAt: Date | null;
+    messageCount: number;
+    takenOverBy: string | null;
+    takenOverAt: Date | null;
+  }[]
+> {
+  const result = await db.execute<{
+    id: number;
+    session_id: string;
+    handoff_status: HandoffStatus;
+    delivery_channel: DeliveryChannel;
+    created_at: Date;
+    last_message: string | null;
+    last_message_at: Date | null;
+    message_count: number;
+    taken_over_by: string | null;
+    taken_over_at: Date | null;
+  }>(
+    sql`
+      SELECT
+        c.id,
+        c.session_id,
+        c.handoff_status,
+        c.delivery_channel,
+        c.created_at,
+        c.taken_over_by,
+        c.taken_over_at,
+
+        -- Last message timestamp — used for sorting and activity check
+        (
+          SELECT m.created_at
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) AS last_message_at,
+
+        -- Last message preview
+        (
+          SELECT m.content
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+            AND m.role = 'user'
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) AS last_message,
+
+        -- Active message count — only conversations reaching this point are active
+        (
+          SELECT COUNT(*)::int
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+        ) AS message_count
+
+      FROM ${conversations} c
+      WHERE c.org_id = ${orgId}
+        -- Only include conversations with activity in the last 24 hours
+        -- Expired conversations are irrelevant for the overview panel
+        AND EXISTS (
+          SELECT 1
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+            AND m.created_at > NOW() - INTERVAL '24 hours'
+        )
+      ORDER BY
+        -- pending_handoff first — needs immediate staff attention
+        CASE WHEN c.handoff_status = 'pending_handoff' THEN 0 ELSE 1 END,
+        -- then by most recent activity
+        (
+          SELECT m.created_at
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) DESC
       LIMIT 10
     `,
   );

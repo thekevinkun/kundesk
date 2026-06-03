@@ -140,6 +140,8 @@ const ConversationRow = ({
   const hasUnread = unreadConversationIds.has(convo.id);
 
   const [isTakingOver, startTakeoverTransition] = useTransition();
+  const [isDismissing, startDismissTransition] = useTransition();
+
   const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
 
   const dialogRowRef = useRef<HTMLTableRowElement>(null);
@@ -173,6 +175,30 @@ const ConversationRow = ({
     setHandoffStatus("ai");
     onExpandedChange(false);
     onReturn(convo.id);
+  };
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    startDismissTransition(async () => {
+      try {
+        const res = await fetch(`/api/conversations/${convo.id}/dismiss`, {
+          method: "POST",
+        });
+        if (!res.ok) throw new Error("Failed to dismiss");
+        // Return to AI locally — Pusher will also fire conversation:return
+        // but local state update makes the UI snappy without waiting
+        setHandoffStatus("ai");
+        setPendingHandoff(false);
+        void queryClient.invalidateQueries({
+          queryKey: ["conversations", "pending-count"],
+        });
+        toast.success(
+          "Permintaan diabaikan. KUN kembali menangani percakapan.",
+        );
+      } catch {
+        toast.error("Gagal mengabaikan. Coba lagi.");
+      }
+    });
   };
 
   // Called by ConversationDialog after staff sends a reply
@@ -308,7 +334,7 @@ const ConversationRow = ({
             ) : (
               <>
                 <StatusPill status={handoffStatus} />
-                {/* Only show Ambil Alih for AI rows — pending_handoff staff just opens dialog and replies */}
+                {/* Ambil Alih — only for AI rows */}
                 {handoffStatus === "ai" && (
                   <button
                     onClick={handleTakeover}
@@ -316,6 +342,16 @@ const ConversationRow = ({
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-semibold text-(--color-brand) hover:underline disabled:opacity-40"
                   >
                     {isTakingOver ? "..." : "Ambil Alih"}
+                  </button>
+                )}
+                {/* Abaikan — only for pending rows, staff declines the takeover request */}
+                {handoffStatus === "pending_handoff" && (
+                  <button
+                    onClick={handleDismiss}
+                    disabled={isDismissing}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-semibold text-(--color-danger) hover:underline disabled:opacity-40"
+                  >
+                    {isDismissing ? "..." : "Abaikan"}
                   </button>
                 )}
               </>
@@ -382,6 +418,8 @@ export const ConversationMobileCard = ({
   const hasUnread = unreadConversationIds.has(convo.id);
 
   const [isTakingOver, startTakeoverTransition] = useTransition();
+  const [isDismissing, startDismissTransition] = useTransition();
+
   const [handoffStatus, setHandoffStatus] = useState(convo.handoffStatus);
   const cardRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -412,6 +450,30 @@ export const ConversationMobileCard = ({
     setHandoffStatus("ai");
     onExpandedChange(false);
     onReturn(convo.id);
+  };
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    startDismissTransition(async () => {
+      try {
+        const res = await fetch(`/api/conversations/${convo.id}/dismiss`, {
+          method: "POST",
+        });
+        if (!res.ok) throw new Error("Failed to dismiss");
+        // Return to AI locally — Pusher will also fire conversation:return
+        // but local state update makes the UI snappy without waiting
+        setHandoffStatus("ai");
+        setPendingHandoff(false);
+        void queryClient.invalidateQueries({
+          queryKey: ["conversations", "pending-count"],
+        });
+        toast.success(
+          "Permintaan diabaikan. KUN kembali menangani percakapan.",
+        );
+      } catch {
+        toast.error("Gagal mengabaikan. Coba lagi.");
+      }
+    });
   };
 
   const handleStaffReplied = () => {
@@ -540,6 +602,16 @@ export const ConversationMobileCard = ({
                     className="text-[11px] font-semibold text-(--color-brand) hover:underline disabled:opacity-40"
                   >
                     {isTakingOver ? "..." : "Ambil Alih"}
+                  </button>
+                )}
+                {/* Abaikan — staff declines the pending handoff request */}
+                {!isExpired && handoffStatus === "pending_handoff" && (
+                  <button
+                    onClick={handleDismiss}
+                    disabled={isDismissing}
+                    className="text-[11px] font-semibold text-(--color-danger) hover:underline disabled:opacity-40"
+                  >
+                    {isDismissing ? "..." : "Abaikan"}
                   </button>
                 )}
               </div>

@@ -472,8 +472,8 @@ export async function POST(request: NextRequest) {
       const pendingStream = new ReadableStream({
         start(controller) {
           const msg =
-            "Oke, saya akan menghubungkan kamu dengan staff kami. " +
-            "Mohon tunggu sebentar — staff akan segera membalas pesanmu. 🙏";
+            "Oke, aku akan menghubungkan kakak dengan staff kami. " +
+            "Mohon tunggu sebentar ya kak, staff akan segera membalas pesan kakak. 😊🙏";
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ token: msg })}\n\n`),
           );

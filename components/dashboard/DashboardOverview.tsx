@@ -387,7 +387,7 @@ const DashboardOverview = ({
       </div>
 
       {/* ── Charts row 2: Line + Bar stacked left, Conversations panel right ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
         {/* Left column — two charts stacked */}
         <div className="flex flex-col gap-4">
           <div className="card-base">
@@ -411,7 +411,7 @@ const DashboardOverview = ({
         </div>
 
         {/* Right column — recent conversations panel, matches left column height */}
-        <div className="lg:sticky lg:top-4">
+        <div className="h-full lg:sticky lg:top-4">
           <RecentConversationsPanel
             initialConversations={initialRecentConversations}
             newConversation={newConversation}
