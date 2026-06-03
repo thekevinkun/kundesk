@@ -278,6 +278,18 @@ export async function getRecentConversations(orgId: string): Promise<
           LIMIT 1
         ) AS last_message_at,
 
+        -- Last message content — truncated to 80 chars for preview
+        LEFT(
+          (
+            SELECT m.content
+            FROM ${messages} m
+            WHERE m.conversation_id = c.id
+            ORDER BY m.created_at DESC
+            LIMIT 1
+          ),
+          80
+        ) AS last_message,
+
         -- Total message count for this conversation
         (
           SELECT COUNT(*)::int
@@ -353,14 +365,13 @@ export async function getRecentActiveConversations(orgId: string): Promise<
         ) AS last_message_at,
 
         -- Last message preview
-        (
+        LEFT((
           SELECT m.content
           FROM ${messages} m
           WHERE m.conversation_id = c.id
-            AND m.role = 'user'
           ORDER BY m.created_at DESC
           LIMIT 1
-        ) AS last_message,
+        ), 80) AS last_message,
 
         -- Active message count — only conversations reaching this point are active
         (

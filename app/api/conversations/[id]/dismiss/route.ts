@@ -74,9 +74,8 @@ export async function POST(
     "Tetap bicara sama KUN ya, aku siap membantu! 😊";
 
   // Atomic: return to AI + insert canned message in one transaction
-  await db.transaction(async (tx) => {
-    // Return conversation to AI mode — clear handoff fields
-    await tx
+  const dismissed = await db.transaction(async (tx) => {
+    const [updated] = await tx
       .update(conversations)
       .set({
         handoffStatus: "ai",
@@ -89,16 +88,31 @@ export async function POST(
           eq(conversations.orgId, orgId),
           eq(conversations.handoffStatus, "pending_handoff"),
         ),
-      );
+      )
+      .returning({ id: conversations.id });
 
-    // Insert canned apology as assistant — KUN resumes ownership
+    if (!updated) return false;
+
     await tx.insert(messages).values({
       orgId,
       conversationId,
       role: "assistant",
       content: cannedMessage,
     });
+
+    return true;
   });
+
+  if (!dismissed) {
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error: "Conversation is no longer pending handoff",
+        status: 409,
+      },
+      { status: 409 },
+    );
+  }
 
   // Send canned message to customer widget via Pusher
   // role: "human_agent" so ChatPage's existing handler picks it up and renders it

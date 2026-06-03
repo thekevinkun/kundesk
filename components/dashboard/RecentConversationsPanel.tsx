@@ -43,6 +43,16 @@ const EmptyState = () => (
 );
 
 // ── Sort — pending always first, then by lastMessageAt desc ──
+const EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours — active conversations only.
+
+const isExpiredConversation = (
+  convo: ConversationRowType,
+  now: number,
+): boolean => {
+  const anchorTime = convo.lastMessageAt ?? convo.createdAt; // Fall back to creation time when there is no message yet.
+  return now - new Date(anchorTime).getTime() > EXPIRY_MS; // Expire once the last activity is older than 24h.
+};
+
 const sortConversations = (
   convos: ConversationRowType[],
 ): ConversationRowType[] => {
@@ -87,6 +97,7 @@ const RecentConversationsPanel = ({
   const [conversations, setConversations] = useState<ConversationRowType[]>(
     () => sortConversations(initialConversations),
   );
+  const [now, setNow] = useState(() => Date.now()); // Drives the 24h expiry filter without waiting for new Pusher events.
 
   // Track seen IDs — deduplicate Pusher new conversation events
   const seenIdsRef = useRef(new Set(initialConversations.map((c) => c.id)));
@@ -97,6 +108,14 @@ const RecentConversationsPanel = ({
     setConversations(sortConversations(initialConversations));
     seenIdsRef.current = new Set(initialConversations.map((c) => c.id));
   }, [initialConversations]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(Date.now()); // Recompute expiry on a fixed tick so stale rows drop out automatically.
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   // New conversation prepended from Pusher
   useEffect(() => {
@@ -140,6 +159,10 @@ const RecentConversationsPanel = ({
     );
   }, [latestStatusUpdate]);
 
+  const activeConversations = conversations.filter(
+    (convo) => !isExpiredConversation(convo, now), // Keep only conversations with activity inside the last 24 hours.
+  );
+
   const handleClick = useCallback(
     async (conversationId: number) => {
       try {
@@ -155,11 +178,11 @@ const RecentConversationsPanel = ({
   );
 
   // Pending count for header subtitle
-  const pendingCount = conversations.filter(
+  const pendingCount = activeConversations.filter(
     (c) => c.handoffStatus === "pending_handoff",
   ).length;
 
-  const displayed = conversations.slice(0, 5);
+  const displayed = activeConversations.slice(0, 5);
 
   return (
     <div className="card-base flex h-full flex-col overflow-hidden">
@@ -171,9 +194,9 @@ const RecentConversationsPanel = ({
           </div>
           <div className="text-[11px] text-(--color-text-400) mt-0.5">
             {pendingCount > 0
-              ? `${pendingCount} menunggu staff · ${conversations.length} percakapan aktif`
-              : conversations.length > 0
-                ? `${conversations.length} percakapan aktif`
+              ? `${pendingCount} menunggu staff · ${activeConversations.length} percakapan aktif`
+              : activeConversations.length > 0
+                ? `${activeConversations.length} percakapan aktif`
                 : "Semua percakapan tertangani"}
           </div>
         </div>
