@@ -1,8 +1,15 @@
 # Kundesk
 
+<img width="158" height="56" alt="kundesk_with_kun_logo_white" src="https://github.com/user-attachments/assets/855de8ea-0fc7-42d1-a3e7-19b15f1f7b96" />
+<br />
+
 **AI-powered customer service SaaS for Indonesian SMEs.**
 
-Kundesk lets business owners upload their documents — menu, FAQ, price list — and instantly deploy an AI chatbot that answers customer questions 24/7, in Bahasa Indonesia, trained only on their own content.
+Kundesk lets business owners upload their documents — menu, FAQ, price list — and instantly get help from **KUN**, an AI assistant that answers customer questions 24/7, in Bahasa Indonesia, trained only on their own content.
+
+**Live demo:** [kundesk.vercel.app](https://kundesk.vercel.app)
+
+---
 
 ## The Problem
 
@@ -10,34 +17,57 @@ Indonesian SMEs — warung, klinik, salon, properti — are drowning in repetiti
 
 ## The Solution
 
-Sign up, upload your business documents, and Kundesk generates a chatbot that handles your customers automatically. Every answer comes from your own documents — not from generic AI knowledge.
+Sign up, upload your business documents, and Kundesk deploys **KUN** — an AI assistant that handles your customers automatically. Every answer KUN gives comes from your own documents, not from generic AI knowledge.
+
+---
+
+## Meet KUN
+
+<img width="88" height="88" alt="kun_logo" src="https://github.com/user-attachments/assets/e4e0a029-918d-45c3-a431-f5f9b41fe73f" /><br />
+
+
+KUN is Kundesk's built-in AI assistant — the entity your customers actually talk to. KUN is not a generic chatbot; it has a fixed identity, a consistent voice, and speaks naturally in Bahasa Indonesia using the "Kak" address form that Indonesians expect in a friendly service context.
+
+KUN is trained exclusively on the documents each business uploads. Ask KUN about something not in those documents and it won't guess — it tells the customer honestly and suggests they contact the business directly.
+
+When a customer needs a human, they can ask KUN to connect them with the business owner. KUN detects the request, notifies the dashboard instantly, and holds the conversation gracefully until staff takes over. When staff is done, KUN resumes automatically.
 
 ---
 
 ## Screenshots
 
-> *(Screenshots coming soon — landing page, dashboard overview, chat interface)*
+> Landing Page - Hero
+
+<img width="1920" height="1505" alt="hero" src="https://github.com/user-attachments/assets/c6b2ff16-005f-4310-8e94-13fab8cf8b18" /><br />
+
+> Dashboard Overview
+
+<img width="1920" height="1841" alt="dashboard" src="https://github.com/user-attachments/assets/98f04e19-357e-4b2e-ab5c-e1a1004f85f9" /><br />
+
+> Chat Interface
+
+<img width="1920" height="1098" alt="chat-2" src="https://github.com/user-attachments/assets/36b32a89-83a2-499f-901b-752b3cc41cd7" /><br />
 
 ---
 
 ## Features
 
 ### For Business Owners
-- **Document-trained AI** — upload PDF or TXT files; the chatbot answers only from your content via RAG (Retrieval-Augmented Generation)
+- **Document-trained KUN** — upload PDF or TXT files; KUN answers only from your content via RAG (Retrieval-Augmented Generation)
 - **Multiple delivery channels** — shareable public chat link, QR code (print it on your counter or menu), and embeddable web widget
-- **Human handoff** — take over any conversation manually from the dashboard; return to AI when done; dismiss pending requests with a canned message
+- **Human handoff** — take over any KUN conversation manually from the dashboard; return to KUN when done; dismiss pending requests with a canned message
 - **Live dashboard** — real-time conversation monitoring, stat cards, and Chart.js analytics (daily trend, monthly comparison, weekly breakdown)
 - **Subscription billing** — GoPay, OVO, DANA, BCA Virtual Account via Midtrans; three plans in Rupiah (Free, Starter, Pro)
 - **Discount system** — promo codes with per-plan applicability, validity windows, and max-use limits
 - **Quota notifications** — real-time alerts at 80% and 100% usage, monthly reset notification, plan upgrade confirmation
 - **Dark mode** — full token-based theme switching via `next-themes`
-- **Chatbot customization** — accent color picker, language setting (ID / EN / both), quick replies, system prompt addendum
+- **KUN customization** — accent color picker, language setting (ID / EN / both), quick replies, system prompt addendum
 
 ### For Customers
-- **Streaming AI responses** — token-by-token via Server-Sent Events, no page reload
-- **Markdown rendering** — formatted answers via `react-markdown`
-- **Human handoff request** — customers can ask to speak with a person; staff is notified instantly
-- **Embeddable widget** — works inside any website via a single `<script>` tag
+- **Talking to KUN** — streaming responses token-by-token via Server-Sent Events; feels instant, no page reload
+- **Markdown rendering** — KUN's formatted answers rendered via `react-markdown`
+- **Human handoff request** — customers can ask KUN to connect them with a person; staff is notified instantly via dashboard
+- **Embeddable widget** — KUN works inside any website via a single `<script>` tag
 
 ---
 
@@ -62,7 +92,7 @@ Sign up, upload your business documents, and Kundesk generates a chatbot that ha
 | Validation | Zod v4 |
 | Testing | Vitest + React Testing Library (266 tests) + Playwright E2E (24 tests) |
 | CI/CD | GitHub Actions — typecheck → lint → test → build → E2E |
-| Deployment | Vercel (Pro, 60s function timeout, built-in cron) |
+| Deployment | Vercel (built-in cron, auto-deploy on push) |
 
 ---
 
@@ -73,11 +103,11 @@ Shared database with `org_id` as the tenant isolation key — on every table, ev
 
 ### RAG Pipeline
 ```
-Customer question
+Customer asks KUN a question
   → OpenAI text-embedding-3-small (1536 dimensions)
   → pgvector cosine similarity search (WHERE org_id = $orgId LIMIT 5)
-  → System prompt built from top 5 chunks
-  → OpenAI gpt-4o-mini streams reply
+  → System prompt built from top 5 chunks + KUN identity rules
+  → OpenAI gpt-4o-mini streams KUN's reply
   → SSE ReadableStream → token-by-token to browser
 ```
 
