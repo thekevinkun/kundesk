@@ -20,11 +20,11 @@ const FooterSection = () => {
               alt="Kundesk"
               width={128}
               height={40}
-              className="w-32 h-12 object-contain"
+              className="w-29 h-10 sm:w-30 sm:h-12 object-contain"
             />
           </div>
           <p
-            className="text-[13.5px] leading-[1.7] max-w-[260px]"
+            className="text-[13.5px] leading-[1.7] max-w-lg md:max-w-[260px]"
             style={{ color: "#666" }}
           >
             Platform AI customer service untuk bisnis Indonesia. Ditenagai KUN —

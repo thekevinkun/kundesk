@@ -181,7 +181,10 @@ const Topbar = () => {
         {/* Hamburger — mobile only */}
         <button
           onClick={toggleMobile}
-          className="lg:hidden w-9 h-9 rounded-[10px] bg-(--color-bg-page) border border-(--color-border) flex items-center justify-center text-base text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) transition-all"
+          className="lg:hidden w-9 h-9 rounded-[10px] bg-(--color-bg-page) 
+            border border-(--color-border) flex justify-center 
+            text-xl text-(--color-text-500) hover:border-(--color-brand) 
+            hover:text-(--color-brand) transition-all"
           aria-label="Buka menu navigasi"
         >
           ☰

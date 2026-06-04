@@ -229,7 +229,7 @@ const ConversationDialog = ({
         {/* Message list */}
         <div
           ref={scrollContainerRef}
-          className="max-h-[280px] px-4 py-4 space-y-3 sm:max-h-[320px] sm:px-5 overflow-y-auto
+          className="max-h-[420px] px-4 py-4 space-y-3 sm:max-h-[320px] sm:px-5 overflow-y-auto
             [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar]:h-[5px]
             [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
             hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"

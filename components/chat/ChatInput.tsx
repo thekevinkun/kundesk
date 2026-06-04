@@ -56,7 +56,7 @@ const ChatInput = ({
                 : "Ketik pesan kamu..."
             }
             rows={1}
-            className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none py-1 max-h-[120px] disabled:opacity-50"
+            className="flex-1 resize-none bg-transparent text-base text-gray-800 placeholder-gray-400 outline-none py-1 max-h-[120px] disabled:opacity-50"
             aria-label="Input pesan"
             aria-busy={isDisabled}
           />

@@ -87,7 +87,7 @@ const TipPanel = () => {
               {/* Gold standard example */}
               <div className="mt-3 p-3 bg-white/60 rounded-[8px] border border-(--color-brand-mid)">
                 <p className="text-[11.5px] font-semibold text-(--color-brand-dark) mb-1.5">
-                  Contoh struktur ideal (kedai-borneo.txt):
+                  Contoh struktur ideal (kedai-bu-sari.txt):
                 </p>
                 <pre className="text-[11px] text-(--color-brand-dark) font-mono leading-relaxed whitespace-pre-wrap">
                   {`MENU MAKANAN\nNasi Goreng Spesial — Rp 25.000\nGado-gado — Rp 22.000\n\nJAM BUKA\nSenin–Sabtu: 08.00–22.00\nMinggu: 10.00–20.00\n\nFAQ\nQ: Apakah ada parkir?\nA: Ya, parkir gratis untuk 2 jam pertama.`}
@@ -96,8 +96,8 @@ const TipPanel = () => {
 
               {/* Download sample */}
               <Link
-                href="/samples/kedai-borneo.txt"
-                download="kedai-borneo.txt"
+                href="/samples/kedai-bu-sari.txt"
+                download="kedai-bu-sari.txt"
                 className="mt-3 flex items-center gap-2 text-[12.5px] font-semibold text-(--color-brand) hover:text-(--color-brand-dark) transition-colors group/dl"
               >
                 <span className="w-7 h-7 rounded-[7px] bg-white/60 border border-(--color-brand-mid) flex items-center justify-center text-sm group-hover/dl:bg-(--color-brand-light) transition-colors">

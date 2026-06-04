@@ -90,7 +90,7 @@ const HandoffReplyBox = ({
           placeholder="Tulis balasan... (Enter untuk kirim, Shift+Enter untuk baris baru)"
           rows={2}
           maxLength={1000}
-          className="flex-1 input-base resize-none text-[13px] py-2 px-3 min-h-[60px]"
+          className="flex-1 input-base resize-none py-2 px-3 min-h-[60px]"
         />
         <button
           onClick={handleSend}

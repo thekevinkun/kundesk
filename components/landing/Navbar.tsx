@@ -67,7 +67,7 @@ const Navbar = () => {
           alt="Kundesk"
           width={132}
           height={48}
-          className="w-28 h-10 md:w-33 md:h-12 object-contain"
+          className="w-29 h-12 md:w-33 md:h-12 object-contain"
           priority
         />
       </Link>
@@ -137,21 +137,21 @@ const Navbar = () => {
       </div>
 
       {/* Hamburger — mobile only */}
-      <div className="flex items-center gap-3 lg:hidden">
+      <div className="flex items-center lg:hidden">
         <button
           onClick={() => setMobileOpen((p) => !p)}
-          className=" w-9 h-9 flex items-center justify-center rounded-[10px] bg-(--color-bg-input) 
+          className=" w-9 h-9 flex justify-center rounded-[10px] bg-(--color-bg-input) 
             border border-(--color-border) text-(--color-text-500)"
           aria-label="Buka menu"
           aria-expanded={mobileOpen}
         >
-          <span className="text-base">{mobileOpen ? "✕" : "☰"}</span>
+          <span className="!text-xl">{mobileOpen ? "✕" : "☰"}</span>
         </button>
 
         <UserButton
           appearance={{
             elements: {
-              avatarBox: "!w-[29px] !h-[29px]",
+              avatarBox: "!w-[29px] !h-[29px] ml-3",
             },
           }}
         />

@@ -13,11 +13,7 @@ import type {
   ConversationRow as ConversationRowType,
   ConversationMessage,
 } from "@/types/api";
-import {
-  ChannelBadge,
-  StatusPill,
-  useNow,
-} from "./ConversationRow";
+import { ChannelBadge, StatusPill, useNow } from "./ConversationRow";
 
 interface ConversationMobileCardProps {
   convo: ConversationRowType;
@@ -97,7 +93,9 @@ const ConversationMobileCard = ({
         void queryClient.invalidateQueries({
           queryKey: ["conversations", "pending-count"],
         });
-        toast.success("Permintaan diabaikan. KUN kembali menangani percakapan.");
+        toast.success(
+          "Permintaan diabaikan. KUN kembali menangani percakapan.",
+        );
       } catch {
         toast.error("Gagal mengabaikan. Coba lagi.");
       }
@@ -167,16 +165,20 @@ const ConversationMobileCard = ({
           <div className="flex items-start gap-3">
             <div className="relative flex flex-shrink-0 items-center justify-center">
               <div
-                className="relative mt-5 flex h-6 w-6 items-end justify-center 
-              rounded-full border border-(--color-border) bg-(--color-bg-page)"
+                className="relative mt-5 flex h-6 w-6 items-center justify-center 
+                rounded-full border border-(--color-border) bg-(--color-bg-page)"
               >
-                <span
-                  className={`text-lg text-(--color-brand) transition-transform inline-block ${
+                <svg
+                  className={`h-3.5 w-3.5 text-(--color-brand) transition-transform ${
                     isExpanded ? "rotate-90" : ""
                   }`}
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
-                  ›
-                </span>
+                  <path d="M7 5l5 5-5 5" />
+                </svg>
               </div>
 
               {hasUnread && !isExpanded && (

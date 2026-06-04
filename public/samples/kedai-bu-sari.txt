@@ -1,5 +1,5 @@
 # DOKUMEN INFORMASI BISNIS
-## Kedai Borneo — Makanan Rumahan Khas Kalimantan
+## Kedai Bu Sari — Makanan Rumahan Khas Kalimantan
 **Dokumen ini digunakan sebagai knowledge base chatbot AI Kundesk**
 **Terakhir diperbarui: Mei 2026**
 
@@ -7,13 +7,13 @@
 
 ## BAGIAN 1 — PROFIL BISNIS
 
-Kedai Borneo adalah warung makan rumahan yang menyajikan masakan khas Kalimantan Timur dan masakan rumahan Indonesia. Kami berdiri sejak tahun 2018 dan berlokasi di Jalan Pramuka No. 47, Samarinda, Kalimantan Timur. Kedai kami dikenal dengan cita rasa autentik, bahan-bahan segar yang dibeli langsung dari pasar setiap pagi, dan suasana makan yang nyaman seperti di rumah sendiri.
+Kedai Bu Sari adalah warung makan rumahan yang menyajikan masakan khas Kalimantan Timur dan masakan rumahan Indonesia. Kami berdiri sejak tahun 2018 dan berlokasi di Jalan Pramuka No. 47, Samarinda, Kalimantan Timur. Kedai kami dikenal dengan cita rasa autentik, bahan-bahan segar yang dibeli langsung dari pasar setiap pagi, dan suasana makan yang nyaman seperti di rumah sendiri.
 
-Pemilik: Kun Borneoman
+Pemilik: Sari Wulandari
 Nomor WhatsApp: 0812-3456-7890
-Email: kedaiborneo@gmail.com
-Instagram: @kedaiborneo
-Google Maps: Kedai Borneo Samarinda
+Email: kedaibusari@gmail.com
+Instagram: @kedaibusari
+Google Maps: Kedai Bu Sari Samarinda
 
 ---
 
@@ -81,7 +81,7 @@ Deskripsi: Pisang kepok goreng dengan tepung crispy, disajikan dengan saus cokla
 
 ### 4.2 Menu Makan Siang dan Malam (Tersedia 10.00 – tutup)
 
-**Nasi Goreng Kampung Borneo**
+**Nasi Goreng Kampung Bu Sari**
 Harga: Rp 25.000
 Deskripsi: Nasi goreng dengan bumbu rahasia turun-temurun, telur ceplok, acar, dan kerupuk. Pilihan tingkat kepedasan: tidak pedas, sedang, pedas, pedas banget.
 Catatan: Bisa tambah lauk (ayam/cumi/udang) dengan harga tambahan Rp 8.000–15.000.
@@ -90,7 +90,7 @@ Catatan: Bisa tambah lauk (ayam/cumi/udang) dengan harga tambahan Rp 8.000–15.
 Harga: Rp 35.000
 Deskripsi: Nasi goreng dengan campuran udang, cumi, dan bakso ikan. Telur dadar di atas, disajikan dengan acar dan kerupuk udang.
 
-**Ayam Penyet Borneo**
+**Ayam Penyet Bu Sari**
 Harga: Rp 28.000
 Deskripsi: Ayam goreng yang dipenyet dengan sambal terasi khas Kalimantan, disajikan dengan nasi putih, lalapan (timun, kemangi, kubis), dan tahu/tempe goreng.
 Catatan: Sambal bisa minta terpisah. Tersedia pilihan dada, paha, atau sayap.
@@ -175,7 +175,7 @@ Catatan minuman: Semua minuman manis bisa request "kurang manis" atau "tidak man
 
 ## BAGIAN 6 — LAYANAN KATERING
 
-Kedai Borneo melayani katering untuk acara keluarga, arisan, rapat kantor, dan acara sosial.
+Kedai Bu Sari melayani katering untuk acara keluarga, arisan, rapat kantor, dan acara sosial.
 
 ### Paket Katering Nasi Box
 
@@ -208,7 +208,7 @@ Tidak termasuk: Sewa tempat, tenda, kursi, atau dekorasi.
 - Pembatalan kurang dari 24 jam: uang muka tidak dapat dikembalikan
 - Pembatalan lebih dari 24 jam sebelum acara: uang muka dikembalikan 50%
 
-Untuk pemesanan katering, hubungi langsung Borneoman di WhatsApp: 0812-3456-7890
+Untuk pemesanan katering, hubungi langsung Bu Sari di WhatsApp: 0812-3456-7890
 
 ---
 
@@ -226,7 +226,7 @@ Kami menggunakan bahan-bahan berikut yang umum menjadi alergen:
 
 ### Catatan Penting untuk Alergi
 
-Dapur kami adalah dapur bersama. Meskipun kami berusaha memisahkan peralatan, ada kemungkinan kontaminasi silang. Untuk alergi berat (severe allergy), kami sangat menyarankan untuk berkonsultasi langsung dengan Borneoman sebelum memesan.
+Dapur kami adalah dapur bersama. Meskipun kami berusaha memisahkan peralatan, ada kemungkinan kontaminasi silang. Untuk alergi berat (severe allergy), kami sangat menyarankan untuk berkonsultasi langsung dengan Bu Sari sebelum memesan.
 
 ### Informasi untuk Diet Khusus
 
@@ -242,23 +242,23 @@ Dapur kami adalah dapur bersama. Meskipun kami berusaha memisahkan peralatan, ad
 
 **Kapasitas tempat duduk**: 32 kursi (8 meja, masing-masing 4 kursi)
 **AC**: 2 unit AC di area dalam, 1 area lesehan outdoor beratap dengan kipas angin
-**WiFi**: Tersedia gratis. Nama jaringan: KedaiBorneo_Guest. Password tersedia di kasir.
+**WiFi**: Tersedia gratis. Nama jaringan: KedaiBuSari_Guest. Password tersedia di kasir.
 **Toilet**: 1 toilet umum tersedia, bersih dan terawat
 **Mushola**: Tidak ada mushola di dalam kedai, tapi masjid terdekat berjarak 150 meter
 **Colokan listrik**: Tersedia 3 stop kontak di area dalam untuk pengisian baterai
 **Area merokok**: Tidak ada area merokok di dalam. Merokok hanya diperbolehkan di area luar (trotoar depan kedai)
 **Kursi bayi (baby chair)**: Tersedia 2 unit, bisa diminta ke kasir
-**Pembayaran**: Tunai, QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja), transfer bank BCA (No. Rek: 1234567890 a.n. Borneo)
+**Pembayaran**: Tunai, QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja), transfer bank BCA (No. Rek: 1234567890 a.n. Sari Wulandari)
 
 ---
 
 ## BAGIAN 9 — LAYANAN PESAN ANTAR
 
-Kedai Borneo tersedia di platform pesan antar online:
+Kedai Bu Sari tersedia di platform pesan antar online:
 
-**GoFood**: Cari "Kedai Borneo Pramuka" — estimasi pengiriman 20–40 menit tergantung jarak
-**GrabFood**: Cari "Kedai Borneo" di area Samarinda Kota
-**ShopeeFood**: Cari "Kedai Borneo" — promo tersedia setiap hari Selasa
+**GoFood**: Cari "Kedai Bu Sari Pramuka" — estimasi pengiriman 20–40 menit tergantung jarak
+**GrabFood**: Cari "Kedai Bu Sari" di area Samarinda Kota
+**ShopeeFood**: Cari "Kedai Bu Sari" — promo tersedia setiap hari Selasa
 
 Catatan layanan pesan antar:
 - Harga di aplikasi mungkin sedikit berbeda dari harga di kedai (platform mengambil komisi)
@@ -273,7 +273,7 @@ Catatan layanan pesan antar:
 ### Promo Rutin
 
 **Promo Senin Hemat**
-Setiap hari Senin: Nasi Goreng Kampung Borneo Rp 20.000 (diskon Rp 5.000). Berlaku untuk makan di tempat dan takeaway, tidak berlaku untuk GoFood/GrabFood.
+Setiap hari Senin: Nasi Goreng Kampung Bu Sari Rp 20.000 (diskon Rp 5.000). Berlaku untuk makan di tempat dan takeaway, tidak berlaku untuk GoFood/GrabFood.
 
 **Promo Keluarga Akhir Pekan**
 Sabtu dan Minggu: Makan untuk 4 orang atau lebih, gratis 2 minuman es teh manis. Harus makan di tempat, tidak perlu kode promo.
@@ -281,7 +281,7 @@ Sabtu dan Minggu: Makan untuk 4 orang atau lebih, gratis 2 minuman es teh manis.
 **Promo Ulang Tahun**
 Tunjukkan KTP atau bukti ulang tahun di hari ulang tahun kamu: gratis 1 porsi nasi goreng kampung. Berlaku hanya di hari H.
 
-### Kartu Stamp Loyalitas
+### Kartu Stampt Loyalitas
 
 Setiap pembelian minimal Rp 30.000 mendapat 1 stempel. Kumpulkan 10 stempel, dapat 1 porsi nasi goreng kampung gratis. Kartu tersedia di kasir.
 
@@ -313,7 +313,7 @@ Menu biasa: 10–20 menit. Jam sibuk (12.00–13.00 dan 18.00–19.30): bisa 25�
 Saat ini belum tersedia mesin EDC (kartu kredit/debit). Pembayaran via QRIS, transfer bank, atau tunai.
 
 **Apakah ada menu untuk penderita diabetes?**
-Kami tidak memiliki menu khusus diabetes. Tapi bisa request: nasi merah (jika tersedia), minuman tanpa gula, dan hindari gorengan. Konsultasi dengan Borneoman untuk saran lebih lanjut.
+Kami tidak memiliki menu khusus diabetes. Tapi bisa request: nasi merah (jika tersedia), minuman tanpa gula, dan hindari gorengan. Konsultasi dengan Bu Sari untuk saran lebih lanjut.
 
 **Apakah menerima pesanan di luar jam operasional?**
 Tidak. Pesanan terakhir diterima 30 menit sebelum tutup. Di luar jam operasional, pesanan bisa diterima via WhatsApp untuk disiapkan keesokan harinya.
@@ -322,18 +322,18 @@ Tidak. Pesanan terakhir diterima 30 menit sebelum tutup. Di luar jam operasional
 Ya, WiFi gratis tersedia. Password di kasir.
 
 **Bagaimana cara pemesanan katering?**
-Hubungi Borneoman via WhatsApp di 0812-3456-7890 dengan menyebutkan: tanggal acara, jumlah orang, jenis acara, lokasi pengiriman, dan paket yang diinginkan. Kami akan balas dalam 1–2 jam di hari kerja.
+Hubungi Bu Sari via WhatsApp di 0812-3456-7890 dengan menyebutkan: tanggal acara, jumlah orang, jenis acara, lokasi pengiriman, dan paket yang diinginkan. Kami akan balas dalam 1–2 jam di hari kerja.
 
 ---
 
 ## BAGIAN 12 — INFORMASI KONTAK LENGKAP
 
-**Pemilik dan Penanggungjawab**: Kun Borneoman
+**Pemilik dan Penanggungjawab**: Sari Wulandari
 **WhatsApp bisnis**: 0812-3456-7890 (aktif 08.00 – 21.00 WITA)
-**Email**: kedaiborneo@gmail.com
-**Instagram**: @kedaiborneo (update menu harian dan promo)
-**Facebook**: Kedai Borneo Samarinda
-**Google Maps**: Ketik "Kedai Borneo Samarinda" di Google Maps
+**Email**: kedaibusari@gmail.com
+**Instagram**: @kedaibusari (update menu harian dan promo)
+**Facebook**: Kedai Bu Sari Samarinda
+**Google Maps**: Ketik "Kedai Bu Sari Samarinda" di Google Maps
 **Alamat**: Jalan Pramuka No. 47, Samarinda, Kalimantan Timur 75121
 
-Untuk komplain atau masukan: Hubungi langsung Borneoman via WhatsApp atau email. Kami berkomitmen merespons dalam 24 jam.
+Untuk komplain atau masukan: Hubungi langsung Bu Sari via WhatsApp atau email. Kami berkomitmen merespons dalam 24 jam.
