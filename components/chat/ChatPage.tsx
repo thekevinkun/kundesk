@@ -81,7 +81,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
   // KUN greeting — hardcoded template, orgName injected at render time
   // No longer comes from DB config — KUN owns the greeting
-  const kunGreeting = `Halo! Aku KUN, asisten virtual bisnis ini. Aku siap menjawab pertanyaan seputar ${orgName} berdasarkan informasi yang telah disiapkan. Ada yang bisa aku bantu?`;
+  const kunGreeting = `Halo! Aku **KUN**, asisten virtual bisnis ini. Aku siap menjawab pertanyaan seputar **${orgName}** berdasarkan informasi yang telah disiapkan. Ada yang bisa aku bantu?`;
 
   useEffect(() => {
     if (hasGreeted || !sessionId) return;
