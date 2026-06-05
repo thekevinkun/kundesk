@@ -1,6 +1,3 @@
-// Single document row — file icon, name, chunk count, status badge, delete button
-// FileIcon and StatusBadge are inlined here — only used in this file
-
 "use client";
 
 import { motion } from "framer-motion";
@@ -120,9 +117,8 @@ const DocumentRow = ({ doc, onDelete, isDeleting }: DocumentRowProps) => {
         onClick={() => onDelete(doc.id)}
         disabled={isDeleting}
         aria-label={`Hapus dokumen ${doc.name}`}
-        className="ml-1 w-7 h-7 rounded-[6px] flex items-center justify-center text-[13px]
-          opacity-0 group-hover:opacity-100 transition-all hover:bg-(--color-danger-bg)
-          hover:text-(--color-danger) disabled:opacity-40"
+        className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[13px]
+          transition-all hover:bg-(--color-danger-bg) hover:text-(--color-danger) disabled:opacity-40"
       >
         {isDeleting ? "⏳" : "🗑️"}
       </button>

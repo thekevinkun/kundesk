@@ -40,20 +40,31 @@ const UploadingRow = ({ filename, progress, error }: UploadingRowProps) => {
           {filename}
         </div>
         {error ? (
-          // Error message replaces progress bar on failure
           <div className="text-[11.5px] text-(--color-danger)">{error}</div>
         ) : (
           <div className="flex items-center gap-2">
             <Progress value={progress} className="h-1.5 flex-1" />
-            <span className="text-[11px] text-(--color-text-400) w-8 text-right tabular-nums">
-              {progress}%
-            </span>
+            {/* Hide percentage once upload completes — processing phase has no progress to show */}
+            {progress < 100 && (
+              <span className="text-[11px] text-(--color-text-400) w-8 text-right tabular-nums">
+                {progress}%
+              </span>
+            )}
           </div>
         )}
       </div>
 
-      <span className={`badge-base ${error ? "badge-danger" : "badge-brand"}`}>
-        {error ? "Gagal" : "Upload"}
+      {/* Badge reflects upload phase — "Upload" while in progress, "Memproses" at 100% */}
+      <span
+        className={`badge-base ${
+          error
+            ? "badge-danger"
+            : progress < 100
+              ? "badge-brand"
+              : "badge-warning animate-pulse"
+        }`}
+      >
+        {error ? "Gagal" : progress < 100 ? "Upload" : "Memproses..."}
       </span>
     </motion.div>
   );

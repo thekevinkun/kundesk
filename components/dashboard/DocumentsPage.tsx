@@ -18,7 +18,7 @@ import {
   DocumentRowSkeleton,
   UploadingRow,
   UploadZone,
-} from "./documents";
+} from "@/components/dashboard/documents";
 
 const DocumentsPage = () => {
   const queryClient = useQueryClient();

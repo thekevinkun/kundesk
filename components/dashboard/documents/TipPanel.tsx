@@ -13,7 +13,7 @@ const TipPanel = () => {
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        className="w-full flex items-center justify-between px-4 py-3 text-left cursor-pointer"
         aria-expanded={open}
         aria-controls="tip-panel-content"
       >
