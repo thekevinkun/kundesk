@@ -140,12 +140,13 @@ const Navbar = () => {
       <div className="flex items-center lg:hidden">
         <button
           onClick={() => setMobileOpen((p) => !p)}
-          className=" w-9 h-9 flex justify-center rounded-[10px] bg-(--color-bg-input) 
-            border border-(--color-border) text-(--color-text-500)"
+          className={`${mobileOpen ? "items-center" : ""} w-9 h-9 flex justify-center 
+            rounded-[10px] bg-(--color-bg-input) border 
+            border-(--color-border) text-(--color-text-500)`}
           aria-label="Buka menu"
           aria-expanded={mobileOpen}
         >
-          <span className="!text-xl">{mobileOpen ? "✕" : "☰"}</span>
+          <span className={`${mobileOpen ? "!text-lg" : "!text-xl"}`}>{mobileOpen ? "✕" : "☰"}</span>
         </button>
 
         <UserButton

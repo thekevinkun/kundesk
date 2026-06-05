@@ -56,7 +56,7 @@ const ChatInput = ({
                 : "Ketik pesan kamu..."
             }
             rows={1}
-            className="flex-1 resize-none bg-transparent text-base text-gray-800 placeholder-gray-400 outline-none py-1 max-h-[120px] disabled:opacity-50"
+            className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none py-1 max-h-[120px] disabled:opacity-50"
             aria-label="Input pesan"
             aria-busy={isDisabled}
           />
@@ -102,7 +102,7 @@ const ChatInput = ({
             Ketik{" "}
             <span className="font-semibold text-gray-500">hubungi admin</span>{" "}
             untuk berbicara dengan staff ·{" "}
-            <span className="font-semibold" style={{ color: accentColor }}>
+            <span className="font-semibold text-[#069494]">
               Kundesk
             </span>
           </p>

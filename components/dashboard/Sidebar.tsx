@@ -19,7 +19,7 @@ const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
     <>
       {/* Desktop sidebar — fixed, always visible on lg+ */}
       <motion.aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-dvh w-3/4  lg:w-[230px]
+        className="hidden lg:flex flex-col fixed top-0 left-0 h-dvh w-3/4 lg:w-[230px]
           bg-(--color-bg-card) border-r border-(--color-border) z-50"
         variants={slideInLeft}
         initial="hidden"

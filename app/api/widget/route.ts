@@ -215,11 +215,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     /* ── Avatar in header ── */
     '#kd-avatar {',
-    '  width:40px; height:40px;',
-    '  display:flex; align-items:center; justify-content:center;',
-    '  font-size:18px; font-weight:800; color:white;',
-    '  font-family:-apple-system,BlinkMacSystemFont,sans-serif;',
-    '  flex-shrink:0; position:relative; z-index:1;',
+    '  width:42px;',
+    '  height:42px;',
+    '  display:flex;',
+    '  align-items:center;',
+    '  justify-content:center;',
+    '  background:rgba(243,244,246,0.9);',
+    '  border-radius:6px;',
+    '  flex-shrink:0;',
+    '  position:relative;',
+    '  z-index:1;',
+    '  overflow:hidden;',
     '}',
 
     /* ── Header text ── */
@@ -368,7 +374,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   var kunImg = document.createElement('img');
   kunImg.setAttribute('src', KUN_LOGO);
   kunImg.setAttribute('alt', 'KUN');
-  kunImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+  kunImg.style.cssText =
+    'width:100%;' +
+    'height:100%;' +
+    'object-fit:contain;' +
+    'padding:5px;' +
+    'filter:brightness(.90);' +
+    'box-sizing:border-box;';
   kunImg.onerror = function() {
     // Fallback to text if image fails to load
     avatarEl.innerHTML = '';

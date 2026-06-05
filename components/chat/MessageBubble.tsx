@@ -51,7 +51,7 @@ const MessageBubble = ({
 
       {/* Bubble */}
       <div
-        className={`max-w-[55%] px-4 py-3 text-sm leading-relaxed ${
+        className={`max-w-full md:max-w-[55%] px-4 py-3 text-sm leading-relaxed ${
           isUser
             ? "rounded-2xl rounded-br-sm text-white"
             : "rounded-2xl rounded-bl-sm text-gray-800"

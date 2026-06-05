@@ -309,13 +309,16 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                   style={{ background: data.accentColor }}
                 >
                   {/* KUN avatar in preview */}
-                  <Image
-                    src="/images/kun_logo.png"
-                    alt="KUN"
-                    width={34}
-                    height={34}
-                    className="object-contain brightness-[.90]"
-                  />
+                  <div className="relative w-10.5 h-10.5 flex items-center justify-center rounded-sm bg-[#f3f4f6]/90">
+                    <Image
+                      src="/images/kun_logo.png"
+                      alt="KUN"
+                      fill
+                      sizes="42px"
+                      className="w-full h-full p-1.25 object-contain brightness-[.90]"
+                    />
+                  </div>
+                  
                   <div>
                     <div className="text-white font-semibold text-[13px]">
                       Talk with KUN

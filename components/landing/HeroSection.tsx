@@ -55,7 +55,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
               alt="KUN"
               width={22}
               height={22}
-              className="object-contain brightness-[.85]"
+              className="w-5 h-5 sm:w-5.5 sm:h-5.5 object-contain brightness-[.85]"
             />
             <span className="text-[10.5px] sm:text-[12px] font-semibold tracking-[-0.01em]">
               Kenalkan KUN — asisten AI bisnis kamu
