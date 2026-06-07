@@ -32,7 +32,7 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: {
-    default: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    default: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     template: "%s | Kundesk",
   },
   description:
@@ -73,15 +73,15 @@ export const metadata: Metadata = {
     type: "website",
     locale: "id_ID",
     siteName: "Kundesk",
-    title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
       "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Tanpa coding.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/images/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+        alt: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
       },
     ],
   },
@@ -89,10 +89,10 @@ export const metadata: Metadata = {
   // ── Twitter/X card ──
   twitter: {
     card: "summary_large_image",
-    title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
       "Kenalkan KUN — AI customer service yang menjawab pelanggan bisnis kamu 24/7. Tanpa coding.",
-    images: ["/og-image.png"],
+    images: ["/images/og-image.jpg"],
     creator: "@kunborneo",
   },
 

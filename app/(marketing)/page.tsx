@@ -6,17 +6,19 @@ import { getBillingData } from "@/lib/db/queries/billing";
 import type { PlanName } from "@/types/billing";
 
 export const metadata: Metadata = {
-  title: "AI Customer Service untuk Bisnis Indonesia",
+  title: {
+    absolute: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
+  },
   description:
     "Kenalkan KUN — AI asisten virtual dari Kundesk. Upload dokumen bisnis kamu, dan KUN siap menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
   openGraph: {
-    title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
       "Kenalkan KUN — AI asisten virtual dari Kundesk. Upload dokumen bisnis kamu, dan KUN siap menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
     type: "website",
   },
   twitter: {
-    title: "Kundesk — AI Customer Service untuk Bisnis Indonesia",
+    title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
       "Kenalkan KUN — AI asisten virtual dari Kundesk yang menjawab pelanggan bisnis kamu 24/7. Tanpa coding.",
   },
