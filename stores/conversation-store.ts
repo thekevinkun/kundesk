@@ -67,6 +67,10 @@ interface ConversationStore {
   messagesLimit: number | null;
   setUsage: (used: number, limit: number) => void;
 
+  // ── Accent color — customizable via Appearance settings ──
+  accentColor: string;
+  setAccentColor: (color: string) => void;
+
   // ── In-memory notification list — bell panel ──
   notificationItems: NotificationItem[];
   setNotifications: (items: NotificationItem[]) => void;
@@ -120,6 +124,10 @@ export const useConversationStore = create<ConversationStore>((set) => ({
   messagesUsed: null,
   messagesLimit: null,
   setUsage: (used, limit) => set({ messagesUsed: used, messagesLimit: limit }),
+
+  // Accent color
+  accentColor: "#069494",
+  setAccentColor: (color) => set({ accentColor: color }),
 
   // Bell panel notifications
   notificationItems: [],

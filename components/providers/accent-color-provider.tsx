@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
+import { useConversationStore } from "@/stores/conversation-store";
 
 interface AccentColorProviderProps {
   accentColor: string;
 }
 
 export function AccentColorProvider({ accentColor }: AccentColorProviderProps) {
+  const setAccentColor = useConversationStore((s) => s.setAccentColor);
+
   useEffect(() => {
     document.documentElement.style.setProperty("--color-brand", accentColor);
+    setAccentColor(accentColor);
 
     return () => {
       // Remove inline style on unmount — CSS falls back to globals.css default (#069494)

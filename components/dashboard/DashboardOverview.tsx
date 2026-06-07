@@ -163,8 +163,8 @@ const DashboardOverview = ({
   const messagesUsed = storeMessagesUsed ?? initialMessagesUsed;
   const messagesLimit = storeMessagesLimit ?? initialMessagesLimit;
 
-  // Read accentColor from store — set by AccentColorProvider and updated by color picker
-  const accentColor = botStatus?.accentColor ?? "#069494";
+  // Read accentColor from store
+  const accentColor = useConversationStore((s) => s.accentColor);
 
   // Quota percentage for donut chart
   const quotaUsed = Math.min((messagesUsed / (messagesLimit || 1)) * 100, 100);

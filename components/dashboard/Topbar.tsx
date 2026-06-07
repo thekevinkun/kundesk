@@ -66,11 +66,14 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
   const [clock, setClock] = useState("");
   const [utcOffset, setUtcOffset] = useState("");
 
+  const setAccentColor = useConversationStore((s) => s.setAccentColor);
+
   // Apply color live + persist to DB via Server Action
   const applyColor = (hex: string) => {
     // Update CSS variable immediately — no wait for server
     document.documentElement.style.setProperty("--color-brand", hex);
     setActiveColor(hex);
+    setAccentColor(hex);
 
     // Persist in background — useTransition keeps UI non-blocking
     startTransition(() => {
@@ -79,6 +82,10 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
   };
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    setActiveColor(initialAccentColor);
+  }, [initialAccentColor]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1023px)");
