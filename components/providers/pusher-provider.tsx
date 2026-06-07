@@ -4,10 +4,11 @@
 
 "use client";
 
-import { useCallback, useEffect } from "react"; // useEffect hydrates unread state once the dashboard knows the org.
+import { useCallback, useEffect } from "react";
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
 import { useSoundNotification } from "@/hooks/use-sound-notification";
-import { useConversationStore } from "@/stores/conversation-store"; // Shared inbox state lives in Zustand.
+import { useConversationStore } from "@/stores/conversation-store";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   TakeoverPayload,
   MessagePayload,
@@ -19,49 +20,89 @@ interface PusherProviderProps {
 
 export function PusherProvider({ orgId }: PusherProviderProps) {
   const { playNewMessage, playHandoffAlert } = useSoundNotification();
-  const hydrateUnreadConversationIds = useConversationStore( // Pull the hydration action from the store.
-    (s) => s.hydrateUnreadConversationIds, // Keep the unread Set in sync with browser storage.
+  const queryClient = useQueryClient();
+  const hydrateUnreadConversationIds = useConversationStore(
+    (s) => s.hydrateUnreadConversationIds,
   );
+  const setPendingHandoff = useConversationStore((s) => s.setPendingHandoff);
+  const setUsage = useConversationStore((s) => s.setUsage);
 
-  useEffect(() => { // Hydrate once per org so refresh restores unread badges.
-    hydrateUnreadConversationIds(orgId); // Load the unread snapshot for the active org.
-  }, [hydrateUnreadConversationIds, orgId]); // Re-run only if the org changes.
+  useEffect(() => {
+    hydrateUnreadConversationIds(orgId);
+  }, [hydrateUnreadConversationIds, orgId]);
 
-  // New conversation started — always play new-message sound
   const handleConversationNew = useCallback(() => {
     playNewMessage();
-  }, [playNewMessage]);
+    // Invalidate recent conversations panel
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "recent"],
+    });
+  }, [playNewMessage, queryClient]);
 
-  // Takeover event — play handoff-alert only when customer requests handoff
-  // Staff-initiated takeover (handoffStatus === "human") gets no sound — staff did it themselves
   const handleTakeover = useCallback(
     (payload: TakeoverPayload) => {
       if (payload.handoffStatus === "pending_handoff") {
         playHandoffAlert();
+        setPendingHandoff(true);
+        void queryClient.invalidateQueries({
+          queryKey: ["conversations", "pending-count"],
+        });
+      } else {
+        setPendingHandoff(false);
       }
     },
-    [playHandoffAlert],
+    [playHandoffAlert, setPendingHandoff, queryClient],
   );
 
-  // New message — play new-message sound only when customer writes in human/pending mode
-  // AI mode messages are silent — only the new conversation event sounds there
   const handleMessage = useCallback(
     (payload: MessagePayload) => {
       const isHumanMode =
         payload.handoffStatus === "human" ||
         payload.handoffStatus === "pending_handoff";
-
       if (isHumanMode && payload.role === "user") {
         playNewMessage();
       }
+      // Invalidate recent conversations so panel row updates live
+      void queryClient.invalidateQueries({
+        queryKey: ["conversations", "recent"],
+      });
     },
-    [playNewMessage],
+    [playNewMessage, queryClient],
+  );
+
+  const handleReturn = useCallback(() => {
+    setPendingHandoff(false);
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "pending-count"],
+    });
+  }, [setPendingHandoff, queryClient]);
+
+  // usage:updated — update Zustand directly + invalidate stat cards immediately
+  const handleUsageUpdated = useCallback(
+    (payload: { messagesUsed: number; messagesLimit: number }) => {
+      // Zustand — BotStatusPanel reads from here, updates instantly
+      setUsage(payload.messagesUsed, payload.messagesLimit);
+
+      // Stat cards — invalidate immediately, they're cheap
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard", orgId, "stats"],
+      });
+
+      // Charts — these are heavy, debounce them
+      // Using a module-level timer so it survives re-renders without useRef
+      void queryClient.invalidateQueries({
+        queryKey: ["dashboard", orgId, "charts"],
+      });
+    },
+    [setUsage, queryClient, orgId],
   );
 
   usePusherChannel(orgId, {
     onConversationNew: handleConversationNew,
     onTakeover: handleTakeover,
     onMessage: handleMessage,
+    onReturn: handleReturn,
+    onUsageUpdated: handleUsageUpdated,
   });
 
   return null;

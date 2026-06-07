@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConversationStore } from "@/stores/conversation-store";
 import { MessageRole, HandoffStatus } from "@/types/chat";
@@ -76,6 +76,13 @@ export function usePusherChannel(
   // queryClient at hook top level — invalidates sidebar badge immediately on pending_handoff
   const queryClient = useQueryClient();
 
+  // Keep callbacks ref always current — avoids stale closures without reconnecting
+  const callbacksRef = useRef(callbacks);
+
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  });
+
   useEffect(() => {
     let cancelled = false;
 
@@ -114,7 +121,7 @@ export function usePusherChannel(
         (data: { conversationId: number; sessionId: string }) => {
           // Only increment for new customer conversations — not internal events
           incrementUnread();
-          callbacks?.onConversationNew?.(data);
+          callbacksRef.current?.onConversationNew?.(data);
         },
       );
 
@@ -138,7 +145,7 @@ export function usePusherChannel(
           }
         }
 
-        callbacks?.onMessage?.(payload as MessagePayload);
+        callbacksRef.current?.onMessage?.(payload as MessagePayload);
       });
 
       // Staff took over OR customer requested handoff — update pending flag + sidebar badge
@@ -157,7 +164,7 @@ export function usePusherChannel(
           // Pending is resolved for this event stream
           setPendingHandoff(false);
         }
-        callbacks?.onTakeover?.(data);
+        callbacksRef.current?.onTakeover?.(data);
       });
 
       // AI resumed — optional callback so conversations page reverts badge
@@ -166,25 +173,25 @@ export function usePusherChannel(
         void queryClient.invalidateQueries({
           queryKey: ["conversations", "pending-count"],
         });
-        callbacks?.onReturn?.(data);
+        callbacksRef.current?.onReturn?.(data);
       });
 
       // Document status changed — optional callback
       channel.bind(EVENTS.DOCUMENT_UPDATED, (data: unknown) => {
         console.log("[Pusher] document:updated", data);
-        callbacks?.onDocumentUpdated?.(data);
+        callbacksRef.current?.onDocumentUpdated?.(data);
       });
 
       // New notification — prepend to panel list live
       channel.bind(EVENTS.NOTIFICATION_NEW, (data: NotificationItem) => {
         incrementUnread();
-        callbacks?.onNotificationNew?.(data);
+        callbacksRef.current?.onNotificationNew?.(data);
       });
 
       // Usage updated — fires after every successful AI response
       channel.bind(EVENTS.USAGE_UPDATED, (data: unknown) => {
         const payload = data as { messagesUsed: number; messagesLimit: number };
-        callbacks?.onUsageUpdated?.(payload);
+        callbacksRef.current?.onUsageUpdated?.(payload);
       });
 
       // Fix: use the same channelName variable — was previously "org-{orgId}" (wrong)

@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getConversationPageAction } from "@/lib/actions/dashboard";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getConversationPageAction,
+  getRecentActiveConversationsAction,
+} from "@/lib/actions/dashboard";
 import { formatRelativeTime } from "@/helpers/format";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
 
@@ -43,28 +47,14 @@ const EmptyState = () => (
 );
 
 // ── Sort — pending always first, then by lastMessageAt desc ──
-const EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours — active conversations only.
-
-const isExpiredConversation = (
-  convo: ConversationRowType,
-  now: number,
-): boolean => {
-  const anchorTime = convo.lastMessageAt ?? convo.createdAt; // Fall back to creation time when there is no message yet.
-  return now - new Date(anchorTime).getTime() > EXPIRY_MS; // Expire once the last activity is older than 24h.
-};
-
 const sortConversations = (
   convos: ConversationRowType[],
 ): ConversationRowType[] => {
   return [...convos].sort((a, b) => {
     const aIsPending = a.handoffStatus === "pending_handoff";
     const bIsPending = b.handoffStatus === "pending_handoff";
-
-    // Pending rows float to top
     if (aIsPending && !bIsPending) return -1;
     if (!aIsPending && bIsPending) return 1;
-
-    // Within same priority group — most recent first
     const aTime = a.lastMessageAt
       ? new Date(a.lastMessageAt).getTime()
       : new Date(a.createdAt).getTime();
@@ -77,102 +67,43 @@ const sortConversations = (
 
 interface RecentConversationsPanelProps {
   initialConversations: ConversationRowType[];
-  newConversation: ConversationRowType | null;
-  latestMessage: ConversationRowType | null;
-  latestStatusUpdate: {
-    conversationId: number;
-    handoffStatus: string;
-  } | null;
 }
 
 const RecentConversationsPanel = ({
   initialConversations,
-  newConversation,
-  latestMessage,
-  latestStatusUpdate,
 }: RecentConversationsPanelProps) => {
   const router = useRouter();
+  const [now, setNow] = useState(() => Date.now());
 
-  // Always keep sorted — pending on top
-  const [conversations, setConversations] = useState<ConversationRowType[]>(
-    () => sortConversations(initialConversations),
-  );
-  const [now, setNow] = useState(() => Date.now()); // Drives the 24h expiry filter without waiting for new Pusher events.
+  // Self-fetching via TanStack Query — PusherProvider invalidates this key
+  // on every conversation:new, conversation:message, conversation:takeover, conversation:return
+  const { data } = useQuery({
+    queryKey: ["conversations", "recent"],
+    queryFn: getRecentActiveConversationsAction,
+    initialData: initialConversations,
+    // No staleTime — always refetch when invalidated by Pusher
+    staleTime: 0,
+  });
 
-  // Track seen IDs — deduplicate Pusher new conversation events
-  const seenIdsRef = useRef(new Set(initialConversations.map((c) => c.id)));
+  // Sort is derived — no extra state needed, data from query is already sorted by DB
+  // but client-side sort keeps it correct after optimistic updates
+  const conversations = useMemo(() => sortConversations(data ?? []), [data]);
 
-  // Reset state when initialConversations changes — handles org switch
-  // useState initializer only runs on mount; subsequent prop changes are ignored
+  // Live relative time ticker — aligned to real minute boundaries
   useEffect(() => {
-    setConversations(sortConversations(initialConversations));
-    seenIdsRef.current = new Set(initialConversations.map((c) => c.id));
-  }, [initialConversations]);
-
-  // New conversation prepended from Pusher
-  useEffect(() => {
-    if (!newConversation) return;
-    if (seenIdsRef.current.has(newConversation.id)) return;
-    seenIdsRef.current.add(newConversation.id);
-    setConversations((prev) =>
-      sortConversations([newConversation, ...prev]).slice(0, 10),
-    );
-  }, [newConversation]);
-
-  // Message preview updated from Pusher — re-sort after update (time changed)
-  useEffect(() => {
-    if (!latestMessage) return;
-    setConversations((prev) =>
-      sortConversations([
-        {
-          ...latestMessage,
-          lastMessage: latestMessage.lastMessage?.slice(0, 80) ?? null,
-        },
-        ...prev.filter((c) => c.id !== latestMessage.id),
-      ]).slice(0, 10),
-    );
-  }, [latestMessage]);
-
-  // Status updated from Pusher — re-sort so pending floats to top immediately
-  useEffect(() => {
-    if (!latestStatusUpdate) return;
-    setConversations((prev) =>
-      sortConversations(
-        prev.map((c) =>
-          c.id === latestStatusUpdate.conversationId
-            ? {
-                ...c,
-                handoffStatus:
-                  latestStatusUpdate.handoffStatus as ConversationRowType["handoffStatus"],
-              }
-            : c,
-        ),
-      ),
-    );
-  }, [latestStatusUpdate]);
-
-  // Filter out expired conversations after sorting and updates
-  // keeps the list fresh without waiting for new Pusher events to trigger a re-render
-  const activeConversations = useMemo(
-    () => conversations.filter((convo) => !isExpiredConversation(convo, now)),
-    [conversations, now],
-  );
-
-  // Fixed interval — keep relative time labels fresh every minute.
-  useEffect(() => {
-    const msUntilNextMinute = 60_000 - (Date.now() % 60_000); // Wait until the next real minute boundary.
-    let intervalId: number | null = null; // Hold the repeating timer after alignment.
+    const msUntilNextMinute = 60_000 - (Date.now() % 60_000);
+    let intervalId: number | null = null;
 
     const timeoutId = window.setTimeout(() => {
-      setNow(Date.now()); // Snap to the exact minute change first.
+      setNow(Date.now());
       intervalId = window.setInterval(() => {
-        setNow(Date.now()); // Then keep ticking once per real minute.
+        setNow(Date.now());
       }, 60_000);
     }, msUntilNextMinute);
 
     return () => {
-      window.clearTimeout(timeoutId); // Cancel the alignment wait on unmount.
-      if (intervalId) window.clearInterval(intervalId); // Stop the repeating minute tick if it started.
+      window.clearTimeout(timeoutId);
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, []);
 
@@ -190,12 +121,11 @@ const RecentConversationsPanel = ({
     [router],
   );
 
-  // Pending count for header subtitle
-  const pendingCount = activeConversations.filter(
+  const pendingCount = conversations.filter(
     (c) => c.handoffStatus === "pending_handoff",
   ).length;
 
-  const displayed = activeConversations.slice(0, 5);
+  const displayed = conversations.slice(0, 5);
 
   return (
     <div className="card-base flex h-full flex-col overflow-hidden">
@@ -207,9 +137,9 @@ const RecentConversationsPanel = ({
           </div>
           <div className="text-[11px] text-(--color-text-400) mt-0.5">
             {pendingCount > 0
-              ? `${pendingCount} menunggu staff · ${activeConversations.length} percakapan aktif`
-              : activeConversations.length > 0
-                ? `${activeConversations.length} percakapan aktif`
+              ? `${pendingCount} menunggu staff · ${conversations.length} percakapan aktif`
+              : conversations.length > 0
+                ? `${conversations.length} percakapan aktif`
                 : "Semua percakapan tertangani"}
           </div>
         </div>
@@ -223,8 +153,7 @@ const RecentConversationsPanel = ({
 
       {/* List */}
       <div
-        className="overflow-y-auto
-          flex-1 min-h-0
+        className="overflow-y-auto flex-1 min-h-0
           [&::-webkit-scrollbar]:w-[4px]
           [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
           hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
@@ -244,7 +173,6 @@ const RecentConversationsPanel = ({
                 }`}
                 aria-label={`Buka percakapan ${convo.sessionId.slice(0, 8)}`}
               >
-                {/* Top row: session ID + time + status */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="font-mono text-[10.5px] text-(--color-text-400) bg-(--color-bg-page) px-1.5 py-0.5 rounded-[4px] border border-(--color-border) flex-shrink-0">
@@ -265,7 +193,6 @@ const RecentConversationsPanel = ({
                   </div>
                 </div>
 
-                {/* Message preview */}
                 <div className="text-[12px] text-(--color-text-700) line-clamp-2 leading-snug group-hover:text-(--color-text-900) transition-colors">
                   {convo.lastMessage ? (
                     `"${convo.lastMessage}"`
@@ -276,9 +203,8 @@ const RecentConversationsPanel = ({
                   )}
                 </div>
 
-                {/* Message count */}
                 <div className="mt-1.5 text-[10.5px] text-(--color-text-400)">
-                  {convo.messageCount} pesan
+                  {convo.messageCount} pesan aktif
                 </div>
               </button>
             );

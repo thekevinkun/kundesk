@@ -10,16 +10,31 @@ import {
   getAnsweredRate,
   getUniqueVisitors,
   getAvgResponseTime,
+  getRecentActiveConversations,
   findConversationPage,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
+import type { ConversationRow as ConversationRowType } from "@/types/api";
 
 export interface DashboardStats {
   totalMessages: number;
   answeredRate: number;
   uniqueVisitors: number;
   avgResponseTime: string | null;
+}
+
+export async function getRecentActiveConversationsAction(): Promise<
+  ConversationRowType[]
+> {
+  const { orgId } = await requireOrg();
+  const rows = await getRecentActiveConversations(orgId);
+  return rows.map((row) => ({
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    lastMessageAt: row.lastMessageAt ? row.lastMessageAt.toISOString() : null,
+    takenOverAt: row.takenOverAt ? row.takenOverAt.toISOString() : null,
+  }));
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {

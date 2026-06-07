@@ -53,6 +53,7 @@ interface ConversationStore {
   // Set when any conversation enters pending_handoff, cleared when that row is clicked
   hasPendingHandoff: boolean;
   setPendingHandoff: (value: boolean) => void;
+
   // ── Unread conversation IDs — drives the dot on ConversationRow ──
   // Added when customer sends message in human mode, cleared when row is expanded
   activeOrgId: string | null;
@@ -60,6 +61,11 @@ interface ConversationStore {
   unreadConversationIds: Set<number>;
   addUnreadConversation: (id: number) => void;
   clearUnreadConversation: (id: number) => void;
+
+  // ── Usage — live-updated from usage:updated Pusher event ──
+  messagesUsed: number | null;
+  messagesLimit: number | null;
+  setUsage: (used: number, limit: number) => void;
 
   // ── In-memory notification list — bell panel ──
   notificationItems: NotificationItem[];
@@ -109,6 +115,11 @@ export const useConversationStore = create<ConversationStore>((set) => ({
         writeUnreadConversationIds(state.activeOrgId, next); // Persist the cleared unread snapshot.
       return { unreadConversationIds: next }; // Commit the updated Set to Zustand.
     }),
+
+  // Usage
+  messagesUsed: null,
+  messagesLimit: null,
+  setUsage: (used, limit) => set({ messagesUsed: used, messagesLimit: limit }),
 
   // Bell panel notifications
   notificationItems: [],

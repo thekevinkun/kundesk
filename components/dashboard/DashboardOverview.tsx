@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useConversationStore } from "@/stores/conversation-store";
 import { StatCard } from "@/components/dashboard";
 import { staggerContainer, staggerItem } from "@/lib/animations";
-import { usePusherChannel } from "@/hooks/use-pusher-channel";
-import { getDashboardStats } from "@/lib/actions/dashboard";
-import { getDashboardChartData } from "@/lib/actions/dashboard";
+import {
+  getDashboardStats,
+  getDashboardChartData,
+} from "@/lib/actions/dashboard";
 import type { DashboardStats } from "@/lib/actions/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
 
@@ -71,7 +72,7 @@ const BotStatusPanel = dynamic(
 // ── Props ──
 interface DashboardOverviewProps {
   orgId: string;
-  initialStats: DashboardStats; // seeded from server — no loading flash on first render
+  initialStats: DashboardStats;
   orgName: string;
   dailyTrend: { date: string; count: number }[];
   monthlyCurrent: number[];
@@ -86,7 +87,6 @@ interface DashboardOverviewProps {
     totalChunks: number;
   } | null;
   orgSlug: string;
-  // messagesUsed/Limit come from org table — separate from stats, updated via usage:updated
   initialMessagesUsed: number;
   initialMessagesLimit: number;
   initialRecentConversations: ConversationRowType[];
@@ -132,33 +132,16 @@ const DashboardOverview = ({
   initialMessagesLimit,
   initialRecentConversations,
 }: DashboardOverviewProps) => {
-  const queryClient = useQueryClient();
-  const chartInvalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  // ── Stats query — seeded with server data, refetches when usage:updated fires ──
+  // ── Stats query — invalidated by PusherProvider on usage:updated ──
   const { data: stats } = useQuery({
     queryKey: ["dashboard", orgId, "stats"],
     queryFn: getDashboardStats,
     initialData: initialStats,
+    initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
+    staleTime: 0, // Always refetch when invalidated
   });
 
-  // ── Usage bar state ──
-  const { data: usageData } = useQuery({
-    queryKey: ["dashboard", orgId, "usage"],
-    queryFn: async () => ({
-      messagesUsed: initialMessagesUsed,
-      messagesLimit: initialMessagesLimit,
-    }),
-    initialData: {
-      messagesUsed: initialMessagesUsed,
-      messagesLimit: initialMessagesLimit,
-    },
-  });
-
-  // ── Chart data query — seeded with server props, refetches when usage:updated fires ──
-  // Separate from stats query — chart series data is timezone-sensitive and heavier
+  // ── Chart data query — invalidated by PusherProvider on usage:updated (debounced) ──
   const { data: chartData } = useQuery({
     queryKey: ["dashboard", orgId, "charts"],
     queryFn: getDashboardChartData,
@@ -169,121 +152,19 @@ const DashboardOverview = ({
       weeklyMessages,
       currentYear,
     },
-    // Charts don't need to be as fresh as stat cards — 60s stale time reduces DB load
-    staleTime: 60_000,
+    initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
+    staleTime: 0,
   });
 
-  // ── Recent conversations — live-updated via Pusher ──
-  const [newConversation, setNewConversation] =
-    useState<ConversationRowType | null>(null);
+  // ── Usage — read from Zustand, set by PusherProvider on usage:updated ──
+  // Falls back to server-seeded initial values until the first Pusher event fires
+  const storeMessagesUsed = useConversationStore((s) => s.messagesUsed);
+  const storeMessagesLimit = useConversationStore((s) => s.messagesLimit);
+  const messagesUsed = storeMessagesUsed ?? initialMessagesUsed;
+  const messagesLimit = storeMessagesLimit ?? initialMessagesLimit;
 
-  const [latestPanelMessage, setLatestPanelMessage] =
-    useState<ConversationRowType | null>(null); // Full row payload keeps the overview panel authoritative.
-
-  const [latestStatusUpdate, setLatestStatusUpdate] = useState<{
-    conversationId: number;
-    handoffStatus: string;
-  } | null>(null);
-
-  // ── Pusher: invalidate all queries when a message is processed ──
-  const handleUsageUpdated = useCallback(
-    (payload: { messagesUsed: number; messagesLimit: number }) => {
-      // Stat cards — total messages, answered rate, unique visitors, response time
-      // Debounce chart invalidation — charts don't need to update on every message
-      // 10s window collapses bursts of messages into a single refetch
-      if (chartInvalidateTimer.current)
-        clearTimeout(chartInvalidateTimer.current);
-      chartInvalidateTimer.current = setTimeout(() => {
-        void queryClient.invalidateQueries({
-          queryKey: ["dashboard", orgId, "stats"],
-        });
-      }, 10_000);
-
-      // Charts — daily trend, weekly bar, monthly line all need new data point
-      void queryClient.invalidateQueries({
-        queryKey: ["dashboard", orgId, "charts"],
-      });
-
-      // Usage bar — set directly from payload, no extra DB round trip needed
-      queryClient.setQueryData(["dashboard", orgId, "usage"], {
-        messagesUsed: payload.messagesUsed,
-        messagesLimit: payload.messagesLimit,
-      });
-    },
-    [queryClient, orgId],
-  );
-
-  // New conversation from Pusher — fetch full row then pass to panel
-  const handleConversationNew = useCallback(
-    async (payload: { conversationId: number }) => {
-      try {
-        // Wait 2s before fetching — conversation:new fires before handleStreamComplete
-        // saves the first messages. Without delay, lastMessage comes back null.
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        const res = await fetch(`/api/conversations/${payload.conversationId}`);
-        const json = (await res.json()) as {
-          ok: boolean;
-          data: ConversationRowType;
-        };
-        if (json.ok && json.data) {
-          setNewConversation(json.data);
-        }
-      } catch {
-        // Non-critical — panel updates on next refresh
-      }
-    },
-    [],
-  );
-
-  // New message from Pusher — update existing row preview in panel
-  const handleMessage = useCallback(
-    async (payload: { conversationId: number; content?: string }) => {
-      try {
-        const res = await fetch(`/api/conversations/${payload.conversationId}`); // Always refetch the row so the panel uses server timestamps and counts.
-        const json = (await res.json()) as {
-          ok: boolean;
-          data: ConversationRowType;
-        };
-        if (json.ok && json.data) {
-          setLatestPanelMessage(json.data); // Store the full conversation row, not a client-built partial.
-        }
-      } catch {
-        // Non-critical — panel updates on next refresh.
-      }
-    },
-    [],
-  );
-
-  const handleTakeover = useCallback(
-    (payload: { conversationId: number; handoffStatus?: string }) => {
-      setLatestStatusUpdate({
-        conversationId: payload.conversationId,
-        handoffStatus: payload.handoffStatus ?? "human",
-      });
-    },
-    [],
-  );
-
-  const handleReturn = useCallback((payload: { conversationId: number }) => {
-    setLatestStatusUpdate({
-      conversationId: payload.conversationId,
-      handoffStatus: "ai",
-    });
-  }, []);
-
-  // Subscribe to org channel — Pusher reuses existing WebSocket, no second connection
-  usePusherChannel(orgId, {
-    onUsageUpdated: handleUsageUpdated,
-    onConversationNew: handleConversationNew,
-    onMessage: handleMessage,
-    onTakeover: handleTakeover,
-    onReturn: handleReturn,
-  });
-  // Quota percentage for donut chart — derived from live usage data
-  const quotaUsed = Math.min(
-    ((usageData.messagesUsed ?? 0) / (usageData.messagesLimit || 1)) * 100,
-    100,
-  );
+  // Quota percentage for donut chart
+  const quotaUsed = Math.min((messagesUsed / (messagesLimit || 1)) * 100, 100);
 
   const formatCount = (n: number): string => {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
@@ -302,7 +183,7 @@ const DashboardOverview = ({
         </p>
       </div>
 
-      {/* ── Stat cards row — all four update live via stats query ── */}
+      {/* ── Stat cards ── */}
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5"
         variants={staggerContainer}
@@ -357,11 +238,10 @@ const DashboardOverview = ({
 
       {/* ── Charts row 1: Donuts + Area ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 mb-4">
-        {/* Performance summary — answeredRate and quotaUsed both live-updated */}
         <div className="card-base">
           <CardHeader
             title="Ringkasan Performa"
-            subtitle={`Bulan ${new Date().toLocaleString("id-ID", { month: "long" })} ${currentYear}`}
+            subtitle={`Bulan ${new Date().toLocaleString("id-ID", { month: "long" })} ${chartData.currentYear}`}
           />
           <DonutCharts
             answeredRate={stats.answeredRate}
@@ -369,7 +249,6 @@ const DashboardOverview = ({
           />
         </div>
 
-        {/* Daily trend — server-fetched, not live (chart data is historical) */}
         <div className="card-base">
           <CardHeader
             title="Tren Percakapan"
@@ -386,9 +265,8 @@ const DashboardOverview = ({
         </div>
       </div>
 
-      {/* ── Charts row 2: Line + Bar stacked left, Conversations panel right ── */}
+      {/* ── Charts row 2: Bar + Line left, Conversations panel right ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
-        {/* Left column — two charts stacked */}
         <div className="flex flex-col gap-4">
           <div className="card-base">
             <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
@@ -410,18 +288,14 @@ const DashboardOverview = ({
           </div>
         </div>
 
-        {/* Right column — recent conversations panel, matches left column height */}
         <div className="h-full lg:sticky lg:top-4">
           <RecentConversationsPanel
             initialConversations={initialRecentConversations}
-            newConversation={newConversation}
-            latestMessage={latestPanelMessage}
-            latestStatusUpdate={latestStatusUpdate}
           />
         </div>
       </div>
 
-      {/* ── Bot status panel — usage bar uses live usageData ── */}
+      {/* ── Bot status panel ── */}
       {botStatus && (
         <div className="mt-4">
           <BotStatusPanel
@@ -431,8 +305,8 @@ const DashboardOverview = ({
             accentColor={botStatus.accentColor}
             documentCount={botStatus.documentCount}
             totalChunks={botStatus.totalChunks}
-            messagesUsed={usageData.messagesUsed}
-            messagesLimit={usageData.messagesLimit}
+            messagesUsed={messagesUsed}
+            messagesLimit={messagesLimit}
           />
         </div>
       )}
