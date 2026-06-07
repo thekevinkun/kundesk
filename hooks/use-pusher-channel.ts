@@ -76,11 +76,24 @@ export function usePusherChannel(
   // queryClient at hook top level — invalidates sidebar badge immediately on pending_handoff
   const queryClient = useQueryClient();
 
-  // Keep callbacks ref always current — avoids stale closures without reconnecting
-  const callbacksRef = useRef(callbacks);
+  // Single ref holds everything that can go stale — updated every render
+  // This pattern avoids stale closures inside the async Pusher setup without reconnecting
+  const stableRef = useRef({
+    incrementUnread,
+    addUnreadConversation,
+    setPendingHandoff,
+    queryClient,
+    callbacks,
+  });
 
   useEffect(() => {
-    callbacksRef.current = callbacks;
+    stableRef.current = {
+      incrementUnread,
+      addUnreadConversation,
+      setPendingHandoff,
+      queryClient,
+      callbacks,
+    };
   });
 
   useEffect(() => {
@@ -101,7 +114,6 @@ export function usePusherChannel(
       if (cancelled) return;
 
       const PusherClient = mod.default;
-
       const pusher = new PusherClient(key, {
         cluster,
         forceTLS: true,
@@ -111,21 +123,18 @@ export function usePusherChannel(
         },
       });
 
-      // private- prefix — server auth required before access is granted
       const channelName = `private-org-${orgId}`;
       const channel = pusher.subscribe(channelName);
 
-      // New conversation — increment bell
       channel.bind(
         EVENTS.CONVERSATION_NEW,
         (data: { conversationId: number; sessionId: string }) => {
-          // Only increment for new customer conversations — not internal events
-          incrementUnread();
-          callbacksRef.current?.onConversationNew?.(data);
+          // Always read from ref — never from closure
+          stableRef.current.incrementUnread();
+          stableRef.current.callbacks?.onConversationNew?.(data);
         },
       );
 
-      // New message — route to correct signal based on handoff status
       channel.bind(EVENTS.CONVERSATION_MESSAGE, (data: unknown) => {
         const payload = data as Partial<MessagePayload>;
         if (typeof payload.conversationId !== "number") return;
@@ -136,65 +145,53 @@ export function usePusherChannel(
             payload.handoffStatus === "pending_handoff";
 
           if (isHumanMode) {
-            // Human mode — add conversation to unread set (drives row dot + chat icon)
-            // unreadConversationIds.size is the source of truth, no separate counter
-            addUnreadConversation(payload.conversationId);
+            stableRef.current.addUnreadConversation(payload.conversationId);
           } else {
-            // AI mode customer message — bell counter as before
-            incrementUnread();
+            stableRef.current.incrementUnread();
           }
         }
 
-        callbacksRef.current?.onMessage?.(payload as MessagePayload);
+        stableRef.current.callbacks?.onMessage?.(payload as MessagePayload);
       });
 
-      // Staff took over OR customer requested handoff — update pending flag + sidebar badge
       channel.bind(EVENTS.CONVERSATION_TAKEOVER, (data: TakeoverPayload) => {
         if (data.handoffStatus === "pending_handoff") {
-          // Red dot on chat icon — customer waiting for staff
-          setPendingHandoff(true);
-          // Invalidate sidebar badge immediately — don't wait for 30s poll
-          void queryClient.invalidateQueries({
+          stableRef.current.setPendingHandoff(true);
+          void stableRef.current.queryClient.invalidateQueries({
             queryKey: ["conversations", "pending-count"],
           });
         } else if (
           data.handoffStatus === "human" ||
           data.handoffStatus === "ai"
         ) {
-          // Pending is resolved for this event stream
-          setPendingHandoff(false);
+          stableRef.current.setPendingHandoff(false);
         }
-        callbacksRef.current?.onTakeover?.(data);
+        stableRef.current.callbacks?.onTakeover?.(data);
       });
 
-      // AI resumed — optional callback so conversations page reverts badge
       channel.bind(EVENTS.CONVERSATION_RETURN, (data: ReturnPayload) => {
-        setPendingHandoff(false);
-        void queryClient.invalidateQueries({
+        stableRef.current.setPendingHandoff(false);
+        void stableRef.current.queryClient.invalidateQueries({
           queryKey: ["conversations", "pending-count"],
         });
-        callbacksRef.current?.onReturn?.(data);
+        stableRef.current.callbacks?.onReturn?.(data);
       });
 
-      // Document status changed — optional callback
       channel.bind(EVENTS.DOCUMENT_UPDATED, (data: unknown) => {
         console.log("[Pusher] document:updated", data);
-        callbacksRef.current?.onDocumentUpdated?.(data);
+        stableRef.current.callbacks?.onDocumentUpdated?.(data);
       });
 
-      // New notification — prepend to panel list live
       channel.bind(EVENTS.NOTIFICATION_NEW, (data: NotificationItem) => {
-        incrementUnread();
-        callbacksRef.current?.onNotificationNew?.(data);
+        stableRef.current.incrementUnread();
+        stableRef.current.callbacks?.onNotificationNew?.(data);
       });
 
-      // Usage updated — fires after every successful AI response
       channel.bind(EVENTS.USAGE_UPDATED, (data: unknown) => {
         const payload = data as { messagesUsed: number; messagesLimit: number };
-        callbacksRef.current?.onUsageUpdated?.(payload);
+        stableRef.current.callbacks?.onUsageUpdated?.(payload);
       });
 
-      // Fix: use the same channelName variable — was previously "org-{orgId}" (wrong)
       cleanup = () => {
         channel.unbind_all();
         pusher.unsubscribe(channelName);
@@ -206,7 +203,7 @@ export function usePusherChannel(
       cancelled = true;
       cleanup?.();
     };
-    // callbacks ref excluded intentionally — would cause infinite reconnects if caller
-    // passes an inline object. Callers should memoize callbacks with useCallback.
-  }, [orgId, incrementUnread]);
+    // orgId is the only dep — connection rebuilds only when org changes
+    // everything else is accessed via stableRef which is always current
+  }, [orgId]);
 }

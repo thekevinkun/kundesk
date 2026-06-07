@@ -44,12 +44,16 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
       if (payload.handoffStatus === "pending_handoff") {
         playHandoffAlert();
         setPendingHandoff(true);
-        void queryClient.invalidateQueries({
-          queryKey: ["conversations", "pending-count"],
-        });
       } else {
         setPendingHandoff(false);
       }
+      // Invalidate both regardless of which branch — status badge must update
+      void queryClient.invalidateQueries({
+        queryKey: ["conversations", "pending-count"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["conversations", "recent"],
+      });
     },
     [playHandoffAlert, setPendingHandoff, queryClient],
   );
@@ -74,6 +78,10 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     setPendingHandoff(false);
     void queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
+    });
+    // Panel must update — conversation status badge changes back to KUN
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "recent"],
     });
   }, [setPendingHandoff, queryClient]);
 
