@@ -77,6 +77,9 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     });
   }, [setPendingHandoff, queryClient]);
 
+  // Module-level debounce timer for chart invalidations
+  let chartInvalidateTimer: ReturnType<typeof setTimeout> | null = null;
+
   // usage:updated — update Zustand directly + invalidate stat cards immediately
   const handleUsageUpdated = useCallback(
     (payload: { messagesUsed: number; messagesLimit: number }) => {
@@ -88,11 +91,13 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
         queryKey: ["dashboard", orgId, "stats"],
       });
 
-      // Charts — these are heavy, debounce them
-      // Using a module-level timer so it survives re-renders without useRef
-      void queryClient.invalidateQueries({
-        queryKey: ["dashboard", orgId, "charts"],
-      });
+      // Charts — debounce to avoid excessive refetches
+      if (chartInvalidateTimer) clearTimeout(chartInvalidateTimer);
+      chartInvalidateTimer = setTimeout(() => {
+        void queryClient.invalidateQueries({
+          queryKey: ["dashboard", orgId, "charts"],
+        });
+      }, 2000); // 2s debounce
     },
     [setUsage, queryClient, orgId],
   );
