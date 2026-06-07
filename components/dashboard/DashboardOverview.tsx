@@ -163,6 +163,9 @@ const DashboardOverview = ({
   const messagesUsed = storeMessagesUsed ?? initialMessagesUsed;
   const messagesLimit = storeMessagesLimit ?? initialMessagesLimit;
 
+  // Read accentColor from store — set by AccentColorProvider and updated by color picker
+  const accentColor = botStatus?.accentColor ?? "#069494";
+
   // Quota percentage for donut chart
   const quotaUsed = Math.min((messagesUsed / (messagesLimit || 1)) * 100, 100);
 
@@ -246,6 +249,7 @@ const DashboardOverview = ({
           <DonutCharts
             answeredRate={stats.answeredRate}
             quotaUsed={quotaUsed}
+            accentColor={accentColor}
           />
         </div>
 
@@ -260,7 +264,7 @@ const DashboardOverview = ({
             }
           />
           <div className="px-5 pt-3 pb-5">
-            <AreaChart data={chartData.dailyTrend} />
+            <AreaChart data={chartData.dailyTrend} accentColor={accentColor} />
           </div>
         </div>
       </div>
@@ -271,7 +275,10 @@ const DashboardOverview = ({
           <div className="card-base">
             <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
             <div className="px-5 pt-3 pb-5">
-              <BarChart data={chartData.weeklyMessages} />
+              <BarChart
+                data={chartData.weeklyMessages}
+                accentColor={accentColor}
+              />
             </div>
           </div>
 
@@ -283,6 +290,7 @@ const DashboardOverview = ({
                 previous={chartData.monthlyPrevious}
                 currentYear={chartData.currentYear}
                 previousYear={chartData.currentYear - 1}
+                accentColor={accentColor}
               />
             </div>
           </div>
@@ -302,7 +310,7 @@ const DashboardOverview = ({
             orgSlug={orgSlug}
             language={botStatus.language}
             isActive={botStatus.isActive}
-            accentColor={botStatus.accentColor}
+            accentColor={accentColor}
             documentCount={botStatus.documentCount}
             totalChunks={botStatus.totalChunks}
             messagesUsed={messagesUsed}

@@ -15,12 +15,13 @@ Chart.register(BarController, BarElement, LinearScale, CategoryScale, Tooltip);
 interface BarChartProps {
   // 7-element array, index 0 = Monday
   data: number[];
+  accentColor: string;
 }
 
 // Day labels — Indonesian abbreviations matching the mockup
 const DAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
-const BarChart = ({ data }: BarChartProps) => {
+const BarChart = ({ data, accentColor }: BarChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -133,7 +134,7 @@ const BarChart = ({ data }: BarChartProps) => {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data, isDarkMode]);
+  }, [data, isDarkMode, accentColor]);
 
   return (
     <div className="h-[160px]">

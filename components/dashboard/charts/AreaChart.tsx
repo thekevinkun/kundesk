@@ -27,9 +27,10 @@ Chart.register(
 interface AreaChartProps {
   // Array of { date: "DD/MM", count: number } sorted oldest→newest
   data: { date: string; count: number }[];
+  accentColor?: string;
 }
 
-const AreaChart = ({ data }: AreaChartProps) => {
+const AreaChart = ({ data, accentColor }: AreaChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   // Rebuild chart when theme toggles — CSS variables change value
@@ -41,7 +42,9 @@ const AreaChart = ({ data }: AreaChartProps) => {
 
     const style = getComputedStyle(document.documentElement);
     const brandColor =
-      style.getPropertyValue("--color-brand").trim() || "#069494";
+      accentColor ??
+      (style.getPropertyValue("--color-brand").trim() || "#069494");
+
     // Read card bg for tooltip — white in light, dark card in dark mode
     const tooltipBg =
       style.getPropertyValue("--color-bg-card").trim() || "#ffffff";
@@ -149,7 +152,7 @@ const AreaChart = ({ data }: AreaChartProps) => {
       chartRef.current = null;
     };
     // resolvedTheme in deps — rebuilds chart with fresh CSS variable values on toggle
-  }, [data, resolvedTheme]);
+  }, [data, resolvedTheme, accentColor]);
 
   return (
     <div className="h-[140px]">

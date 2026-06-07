@@ -6,7 +6,6 @@ import { UserButton } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useConversationStore } from "@/stores/conversation-store";
-import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -18,7 +17,7 @@ import { NotificationPanel, GlobalSearch } from "@/components/dashboard";
 import { COLOR_PRESETS } from "@/helpers/chatbot";
 import { cn } from "@/lib/utils";
 import { fadeIn, dropdownVariants } from "@/lib/animations";
-import { saveAccentColor, getChatbotConfig } from "@/lib/actions/chatbot";
+import { saveAccentColor } from "@/lib/actions/chatbot";
 import {
   getLocalTimezone,
   formatLocalClock,
@@ -26,7 +25,11 @@ import {
 } from "@/helpers/format";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
-const Topbar = () => {
+interface TopbarProps {
+  initialAccentColor: string;
+}
+
+const Topbar = ({ initialAccentColor }: TopbarProps) => {
   const {
     unreadCount,
     notificationItems,
@@ -49,8 +52,8 @@ const Topbar = () => {
   // useTheme from next-themes — reads current theme, setTheme toggles .dark on <html>
   const { theme, setTheme } = useTheme();
 
+  const [activeColor, setActiveColor] = useState(initialAccentColor);
   const [colorPanelOpen, setColorPanelOpen] = useState(false);
-  const [activeColor, setActiveColor] = useState("#069494");
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [isTinyViewport, setIsTinyViewport] = useState(false);
   const [isCompactSearchOpen, setIsCompactSearchOpen] = useState(false);
@@ -143,31 +146,6 @@ const Topbar = () => {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
-
-  // On mount — read the saved accent color from the CSS variable
-  // The chatbot config page sets this via Server Action + revalidatePath
-  // BotStatusPanel passes accentColor to DashboardOverview which applies it on load
-  // We read from CSS variable so Topbar stays in sync without an extra fetch
-  useEffect(() => {
-    // Fetch saved accent color from DB on mount — source of truth
-    // Avoids race condition with DashboardOverview's useEffect
-    const loadColor = async () => {
-      try {
-        const config = await getChatbotConfig();
-        if (config?.accentColor) {
-          setActiveColor(config.accentColor);
-          document.documentElement.style.setProperty(
-            "--color-brand",
-            config.accentColor,
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load accent color:", error);
-        toast.error("Gagal memuat warna brand");
-      }
-    };
-    void loadColor();
   }, []);
 
   return (

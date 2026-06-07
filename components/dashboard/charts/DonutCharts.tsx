@@ -12,13 +12,15 @@ const DonutItem = ({
   label,
   percentage,
   color,
+  accentColor,
 }: {
   canvasId: string;
   value: string;
   label: string;
   percentage: number;
   color: string;
-  }) => {
+  accentColor?: string;
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -85,7 +87,7 @@ const DonutItem = ({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [percentage, color, isDarkMode]);
+  }, [percentage, color, isDarkMode, accentColor]);
 
   return (
     <div className="flex flex-col items-center">
@@ -108,9 +110,14 @@ const DonutItem = ({
 interface DonutChartsProps {
   answeredRate: number; // e.g. 97.3
   quotaUsed: number; // 0–100 percentage of messages limit used
+  accentColor: string;
 }
 
-const DonutCharts = ({ answeredRate, quotaUsed }: DonutChartsProps) => {
+const DonutCharts = ({
+  answeredRate,
+  quotaUsed,
+  accentColor,
+}: DonutChartsProps) => {
   return (
     <div className="flex justify-around items-center py-4 px-2">
       <DonutItem
@@ -120,6 +127,7 @@ const DonutCharts = ({ answeredRate, quotaUsed }: DonutChartsProps) => {
         percentage={answeredRate}
         // Brand color read inside DonutItem's effect — always fresh on theme toggle
         color="brand"
+        accentColor={accentColor}
       />
       <DonutItem
         canvasId="donut-quota"

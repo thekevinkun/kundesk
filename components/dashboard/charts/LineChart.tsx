@@ -29,6 +29,7 @@ interface LineChartProps {
   previous: number[];
   currentYear: number;
   previousYear: number;
+  accentColor: string;
 }
 
 const MONTHS = [
@@ -51,6 +52,7 @@ const LineChart = ({
   previous,
   currentYear,
   previousYear,
+  accentColor,
 }: LineChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -159,7 +161,14 @@ const LineChart = ({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [current, previous, currentYear, previousYear, resolvedTheme]);
+  }, [
+    current,
+    previous,
+    currentYear,
+    previousYear,
+    resolvedTheme,
+    accentColor,
+  ]);
 
   return (
     <div>
