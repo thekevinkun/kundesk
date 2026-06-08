@@ -519,14 +519,8 @@ export async function POST(request: NextRequest) {
       const conversationId = existingConversation.id;
       const channelToken = existingConversation.channelToken;
 
-      await db.insert(messages).values({
-        orgId: org.id,
-        conversationId,
-        role: "user",
-        content: message,
-      });
-
-      // Fire conversation:message immediately so ConversationDialog updates live
+      // Fire Pusher FIRST — before DB writes so ConversationDialog updates without Neon cold start delay
+      // Customer message appears in staff dialog immediately, DB write follows in background
       triggerConversationMessage(org.id, channelToken, {
         conversationId,
         role: "user",
@@ -534,16 +528,21 @@ export async function POST(request: NextRequest) {
         handoffStatus: currentHandoffStatus ?? "human",
       }).catch(console.error);
 
-      // Fire usage:updated immediately using optimistic count — no DB read needed
-      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
+      // Fire usage:updated immediately — optimistic count, no DB read needed
       await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
+
+      // Save message to DB after Pusher — Neon cold start doesn't block dialog update
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
 
       // Intentional: human-mode messages increment quota but are never pre-blocked.
       // If quota is already full, the atomic guard silently does nothing — the
       // customer can still send messages to the staff member who took over.
       // This is a deliberate UX decision, not a gap.
-      // Increment messagesUsed for human-mode customer messages — quota counts
-      // inbound customer demand regardless of who replies (AI or staff)
       await db
         .update(orgs)
         .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
