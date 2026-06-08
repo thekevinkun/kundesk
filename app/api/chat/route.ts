@@ -423,44 +423,9 @@ export async function POST(request: NextRequest) {
         channelToken = inserted[0].channelToken;
       }
 
-      // Intentional: handoff requests are not quota-blocked even when limit is reached.
-      // A customer asking for human help at the quota wall must still reach staff —
-      // blocking them with a 402 at this moment is worse UX than the billing gap.
-      // The atomic guard below still prevents the counter from exceeding the limit.
-      // Save customer message so staff sees what triggered the request
-      await db.insert(messages).values({
-        orgId: org.id,
-        conversationId,
-        role: "user",
-        content: message,
-      });
-
-      // Fire usage:updated immediately using optimistic count — no DB read needed
-      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
-      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
-
-      // Increment quota for handoff requests too — Total Pesan and Kuota Pesan must match.
-      await db
-        .update(orgs)
-        .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
-        .where(
-          and(
-            eq(orgs.id, org.id),
-            // Same atomic guard as every other customer message path.
-            sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
-          ),
-        );
-
-      // Notify dashboard — urgent, staff needs to act
-      createNotification(
-        org.id,
-        "pending_handoff",
-        "Pelanggan meminta bantuan staff",
-        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
-        conversationId,
-      ).catch(console.error);
-
-      // Pusher — dashboard updates live
+      // Fire Pusher FIRST — before any DB writes
+      // conversation:takeover drives the pending badge and sound on dashboard immediately
+      // Neon cold start won't delay the dashboard update this way
       triggerOrgEvent(org.id, "conversation:takeover", {
         conversationId,
         handoffStatus: "pending_handoff",
@@ -472,6 +437,50 @@ export async function POST(request: NextRequest) {
         content: message,
         handoffStatus: "pending_handoff",
       }).catch(console.error);
+
+      // Notify dashboard — urgent, staff needs to act
+      // Fires after Pusher so the badge appears before the notification panel updates
+      createNotification(
+        org.id,
+        "pending_handoff",
+        "Pelanggan meminta bantuan staff",
+        `${sessionId.slice(0, 8)}|${message.length > 60 ? message.slice(0, 60) + "..." : message}`,
+        conversationId,
+      ).catch(console.error);
+
+      // Save customer message to DB — after Pusher so cold start doesn't block update
+      // Staff will see this message when they open the conversation
+      await db.insert(messages).values({
+        orgId: org.id,
+        conversationId,
+        role: "user",
+        content: message,
+      });
+
+      // Increment quota after message saved — Total Pesan and Kuota Pesan must match
+      // Intentional: handoff requests are not quota-blocked even when limit is reached.
+      // A customer asking for human help at the quota wall must still reach staff —
+      // blocking them with a 402 at this moment is worse UX than the billing gap.
+      // The atomic guard below still prevents the counter from exceeding the limit.
+      await db
+        .update(orgs)
+        .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
+        .where(
+          and(
+            eq(orgs.id, org.id),
+            // Same atomic guard as every other customer message path
+            sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
+          ),
+        );
+
+      // Fire usage:updated after increment — optimistic count, no extra DB read needed
+      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
+
+      // Track handoff requests — measures how often AI fails to satisfy customers
+      trackEvent(org.id, "handoff_requested", {
+        delivery_channel: "web_widget",
+        is_new_conversation: !existingConversation,
+      });
 
       const pendingStream = new ReadableStream({
         start(controller) {
@@ -488,12 +497,6 @@ export async function POST(request: NextRequest) {
           );
           controller.close();
         },
-      });
-
-      // Track handoff requests — measures how often AI fails to satisfy customers
-      trackEvent(org.id, "handoff_requested", {
-        delivery_channel: "web_widget",
-        is_new_conversation: !existingConversation,
       });
 
       return new Response(pendingStream, {
@@ -733,20 +736,6 @@ export async function POST(request: NextRequest) {
       // Avoids a second DB read after the transaction just to get the incremented value
       const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
 
-      // Fire conversation:message immediately after transaction completes
-      // Include role + handoffStatus so dashboard PusherProvider can route correctly
-      triggerOrgEvent(org.id, "conversation:message", {
-        conversationId,
-        role: "assistant",
-        handoffStatus: "ai",
-      }).catch(console.error);
-
-      // Fire usage:updated immediately — no DB read, dashboard updates without delay
-      triggerUsageUpdated(org.id, {
-        messagesUsed: newMessagesUsed,
-        messagesLimit: freshOrgQuota.messagesLimit,
-      }).catch(console.error);
-
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
           orgId: org.id,
@@ -776,6 +765,20 @@ export async function POST(request: NextRequest) {
             ),
           );
       });
+
+      // Fire conversation:message immediately after transaction completes
+      // Include role + handoffStatus so dashboard PusherProvider can route correctly
+      triggerOrgEvent(org.id, "conversation:message", {
+        conversationId,
+        role: "assistant",
+        handoffStatus: "ai",
+      }).catch(console.error);
+
+      // Fire usage:updated immediately — no DB read, dashboard updates without delay
+      triggerUsageUpdated(org.id, {
+        messagesUsed: newMessagesUsed,
+        messagesLimit: freshOrgQuota.messagesLimit,
+      }).catch(console.error);
 
       trackEvent(org.id, "chat_message_sent", {
         delivery_channel: "web_widget",
