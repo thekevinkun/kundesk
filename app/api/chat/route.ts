@@ -774,6 +774,8 @@ export async function POST(request: NextRequest) {
 
       triggerOrgEvent(org.id, "conversation:message", {
         conversationId,
+        role: "assistant",
+        handoffStatus: "ai",
       }).catch(console.error);
 
       trackEvent(org.id, "chat_message_sent", {

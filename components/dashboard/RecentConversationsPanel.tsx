@@ -81,8 +81,8 @@ const RecentConversationsPanel = ({
     queryKey: ["conversations", "recent"],
     queryFn: getRecentActiveConversationsAction,
     initialData: initialConversations,
-    // No staleTime — always refetch when invalidated by Pusher
-    staleTime: 0,
+    initialDataUpdatedAt: 0,
+    staleTime: 0, // No staleTime — always refetch when invalidated by Pusher
   });
 
   // Sort is derived — no extra state needed, data from query is already sorted by DB

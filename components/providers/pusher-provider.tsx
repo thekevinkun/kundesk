@@ -1,10 +1,6 @@
-// Mounts the Pusher subscription once for the entire dashboard session
-// Lives in layout.tsx — keeps the channel alive across page navigations
-// Also owns sound notifications — plays on relevant Pusher events
-
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
 import { useSoundNotification } from "@/hooks/use-sound-notification";
 import { useConversationStore } from "@/stores/conversation-store";
@@ -14,6 +10,8 @@ import type {
   MessagePayload,
 } from "@/hooks/use-pusher-channel";
 
+// Module-level timer — survives re-renders, one instance for the entire app session
+let chartInvalidateTimer: ReturnType<typeof setTimeout> | null = null;
 interface PusherProviderProps {
   orgId: string;
 }
@@ -21,93 +19,98 @@ interface PusherProviderProps {
 export function PusherProvider({ orgId }: PusherProviderProps) {
   const { playNewMessage, playHandoffAlert } = useSoundNotification();
   const queryClient = useQueryClient();
+
+  // Read only what we need — minimize re-render triggers
   const hydrateUnreadConversationIds = useConversationStore(
     (s) => s.hydrateUnreadConversationIds,
   );
-  const setPendingHandoff = useConversationStore((s) => s.setPendingHandoff);
   const setUsage = useConversationStore((s) => s.setUsage);
+
+  // Stable refs for sound functions — avoids recreating callbacks when sound hook re-renders
+  const soundRef = useRef({ playNewMessage, playHandoffAlert });
+  useEffect(() => {
+    soundRef.current = { playNewMessage, playHandoffAlert };
+  });
+
+  // Stable ref for setUsage and queryClient
+  const stableRef = useRef({ setUsage, queryClient, orgId });
+  useEffect(() => {
+    stableRef.current = { setUsage, queryClient, orgId };
+  });
 
   useEffect(() => {
     hydrateUnreadConversationIds(orgId);
   }, [hydrateUnreadConversationIds, orgId]);
 
+  // Cleanup chart timer on unmount
+  useEffect(() => {
+    return () => {
+      if (chartInvalidateTimer) {
+        clearTimeout(chartInvalidateTimer);
+        chartInvalidateTimer = null;
+      }
+    };
+  }, []);
+
   const handleConversationNew = useCallback(() => {
-    playNewMessage();
-    // Invalidate recent conversations panel
-    void queryClient.invalidateQueries({
+    soundRef.current.playNewMessage();
+    void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
     });
-  }, [playNewMessage, queryClient]);
+  }, []);
 
-  const handleTakeover = useCallback(
-    (payload: TakeoverPayload) => {
-      if (payload.handoffStatus === "pending_handoff") {
-        playHandoffAlert();
-        setPendingHandoff(true);
-      } else {
-        setPendingHandoff(false);
-      }
-      // Invalidate both regardless of which branch — status badge must update
-      void queryClient.invalidateQueries({
-        queryKey: ["conversations", "pending-count"],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["conversations", "recent"],
-      });
-    },
-    [playHandoffAlert, setPendingHandoff, queryClient],
-  );
-
-  const handleMessage = useCallback(
-    (payload: MessagePayload) => {
-      const isHumanMode =
-        payload.handoffStatus === "human" ||
-        payload.handoffStatus === "pending_handoff";
-      if (isHumanMode && payload.role === "user") {
-        playNewMessage();
-      }
-      // Invalidate recent conversations so panel row updates live
-      void queryClient.invalidateQueries({
-        queryKey: ["conversations", "recent"],
-      });
-    },
-    [playNewMessage, queryClient],
-  );
-
-  const handleReturn = useCallback(() => {
-    setPendingHandoff(false);
-    void queryClient.invalidateQueries({
+  const handleTakeover = useCallback((payload: TakeoverPayload) => {
+    if (payload.handoffStatus === "pending_handoff") {
+      soundRef.current.playHandoffAlert();
+    }
+    void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
     });
-    // Panel must update — conversation status badge changes back to KUN
-    void queryClient.invalidateQueries({
+    void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
     });
-  }, [setPendingHandoff, queryClient]);
+  }, []);
 
-  // Module-level debounce timer for chart invalidations
-  let chartInvalidateTimer: ReturnType<typeof setTimeout> | null = null;
+  const handleMessage = useCallback((payload: MessagePayload) => {
+    const isHumanMode =
+      payload.handoffStatus === "human" ||
+      payload.handoffStatus === "pending_handoff";
+    if (isHumanMode && payload.role === "user") {
+      soundRef.current.playNewMessage();
+    }
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["conversations", "recent"],
+    });
+  }, []);
 
-  // usage:updated — update Zustand directly + invalidate stat cards immediately
+  const handleReturn = useCallback(() => {
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["conversations", "pending-count"],
+    });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["conversations", "recent"],
+    });
+  }, []);
+
   const handleUsageUpdated = useCallback(
     (payload: { messagesUsed: number; messagesLimit: number }) => {
-      // Zustand — BotStatusPanel reads from here, updates instantly
-      setUsage(payload.messagesUsed, payload.messagesLimit);
+      // Update usage bar instantly via Zustand
+      stableRef.current.setUsage(payload.messagesUsed, payload.messagesLimit);
 
-      // Stat cards — invalidate immediately, they're cheap
-      void queryClient.invalidateQueries({
-        queryKey: ["dashboard", orgId, "stats"],
+      // Stat cards — invalidate immediately
+      void stableRef.current.queryClient.invalidateQueries({
+        queryKey: ["dashboard", stableRef.current.orgId, "stats"],
       });
 
-      // Charts — debounce to avoid excessive refetches
+      // Charts — debounce 2s, module-level timer survives re-renders
       if (chartInvalidateTimer) clearTimeout(chartInvalidateTimer);
       chartInvalidateTimer = setTimeout(() => {
-        void queryClient.invalidateQueries({
-          queryKey: ["dashboard", orgId, "charts"],
+        void stableRef.current.queryClient.invalidateQueries({
+          queryKey: ["dashboard", stableRef.current.orgId, "charts"],
         });
-      }, 2000); // 2s debounce
+      }, 2_000);
     },
-    [setUsage, queryClient, orgId],
+    [],
   );
 
   usePusherChannel(orgId, {
