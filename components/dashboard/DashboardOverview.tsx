@@ -132,8 +132,6 @@ const DashboardOverview = ({
   initialMessagesLimit,
   initialRecentConversations,
 }: DashboardOverviewProps) => {
-  console.log("[DashboardOverview] orgId:", orgId);
-
   // ── Stats query — invalidated by PusherProvider on usage:updated ──
   const { data: stats } = useQuery({
     queryKey: ["dashboard", orgId, "stats"],

@@ -94,8 +94,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
 
   const handleUsageUpdated = useCallback(
     (payload: { messagesUsed: number; messagesLimit: number }) => {
-      console.log("[Pusher] usage:updated received", payload);
-      console.log("[QueryClient] invalidating stats...");
+      // console.log("[Pusher] usage:updated received", payload);
+      // console.log("[QueryClient] invalidating stats...");
 
       // Update usage bar instantly via Zustand
       stableRef.current.setUsage(payload.messagesUsed, payload.messagesLimit);

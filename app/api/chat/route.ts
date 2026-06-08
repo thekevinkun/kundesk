@@ -202,6 +202,30 @@ async function checkAndNotifyQuotaThresholds(
   return false;
 }
 
+// ─── Shared helper — fire usage:updated immediately without a DB read ───
+// All three message paths (AI, human, handoff) use this pattern.
+// Uses an optimistic count derived from the cached org snapshot + 1.
+// Accurate for single-tenant scenarios; dashboard corrects on next stat refetch
+// if there is concurrent activity from other sessions.
+async function fireUsageUpdated(
+  orgId: string,
+  currentMessagesUsed: number,
+  messagesLimit: number,
+): Promise<void> {
+  const optimisticUsed = currentMessagesUsed + 1;
+
+  // Fire Pusher immediately — no DB read, dashboard updates without delay
+  triggerUsageUpdated(orgId, {
+    messagesUsed: optimisticUsed,
+    messagesLimit,
+  }).catch(console.error);
+
+  // Quota threshold checks run in background — non-blocking for the response
+  checkAndNotifyQuotaThresholds(orgId, optimisticUsed, messagesLimit).catch(
+    console.error,
+  );
+}
+
 // ─── Main handler ───
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -423,29 +447,9 @@ export async function POST(request: NextRequest) {
           ),
         );
 
-      // Read back the updated quota so the dashboard gets the fresh count.
-      const [orgAfterHandoffRequest] = await db
-        .select({
-          messagesUsed: orgs.messagesUsed,
-          messagesLimit: orgs.messagesLimit,
-        })
-        .from(orgs)
-        .where(eq(orgs.id, org.id))
-        .limit(1);
-
-      if (orgAfterHandoffRequest) {
-        // Push live quota state so BotStatusPanel and stat cards stay aligned.
-        triggerUsageUpdated(org.id, {
-          messagesUsed: orgAfterHandoffRequest.messagesUsed,
-          messagesLimit: orgAfterHandoffRequest.messagesLimit,
-        }).catch(console.error);
-
-        await checkAndNotifyQuotaThresholds(
-          org.id,
-          orgAfterHandoffRequest.messagesUsed,
-          orgAfterHandoffRequest.messagesLimit,
-        );
-      }
+      // Fire usage:updated immediately using optimistic count — no DB read needed
+      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
+      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
 
       // Notify dashboard — urgent, staff needs to act
       createNotification(
@@ -519,6 +523,7 @@ export async function POST(request: NextRequest) {
         content: message,
       });
 
+      // Fire conversation:message immediately so ConversationDialog updates live
       triggerConversationMessage(org.id, channelToken, {
         conversationId,
         role: "user",
@@ -543,28 +548,9 @@ export async function POST(request: NextRequest) {
           ),
         );
 
-      // Fetch updated counts for Pusher payload
-      const [orgAfterHuman] = await db
-        .select({
-          messagesUsed: orgs.messagesUsed,
-          messagesLimit: orgs.messagesLimit,
-        })
-        .from(orgs)
-        .where(eq(orgs.id, org.id))
-        .limit(1);
-
-      if (orgAfterHuman) {
-        triggerUsageUpdated(org.id, {
-          messagesUsed: orgAfterHuman.messagesUsed,
-          messagesLimit: orgAfterHuman.messagesLimit,
-        }).catch(console.error);
-
-        await checkAndNotifyQuotaThresholds(
-          org.id,
-          orgAfterHuman.messagesUsed,
-          orgAfterHuman.messagesLimit,
-        );
-      }
+      // Fire usage:updated immediately using optimistic count — no DB read needed
+      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
+      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
 
       // Silent stream — no AI message, just done signal with handoff status
       // Customer sees their bubble, nothing else — like WhatsApp human handoff
@@ -595,7 +581,8 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 8. Plan limit check ──
-  // Use fresh DB values instead of cached org snapshot
+  // Use fresh DB values instead of cached org snapshot — prevents race conditions
+  // where the cached org.messagesUsed is stale after concurrent requests
   const [freshOrgQuota] = await db
     .select({
       messagesUsed: orgs.messagesUsed,
@@ -742,6 +729,10 @@ export async function POST(request: NextRequest) {
     responseTimeMs?: number,
   ) => {
     try {
+      // freshOrgQuota fetched in step 8 — use it as the base for the optimistic count
+      // Avoids a second DB read after the transaction just to get the incremented value
+      const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
+
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
           orgId: org.id,
@@ -772,10 +763,18 @@ export async function POST(request: NextRequest) {
           );
       });
 
+      // Fire conversation:message immediately after transaction completes
+      // Include role + handoffStatus so dashboard PusherProvider can route correctly
       triggerOrgEvent(org.id, "conversation:message", {
         conversationId,
         role: "assistant",
         handoffStatus: "ai",
+      }).catch(console.error);
+
+      // Fire usage:updated immediately — no DB read, dashboard updates without delay
+      triggerUsageUpdated(org.id, {
+        messagesUsed: newMessagesUsed,
+        messagesLimit: freshOrgQuota.messagesLimit,
       }).catch(console.error);
 
       trackEvent(org.id, "chat_message_sent", {
@@ -783,42 +782,27 @@ export async function POST(request: NextRequest) {
         ai_mode: env.aiMode,
       });
 
-      // Usage warning at 80% quota
-      const updatedOrg = await db
-        .select({
-          messagesUsed: orgs.messagesUsed,
-          messagesLimit: orgs.messagesLimit,
-        })
-        .from(orgs)
-        .where(eq(orgs.id, org.id))
-        .limit(1);
-
-      if (updatedOrg[0]) {
-        const { messagesUsed: used, messagesLimit: limit } = updatedOrg[0];
-        if (used >= Math.floor(limit * 0.8)) {
-          const shouldSendUsageWarningEmail = // Reuse the helper's idempotency gate for the email.
-            await checkAndNotifyQuotaThresholds(org.id, used, limit); // Only true when the warning is newly emitted.
-
-          if (shouldSendUsageWarningEmail) {
-            // Send the warning email once per billing period per org.
+      // Quota threshold checks and usage warning email — run in background, non-blocking
+      checkAndNotifyQuotaThresholds(
+        org.id,
+        newMessagesUsed,
+        freshOrgQuota.messagesLimit,
+      )
+        .then(async (shouldSendEmail) => {
+          if (shouldSendEmail) {
+            // Send the warning email once per billing period — idempotency handled inside
             sendUsageWarningEmail(
               org.ownerEmail ?? "",
               org.name ?? "",
-              used,
-              limit,
+              newMessagesUsed,
+              freshOrgQuota.messagesLimit,
               env.logoUrl,
             ).catch((err) =>
               console.error("[chat] Failed to send usage warning email:", err),
             );
           }
-        }
-
-        // Fire usage:updated — dashboard stat cards and usage bar update live
-        triggerUsageUpdated(org.id, {
-          messagesUsed: updatedOrg[0].messagesUsed,
-          messagesLimit: updatedOrg[0].messagesLimit,
-        }).catch(console.error);
-      }
+        })
+        .catch(console.error);
     } catch (err) {
       console.error("[chat] Failed to save messages after stream:", err);
     }

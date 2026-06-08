@@ -123,21 +123,21 @@ export function usePusherChannel(
         },
       });
 
-      pusher.connection.bind(
-        "state_change",
-        (states: { current: string; previous: string }) => {
-          console.log(
-            "[Pusher] connection state:",
-            states.previous,
-            "→",
-            states.current,
-          );
-        },
-      );
+      // pusher.connection.bind(
+      //   "state_change",
+      //   (states: { current: string; previous: string }) => {
+      //     console.log(
+      //       "[Pusher] connection state:",
+      //       states.previous,
+      //       "→",
+      //       states.current,
+      //     );
+      //   },
+      // );
 
-      pusher.connection.bind("error", (err: unknown) => {
-        console.error("[Pusher] connection error:", err);
-      });
+      // pusher.connection.bind("error", (err: unknown) => {
+      //   console.error("[Pusher] connection error:", err);
+      // });
 
       const channelName = `private-org-${orgId}`;
       const channel = pusher.subscribe(channelName);
