@@ -435,6 +435,10 @@ export async function POST(request: NextRequest) {
         content: message,
       });
 
+      // Fire usage:updated immediately using optimistic count — no DB read needed
+      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
+      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
+
       // Increment quota for handoff requests too — Total Pesan and Kuota Pesan must match.
       await db
         .update(orgs)
@@ -446,10 +450,6 @@ export async function POST(request: NextRequest) {
             sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
           ),
         );
-
-      // Fire usage:updated immediately using optimistic count — no DB read needed
-      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
-      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
 
       // Notify dashboard — urgent, staff needs to act
       createNotification(
@@ -531,6 +531,10 @@ export async function POST(request: NextRequest) {
         handoffStatus: currentHandoffStatus ?? "human",
       }).catch(console.error);
 
+      // Fire usage:updated immediately using optimistic count — no DB read needed
+      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
+      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
+
       // Intentional: human-mode messages increment quota but are never pre-blocked.
       // If quota is already full, the atomic guard silently does nothing — the
       // customer can still send messages to the staff member who took over.
@@ -547,10 +551,6 @@ export async function POST(request: NextRequest) {
             sql`${orgs.messagesUsed} < ${orgs.messagesLimit}`,
           ),
         );
-
-      // Fire usage:updated immediately using optimistic count — no DB read needed
-      // org.messagesUsed is the cached snapshot; +1 reflects the increment above
-      await fireUsageUpdated(org.id, org.messagesUsed, org.messagesLimit);
 
       // Silent stream — no AI message, just done signal with handoff status
       // Customer sees their bubble, nothing else — like WhatsApp human handoff
@@ -733,6 +733,20 @@ export async function POST(request: NextRequest) {
       // Avoids a second DB read after the transaction just to get the incremented value
       const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
 
+      // Fire conversation:message immediately after transaction completes
+      // Include role + handoffStatus so dashboard PusherProvider can route correctly
+      triggerOrgEvent(org.id, "conversation:message", {
+        conversationId,
+        role: "assistant",
+        handoffStatus: "ai",
+      }).catch(console.error);
+
+      // Fire usage:updated immediately — no DB read, dashboard updates without delay
+      triggerUsageUpdated(org.id, {
+        messagesUsed: newMessagesUsed,
+        messagesLimit: freshOrgQuota.messagesLimit,
+      }).catch(console.error);
+
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
           orgId: org.id,
@@ -762,20 +776,6 @@ export async function POST(request: NextRequest) {
             ),
           );
       });
-
-      // Fire conversation:message immediately after transaction completes
-      // Include role + handoffStatus so dashboard PusherProvider can route correctly
-      triggerOrgEvent(org.id, "conversation:message", {
-        conversationId,
-        role: "assistant",
-        handoffStatus: "ai",
-      }).catch(console.error);
-
-      // Fire usage:updated immediately — no DB read, dashboard updates without delay
-      triggerUsageUpdated(org.id, {
-        messagesUsed: newMessagesUsed,
-        messagesLimit: freshOrgQuota.messagesLimit,
-      }).catch(console.error);
 
       trackEvent(org.id, "chat_message_sent", {
         delivery_channel: "web_widget",
