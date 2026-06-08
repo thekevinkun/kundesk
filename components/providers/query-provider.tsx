@@ -22,6 +22,9 @@ export function QueryProvider({ children }: QueryProviderProps) {
             staleTime: 60 * 1000,
             // Retry failed queries once before showing error
             retry: 1,
+            // Disable focus-based refetch — Pusher drives all live updates
+            // Focus refetch was masking the real issue by only updating on tab switch
+            refetchOnWindowFocus: false,
           },
         },
       }),

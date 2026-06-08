@@ -132,6 +132,8 @@ const DashboardOverview = ({
   initialMessagesLimit,
   initialRecentConversations,
 }: DashboardOverviewProps) => {
+  console.log("[DashboardOverview] orgId:", orgId);
+
   // ── Stats query — invalidated by PusherProvider on usage:updated ──
   const { data: stats } = useQuery({
     queryKey: ["dashboard", orgId, "stats"],
@@ -139,6 +141,7 @@ const DashboardOverview = ({
     initialData: initialStats,
     initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
     staleTime: 0, // Always refetch when invalidated
+    refetchOnWindowFocus: false,
   });
 
   // ── Chart data query — invalidated by PusherProvider on usage:updated (debounced) ──
@@ -154,6 +157,7 @@ const DashboardOverview = ({
     },
     initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
     staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 
   // ── Usage — read from Zustand, set by PusherProvider on usage:updated ──

@@ -83,6 +83,7 @@ const RecentConversationsPanel = ({
     initialData: initialConversations,
     initialDataUpdatedAt: 0,
     staleTime: 0, // No staleTime — always refetch when invalidated by Pusher
+    refetchOnWindowFocus: false,
   });
 
   // Sort is derived — no extra state needed, data from query is already sorted by DB
