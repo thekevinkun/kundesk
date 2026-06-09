@@ -53,6 +53,42 @@ export function formatLocalClock(date: Date): string {
   });
 }
 
+// Format current date and time in Indonesian locale with timezone — "1 Juni 2026, 14:30:00 (UTC+7)"
+export function getCurrentDateTime(): string {
+  const now = new Date();
+
+  const dayNames = [
+    "Minggu",
+    "Senin",
+    "Selasa",
+    "Rabu",
+    "Kamis",
+    "Jumat",
+    "Sabtu",
+  ];
+
+  const monthNames = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+
+  return `${dayNames[now.getDay()]}, ${now.getDate()} ${
+    monthNames[now.getMonth()]
+  } ${now.getFullYear()} — ${String(now.getHours()).padStart(2, "0")}.${String(
+    now.getMinutes(),
+  ).padStart(2, "0")}`;
+}
+
 // Format UTC offset string — e.g. "UTC+8", "UTC+7", "UTC+5:30"
 export function formatUtcOffset(date: Date): string {
   const offsetMinutes = -date.getTimezoneOffset();
