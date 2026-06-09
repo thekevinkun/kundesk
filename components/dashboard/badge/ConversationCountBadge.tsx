@@ -20,6 +20,7 @@ const ConversationCountBadge = () => {
     queryFn: getHumanUnreadConversationIdsAction,
     staleTime: 0,
     refetchOnWindowFocus: false,
+    refetchInterval: 60_000,
   });
   const unreadCount = humanUnreadIds.length;
 

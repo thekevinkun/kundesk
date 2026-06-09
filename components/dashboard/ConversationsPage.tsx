@@ -68,6 +68,7 @@ const ConversationsPage = ({
     queryFn: getHumanUnreadConversationIdsAction,
     staleTime: 0,
     refetchOnWindowFocus: false,
+    refetchInterval: 60_000,
   });
 
   useEffect(() => {

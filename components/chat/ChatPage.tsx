@@ -31,6 +31,11 @@ interface PusherMessagePayload {
   content: string;
 }
 
+interface PusherTakeoverPayload {
+  conversationId: number;
+  handoffStatus: HandoffStatus;
+}
+
 const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
   const {
     messages,
@@ -146,7 +151,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
           addHumanAgentMessage(payload.content);
           // Only transition to human if the conversation is actually in human mode
           // dismiss sends human_agent role but with handoffStatus: "ai" — don't set human
-          if (payload.handoffStatus !== "ai") {
+          if (payload.handoffStatus === "human") {
             setHandoffStatus("human");
           }
         }
@@ -160,11 +165,14 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
 
       // Staff took over — update footer hint immediately without waiting for first reply
       // conversation:takeover fires on the widget channel when staff clicks "Ambil Alih"
-      channel.bind("conversation:takeover", (payload: PusherMessagePayload) => {
-        if (payload.handoffStatus === "human") {
-          setHandoffStatus("human");
-        }
-      });
+      channel.bind(
+        "conversation:takeover",
+        (payload: PusherTakeoverPayload) => {
+          if (payload.handoffStatus === "human") {
+            setHandoffStatus("human");
+          }
+        },
+      );
 
       cleanup = () => {
         channel.unbind_all();

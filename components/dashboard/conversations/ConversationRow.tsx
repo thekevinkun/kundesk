@@ -287,13 +287,15 @@ const ConversationRow = ({
         ref={dialogRowRef}
         variants={staggerItem}
         onClick={() => {
-          // MANUAL mode — clear unread dot immediately on row click (staff read it)
+          // MANUAL mode — remove optimistically from cache on row click (staff read it)
           // PENDING mode — dot stays until staff actually replies (handled in handleStaffReplied)
+          // Cannot use invalidateQueries here — DB still returns this ID until staff replies
+          // Optimistic removal gives immediate feedback without a DB round trip
           if (!isExpanded && !isExpired && handoffStatus === "human") {
-            // Invalidate human-unread query — DB will re-check and dot disappears
-            void queryClient.invalidateQueries({
-              queryKey: ["conversations", "human-unread"],
-            });
+            queryClient.setQueryData<number[]>(
+              ["conversations", "human-unread"],
+              (prev) => (prev ?? []).filter((id) => id !== convo.id),
+            );
           }
 
           onExpandedChange(!isExpanded);

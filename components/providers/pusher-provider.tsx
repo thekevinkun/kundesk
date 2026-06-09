@@ -84,7 +84,7 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
       queryKey: ["conversations", "recent"],
     });
     // Invalidate human unread — new customer message may change who needs attention
-    void queryClient.invalidateQueries({
+    void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "human-unread"],
     });
   }, []);
@@ -98,7 +98,7 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
       queryKey: ["conversations", "recent"],
     });
     // Invalidate human unread — new customer message may change who needs attention
-    void queryClient.invalidateQueries({
+    void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "human-unread"],
     });
   }, []);

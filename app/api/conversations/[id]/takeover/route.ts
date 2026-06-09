@@ -141,7 +141,7 @@ export async function POST(
   // Fire first bubble — staff arrival announcement
   // Send canned message to customer widget — appears as bubble in chat
   // role: "human_agent" so ChatPage's handler picks it up and renders it
-  triggerConversationMessage(orgId, conversation.channelToken, {
+  await triggerConversationMessage(orgId, conversation.channelToken, {
     conversationId,
     role: "human_agent",
     content: cannedMessage,
@@ -150,10 +150,10 @@ export async function POST(
 
   // Fire second bubble after short delay — ensures order on customer's screen
   // Without delay, both events may arrive simultaneously and render out of order
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 200));
 
   // Send canned greeting as second message — appears as second bubble in chat
-  triggerConversationMessage(orgId, conversation.channelToken, {
+  await triggerConversationMessage(orgId, conversation.channelToken, {
     conversationId,
     role: "human_agent",
     content: cannedGreeting,

@@ -48,6 +48,7 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
     queryFn: getHumanUnreadConversationIdsAction,
     staleTime: 0,
     refetchOnWindowFocus: false,
+    refetchInterval: 60_000,
   });
 
   // Show chat dot if anything needs attention
