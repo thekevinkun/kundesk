@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useConversationStore } from "@/stores/conversation-store";
 import { getPendingHandoffCount } from "@/lib/actions/chatbot";
+import { getHumanUnreadConversationIdsAction } from "@/lib/actions/dashboard";
 
 const ConversationCountBadge = () => {
   // Pending handoffs from DB — polled every 60s, invalidated immediately on staff reply
@@ -14,11 +14,14 @@ const ConversationCountBadge = () => {
     placeholderData: (prev) => prev,
   });
 
-  // Unread human mode conversations — in-memory, per-conversation, clears on row click
-  const unreadConversationIds = useConversationStore(
-    (s) => s.unreadConversationIds,
-  );
-  const unreadCount = unreadConversationIds.size;
+  // Human mode unread — DB-driven, cross-device, invalidated by PusherProvider on message events
+  const { data: humanUnreadIds = [] } = useQuery({
+    queryKey: ["conversations", "human-unread"],
+    queryFn: getHumanUnreadConversationIdsAction,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+  const unreadCount = humanUnreadIds.length;
 
   // Neither badge needed — render nothing
   if (pendingCount === 0 && unreadCount === 0) return null;

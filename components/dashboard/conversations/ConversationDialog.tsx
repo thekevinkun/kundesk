@@ -61,8 +61,9 @@ const ConversationDialog = ({
   // Ref for the scrollable message container — we scroll this directly, not the page
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Track last processed Pusher message id — prevents double-append on remount
-  const lastProcessedMessageId = useRef<number | null>(null);
+  // Initialize with current newMessage id — prevents double-append when dialog remounts
+  // after pending_handoff → human transition (ConversationRow re-renders with new handoffStatus)
+  const lastProcessedMessageId = useRef<number | null>(newMessage?.id ?? null);
 
   // Read-only when expired — no replies, no actions, just history
   const canReply =

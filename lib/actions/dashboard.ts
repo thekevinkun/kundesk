@@ -12,6 +12,7 @@ import {
   getAvgResponseTime,
   getRecentActiveConversations,
   findConversationPage,
+  getHumanUnreadConversationIds,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
@@ -75,4 +76,11 @@ export async function getDashboardChartData(): Promise<{
   const { orgId } = await requireOrg();
   const timezone = await getOwnerTimezone();
   return getDashboardCharts(orgId, timezone);
+}
+
+// ── Get IDs of conversations with unread messages for human agents ──
+// used by dashboard and widget to trigger notifications and red badges
+export async function getHumanUnreadConversationIdsAction(): Promise<number[]> {
+  const { orgId } = await requireOrg();
+  return getHumanUnreadConversationIds(orgId);
 }

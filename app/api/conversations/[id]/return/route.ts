@@ -6,9 +6,12 @@ import { type NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
-import { conversations } from "@/lib/db/schema";
-import { triggerConversationReturn } from "@/lib/pusher";
+import { conversations, messages } from "@/lib/db/schema";
 import { createNotification } from "@/lib/db/queries/dashboard";
+import {
+  triggerConversationReturn,
+  triggerConversationMessage,
+} from "@/lib/pusher";
 import type { ApiResponse } from "@/types/api";
 
 interface RouteParams {
@@ -68,24 +71,43 @@ export async function POST(
     );
   }
 
-  // Transition back to AI — clear handoff fields
-  const updated = await db
-    .update(conversations)
-    .set({
-      handoffStatus: "ai",
-      takenOverAt: null,
-      takenOverBy: null,
-    })
-    .where(
-      and(
-        eq(conversations.id, conversationId),
-        eq(conversations.orgId, orgId), // ← IDOR on update
-        eq(conversations.handoffStatus, "human"),
-      ),
-    )
-    .returning({ id: conversations.id });
+  // Canned message — tells customer KUN is back
+  // Inserted as assistant so it renders as KUN bubble
+  const cannedMessage =
+    "Halo, Kak! KUN kembali menangani percakapan ini ya. Silahkan lanjutkan pesan kakak! 😊";
 
-  if (updated.length === 0) {
+  // Atomic: transition back to AI + insert canned message in one transaction
+  const updated = await db.transaction(async (tx) => {
+    const [result] = await tx
+      .update(conversations)
+      .set({
+        handoffStatus: "ai",
+        takenOverAt: null,
+        takenOverBy: null,
+      })
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.orgId, orgId),
+          eq(conversations.handoffStatus, "human"),
+        ),
+      )
+      .returning({ id: conversations.id });
+
+    if (!result) return false;
+
+    // Insert canned message as assistant — KUN identity preserved in DB
+    await tx.insert(messages).values({
+      orgId,
+      conversationId,
+      role: "assistant",
+      content: cannedMessage,
+    });
+
+    return true;
+  });
+
+  if (!updated) {
     return NextResponse.json<ApiResponse>(
       {
         ok: false,
@@ -96,8 +118,17 @@ export async function POST(
     );
   }
 
-  // Notify dashboard — conversation badge goes back to green
-  // Pass channelToken so the customer widget's ChatPage also gets the return event
+  // Send canned message to customer widget — appears as KUN bubble in chat
+  // role: "human_agent" so ChatPage's existing handler picks it up
+  // handoffStatus: "ai" so ChatPage does NOT set status to human
+  triggerConversationMessage(orgId, conversation.channelToken, {
+    conversationId,
+    role: "human_agent",
+    content: cannedMessage,
+    handoffStatus: "ai",
+  }).catch(console.error);
+
+  // Notify dashboard + customer widget — conversation badge goes back to green
   await triggerConversationReturn(
     orgId,
     { conversationId },

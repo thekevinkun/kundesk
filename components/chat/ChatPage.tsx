@@ -13,7 +13,7 @@ import {
   GenericErrorBanner,
   PendingHandoffState,
 } from "@/components/chat";
-import type { ChatbotConfig, MessageRole } from "@/types/chat";
+import type { ChatbotConfig, HandoffStatus, MessageRole } from "@/types/chat";
 
 interface ChatPageProps {
   config: ChatbotConfig;
@@ -27,6 +27,7 @@ interface ChatPageProps {
 interface PusherMessagePayload {
   conversationId: number;
   role: MessageRole;
+  handoffStatus?: HandoffStatus;
   content: string;
 }
 
@@ -143,9 +144,11 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
         }
         if (payload.role === "human_agent") {
           addHumanAgentMessage(payload.content);
-          // Admin replied — transition from pending_handoff to human immediately
-          // No SSE fires to customer on staff reply — Pusher is the only signal
-          setHandoffStatus("human");
+          // Only transition to human if the conversation is actually in human mode
+          // dismiss sends human_agent role but with handoffStatus: "ai" — don't set human
+          if (payload.handoffStatus !== "ai") {
+            setHandoffStatus("human");
+          }
         }
       });
 
@@ -153,6 +156,14 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       // Without this, handoffStatus stays "human" in chat-store forever
       channel.bind("conversation:return", () => {
         setHandoffStatus("ai");
+      });
+
+      // Staff took over — update footer hint immediately without waiting for first reply
+      // conversation:takeover fires on the widget channel when staff clicks "Ambil Alih"
+      channel.bind("conversation:takeover", (payload: PusherMessagePayload) => {
+        if (payload.handoffStatus === "human") {
+          setHandoffStatus("human");
+        }
       });
 
       cleanup = () => {

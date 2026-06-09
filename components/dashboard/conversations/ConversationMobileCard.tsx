@@ -23,6 +23,7 @@ interface ConversationMobileCardProps {
   onExpandedChange: (expanded: boolean) => void;
   newMessage: ConversationMessage | null;
   isHighlighted?: boolean;
+  hasUnread?: boolean;
 }
 
 const ConversationMobileCard = ({
@@ -33,15 +34,13 @@ const ConversationMobileCard = ({
   onExpandedChange,
   newMessage,
   isHighlighted,
+  hasUnread,
 }: ConversationMobileCardProps) => {
   const queryClient = useQueryClient();
 
   const now = useNow(convo.lastMessageAt, convo.createdAt);
 
-  const { unreadConversationIds, clearUnreadConversation, setPendingHandoff } =
-    useConversationStore();
-
-  const hasUnread = unreadConversationIds.has(convo.id);
+  const { setPendingHandoff } = useConversationStore();
 
   const [isTakingOver, startTakeoverTransition] = useTransition();
   const [isDismissing, startDismissTransition] = useTransition();
@@ -103,10 +102,17 @@ const ConversationMobileCard = ({
   };
 
   const handleStaffReplied = () => {
-    clearUnreadConversation(convo.id);
+    // Pending handoff resolved after staff reply
     setPendingHandoff(false);
+
+    // Refetch pending count — DB now shows human instead of pending_handoff
     void queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
+    });
+
+    // Refetch human unread — staff just replied so this conversation is no longer unread
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "human-unread"],
     });
   };
 
@@ -128,8 +134,6 @@ const ConversationMobileCard = ({
   useEffect(() => {
     if (!isExpired) return;
 
-    clearUnreadConversation(convo.id);
-
     if (
       convo.handoffStatus === "pending_handoff" ||
       handoffStatus === "pending_handoff"
@@ -142,7 +146,6 @@ const ConversationMobileCard = ({
   }, [
     convo.handoffStatus,
     convo.id,
-    clearUnreadConversation,
     handoffStatus,
     isExpired,
     queryClient,
@@ -156,8 +159,15 @@ const ConversationMobileCard = ({
           isExpired ? "opacity-50" : "hover:bg-(--color-bg-page)"
         } ${isExpanded ? "bg-(--color-bg-page)" : ""}`}
         onClick={() => {
-          if (!isExpanded && !isExpired && hasUnread)
-            clearUnreadConversation(convo.id); // Clear unread on open even while pending_handoff is still active.
+          // MANUAL mode — clear unread dot immediately on row click (staff read it)
+          // PENDING mode — dot stays until staff actually replies (handled in handleStaffReplied)
+          if (!isExpanded && !isExpired && handoffStatus === "human") {
+            // Invalidate human-unread query — DB will re-check and dot disappears
+            void queryClient.invalidateQueries({
+              queryKey: ["conversations", "human-unread"],
+            });
+          }
+
           onExpandedChange(!isExpanded);
         }}
       >

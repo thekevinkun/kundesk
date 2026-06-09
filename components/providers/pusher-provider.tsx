@@ -20,11 +20,16 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
   const { playNewMessage, playHandoffAlert } = useSoundNotification();
   const queryClient = useQueryClient();
 
-  // Read only what we need — minimize re-render triggers
-  const hydrateUnreadConversationIds = useConversationStore(
-    (s) => s.hydrateUnreadConversationIds,
-  );
+  // Usage state from Zustand — updated via Pusher and used in UsageBar for instant updates
   const setUsage = useConversationStore((s) => s.setUsage);
+
+  // Reset bell and notification state on org change — no localStorage hydration needed
+  const clearUnread = useConversationStore((s) => s.clearUnread);
+  const setPendingHandoff = useConversationStore((s) => s.setPendingHandoff);
+  useEffect(() => {
+    clearUnread();
+    setPendingHandoff(false);
+  }, [clearUnread, setPendingHandoff, orgId]);
 
   // Stable refs for sound functions — avoids recreating callbacks when sound hook re-renders
   const soundRef = useRef({ playNewMessage, playHandoffAlert });
@@ -37,10 +42,6 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
   useEffect(() => {
     stableRef.current = { setUsage, queryClient, orgId };
   });
-
-  useEffect(() => {
-    hydrateUnreadConversationIds(orgId);
-  }, [hydrateUnreadConversationIds, orgId]);
 
   // Cleanup chart timer on unmount
   useEffect(() => {
@@ -78,8 +79,13 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     if (isHumanMode && payload.role === "user") {
       soundRef.current.playNewMessage();
     }
+    // Invalidate recent conversations to update last message preview and timestamp
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
+    });
+    // Invalidate human unread — new customer message may change who needs attention
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "human-unread"],
     });
   }, []);
 
@@ -87,8 +93,13 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
     });
+    // Invalidate recent conversations to update last message preview and timestamp
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
+    });
+    // Invalidate human unread — new customer message may change who needs attention
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "human-unread"],
     });
   }, []);
 

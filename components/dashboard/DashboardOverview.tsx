@@ -274,7 +274,7 @@ const DashboardOverview = ({
       {/* ── Charts row 2: Bar + Line left, Conversations panel right ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
         <div className="flex flex-col gap-4">
-          <div className="card-base">
+          <div className="card-base flex-1">
             <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
             <div className="px-5 pt-3 pb-5">
               <BarChart
@@ -284,7 +284,7 @@ const DashboardOverview = ({
             </div>
           </div>
 
-          <div className="card-base">
+          <div className="card-base flex-1">
             <CardHeader title="Total Pesan Bulanan" />
             <div className="px-5 pt-3 pb-5">
               <LineChart

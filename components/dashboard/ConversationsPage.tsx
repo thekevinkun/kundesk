@@ -2,17 +2,21 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
+import { motion } from "framer-motion";
+import { useConversationStore } from "@/stores/conversation-store";
+
 import {
   ConversationRow,
   ConversationMobileCard,
   ConversationEmptyState,
   ConversationEmptyStateCard,
 } from "@/components/dashboard/conversations";
-import { useConversationStore } from "@/stores/conversation-store";
-import { fadeUp, staggerContainer } from "@/lib/animations";
+
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
+import { getHumanUnreadConversationIdsAction } from "@/lib/actions/dashboard";
+import { fadeUp, staggerContainer } from "@/lib/animations";
 import type {
   ConversationRow as ConversationRowType,
   ConversationMessage,
@@ -57,6 +61,14 @@ const ConversationsPage = ({
   const [expandedConversationId, setExpandedConversationId] = useState<
     number | null
   >(highlightId ?? null);
+
+  // Human unread IDs — drives the New badge on individual rows
+  const { data: humanUnreadIds = [] } = useQuery({
+    queryKey: ["conversations", "human-unread"],
+    queryFn: getHumanUnreadConversationIdsAction,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     if (highlightId == null) return;
@@ -271,6 +283,7 @@ const ConversationsPage = ({
                         : null
                     }
                     isHighlighted={highlightId === convo.id}
+                    hasUnread={humanUnreadIds.includes(convo.id)}
                   />
                 ))
               )}
@@ -402,6 +415,7 @@ const ConversationsPage = ({
                       : null
                   }
                   isHighlighted={highlightId === convo.id}
+                  hasUnread={humanUnreadIds.includes(convo.id)}
                 />
               ))
             )}

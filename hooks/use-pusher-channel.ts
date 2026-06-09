@@ -68,9 +68,7 @@ export function usePusherChannel(
   callbacks?: PusherChannelCallbacks,
 ): void {
   const incrementUnread = useConversationStore((s) => s.incrementUnread);
-  const addUnreadConversation = useConversationStore(
-    (s) => s.addUnreadConversation,
-  );
+
   const setPendingHandoff = useConversationStore((s) => s.setPendingHandoff);
 
   // queryClient at hook top level — invalidates sidebar badge immediately on pending_handoff
@@ -80,7 +78,6 @@ export function usePusherChannel(
   // This pattern avoids stale closures inside the async Pusher setup without reconnecting
   const stableRef = useRef({
     incrementUnread,
-    addUnreadConversation,
     setPendingHandoff,
     queryClient,
     callbacks,
@@ -89,7 +86,6 @@ export function usePusherChannel(
   useEffect(() => {
     stableRef.current = {
       incrementUnread,
-      addUnreadConversation,
       setPendingHandoff,
       queryClient,
       callbacks,
@@ -160,11 +156,11 @@ export function usePusherChannel(
             payload.handoffStatus === "human" ||
             payload.handoffStatus === "pending_handoff";
 
-          if (isHumanMode) {
-            stableRef.current.addUnreadConversation(payload.conversationId);
-          } else {
+          if (!isHumanMode) {
             stableRef.current.incrementUnread();
           }
+          // Human mode unread is now DB-driven via getHumanUnreadConversationIdsAction
+          // PusherProvider invalidates ["conversations", "human-unread"] on message events
         }
 
         stableRef.current.callbacks?.onMessage?.(payload as MessagePayload);

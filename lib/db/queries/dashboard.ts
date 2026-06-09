@@ -795,6 +795,35 @@ export async function findConversationPage(
   return Math.ceil((position + 1) / limit);
 }
 
+// Returns conversation IDs in human mode where the last message is from the customer
+// Drives the chat icon dot — cross-device, no localStorage needed
+export async function getHumanUnreadConversationIds(
+  orgId: string,
+): Promise<number[]> {
+  const result = await db.execute<{ id: number }>(
+    sql`
+      SELECT c.id
+      FROM ${conversations} c
+      WHERE c.org_id = ${orgId}
+        AND c.handoff_status IN ('human', 'pending_handoff')
+        AND (
+          SELECT m.role
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+          ORDER BY m.created_at DESC
+          LIMIT 1
+        ) = 'user'
+        AND EXISTS (
+          SELECT 1 FROM ${messages} m
+          WHERE m.conversation_id = c.id
+            AND m.created_at > NOW() - INTERVAL '24 hours'
+        )
+    `,
+  );
+
+  return result.rows.map((r) => r.id);
+}
+
 // Deletes messages older than retentionDays across all orgs
 // Called by the daily retention cron — reduces PII exposure over time
 // Returns count of deleted messages for logging

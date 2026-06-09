@@ -7,8 +7,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
 import { trackEvent } from "@/lib/posthog";
-import { conversations } from "@/lib/db/schema";
-import { triggerConversationTakeover } from "@/lib/pusher";
+import { conversations, messages } from "@/lib/db/schema";
+import {
+  triggerConversationTakeover,
+  triggerPublicConversationEvent,
+  triggerConversationMessage,
+} from "@/lib/pusher";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import type { ApiResponse } from "@/types/api";
 
@@ -66,25 +70,55 @@ export async function POST(
     );
   }
 
-  // Transition to human — record who took over and when
-  const updated = await db
-    .update(conversations)
-    .set({
-      handoffStatus: "human",
-      takenOverAt: new Date(),
-      takenOverBy: userId,
-      wasHandedOff: true,
-    })
-    .where(
-      and(
-        eq(conversations.id, conversationId),
-        eq(conversations.orgId, orgId),
-        inArray(conversations.handoffStatus, ["ai", "pending_handoff"]),
-      ),
-    )
-    .returning({ id: conversations.id });
+  // Canned message — tells customer staff is now handling
+  // Inserted as assistant so it renders as KUN-style bubble, not staff bubble
+  const cannedMessage =
+    "Halo, staff kami mengambil alih percakapan ini! 😊 Silakan lanjutkan pesanmu.";
 
-  if (updated.length === 0) {
+  // Second bubble — natural greeting from staff, always sent after cannedMessage
+  const cannedGreeting = "Ada yang bisa dibantu kak?";
+
+  // Atomic: transition to human + insert canned message in one transaction
+  const updated = await db.transaction(async (tx) => {
+    const [result] = await tx
+      .update(conversations)
+      .set({
+        handoffStatus: "human",
+        takenOverAt: new Date(),
+        takenOverBy: userId,
+        wasHandedOff: true,
+      })
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.orgId, orgId),
+          inArray(conversations.handoffStatus, ["ai", "pending_handoff"]),
+        ),
+      )
+      .returning({ id: conversations.id });
+
+    if (!result) return false;
+
+    // Insert canned message as assistant — KUN identity preserved in DB
+    await tx.insert(messages).values({
+      orgId,
+      conversationId,
+      role: "assistant",
+      content: cannedMessage,
+    });
+
+    // Insert second message — natural staff greeting, always after the first
+    await tx.insert(messages).values({
+      orgId,
+      conversationId,
+      role: "assistant",
+      content: cannedGreeting,
+    });
+
+    return true;
+  });
+
+  if (!updated) {
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "Invalid handoff transition", status: 409 },
       { status: 409 },
@@ -97,7 +131,36 @@ export async function POST(
     takenOverBy: userId,
   }).catch(console.error);
 
-  // Track when a staff member takes over a conversation — measures human handoff frequency
+  // Notify customer widget — footer hint changes to "Kamu sedang terhubung dengan staff kami"
+  await triggerPublicConversationEvent(
+    conversation.channelToken,
+    "conversation:takeover",
+    { conversationId, handoffStatus: "human" },
+  ).catch(console.error);
+
+  // Fire first bubble — staff arrival announcement
+  // Send canned message to customer widget — appears as bubble in chat
+  // role: "human_agent" so ChatPage's handler picks it up and renders it
+  triggerConversationMessage(orgId, conversation.channelToken, {
+    conversationId,
+    role: "human_agent",
+    content: cannedMessage,
+    handoffStatus: "human",
+  }).catch(console.error);
+
+  // Fire second bubble after short delay — ensures order on customer's screen
+  // Without delay, both events may arrive simultaneously and render out of order
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  // Send canned greeting as second message — appears as second bubble in chat
+  triggerConversationMessage(orgId, conversation.channelToken, {
+    conversationId,
+    role: "human_agent",
+    content: cannedGreeting,
+    handoffStatus: "human",
+  }).catch(console.error);
+
+  // Track when a staff member takes over a conversation
   trackEvent(orgId, "human_handoff_taken");
 
   // Insert notification — staff took over a conversation

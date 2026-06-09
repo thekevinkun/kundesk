@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useConversationStore } from "@/stores/conversation-store";
-import ConversationDialog from "./ConversationDialog";
+import { toast } from "sonner";
+
+import { ConversationDialog } from "@/components/dashboard/conversations";
+
 import { staggerItem } from "@/lib/animations";
 import { formatRelativeTime } from "@/helpers/format";
 import type {
@@ -144,9 +146,9 @@ interface ConversationRowProps {
   onReturn: (conversationId: number) => void;
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  // New message from Pusher — passed down from ConversationsPage
-  newMessage: ConversationMessage | null;
+  newMessage: ConversationMessage | null; // New message from Pusher — passed down from ConversationsPage
   isHighlighted?: boolean;
+  hasUnread?: boolean; // Whether this conversation has unread customer messages
 }
 
 const ConversationRow = ({
@@ -157,17 +159,13 @@ const ConversationRow = ({
   onExpandedChange,
   newMessage,
   isHighlighted,
+  hasUnread,
 }: ConversationRowProps) => {
   const queryClient = useQueryClient();
 
   const now = useNow(convo.lastMessageAt, convo.createdAt);
 
-  // Read unread state + clear actions from store
-  const { unreadConversationIds, clearUnreadConversation, setPendingHandoff } =
-    useConversationStore();
-
-  // This row has unread customer messages waiting for staff response
-  const hasUnread = unreadConversationIds.has(convo.id);
+  const { setPendingHandoff } = useConversationStore();
 
   const [isTakingOver, startTakeoverTransition] = useTransition();
   const [isDismissing, startDismissTransition] = useTransition();
@@ -232,18 +230,18 @@ const ConversationRow = ({
   };
 
   // Called by ConversationDialog after staff sends a reply
-  // For pending rows: this is the moment signs clear (not on expand)
-  // For human rows: clears the unread dot for this conversation
   const handleStaffReplied = () => {
-    // Clear this row's unread dot
-    clearUnreadConversation(convo.id);
-
     // Pending handoff resolved after staff reply
     setPendingHandoff(false);
 
     // Refetch pending count — DB now shows human instead of pending_handoff
     void queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
+    });
+
+    // Refetch human unread — staff just replied so this conversation is no longer unread
+    void queryClient.invalidateQueries({
+      queryKey: ["conversations", "human-unread"],
     });
   };
 
@@ -269,9 +267,6 @@ const ConversationRow = ({
   useEffect(() => {
     if (!isExpired) return;
 
-    // Remove from unread set — clears row dot, brand badge, chat icon dot
-    clearUnreadConversation(convo.id);
-
     // Clear pending handoff flag if this was the pending conversation
     if (
       convo.handoffStatus === "pending_handoff" ||
@@ -292,8 +287,13 @@ const ConversationRow = ({
         ref={dialogRowRef}
         variants={staggerItem}
         onClick={() => {
-          if (!isExpanded) {
-            if (!isExpired && hasUnread) clearUnreadConversation(convo.id); // Clear unread on open even while pending_handoff is still active.
+          // MANUAL mode — clear unread dot immediately on row click (staff read it)
+          // PENDING mode — dot stays until staff actually replies (handled in handleStaffReplied)
+          if (!isExpanded && !isExpired && handoffStatus === "human") {
+            // Invalidate human-unread query — DB will re-check and dot disappears
+            void queryClient.invalidateQueries({
+              queryKey: ["conversations", "human-unread"],
+            });
           }
 
           onExpandedChange(!isExpanded);

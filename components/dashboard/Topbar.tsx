@@ -3,9 +3,11 @@
 import { useState, useEffect, useTransition } from "react";
 import { useTheme } from "next-themes";
 import { UserButton } from "@clerk/nextjs";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useConversationStore } from "@/stores/conversation-store";
+
 import {
   Tooltip,
   TooltipContent,
@@ -14,10 +16,12 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { NotificationPanel, GlobalSearch } from "@/components/dashboard";
-import { COLOR_PRESETS } from "@/helpers/chatbot";
+
 import { cn } from "@/lib/utils";
-import { fadeIn, dropdownVariants } from "@/lib/animations";
 import { saveAccentColor } from "@/lib/actions/chatbot";
+import { fadeIn, dropdownVariants } from "@/lib/animations";
+import { getHumanUnreadConversationIdsAction } from "@/lib/actions/dashboard";
+import { COLOR_PRESETS } from "@/helpers/chatbot";
 import {
   getLocalTimezone,
   formatLocalClock,
@@ -34,15 +38,23 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
     unreadCount,
     notificationItems,
     setNotifications,
-    unreadConversationIds,
     hasPendingHandoff,
   } = useConversationStore();
 
-  // Derive counts from store — no separate counters needed
-  const unreadHumanCount = unreadConversationIds.size;
+  // Human-mode unread — DB-driven so it works across all devices
+  // Invalidated by PusherProvider on any conversation:message event
+  const { data: humanUnreadIds = [] } = useQuery({
+    queryKey: ["conversations", "human-unread"],
+    queryFn: getHumanUnreadConversationIdsAction,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
 
   // Show chat dot if anything needs attention
-  const hasChatActivity = hasPendingHandoff || unreadHumanCount > 0;
+  // pending_handoff — always urgent, driven by hasPendingHandoff from Pusher
+  // human unread — customer replied and staff hasn't seen it yet
+  const hasChatActivity = hasPendingHandoff || humanUnreadIds.length > 0;
+  const unreadHumanCount = humanUnreadIds.length;
 
   const { toggleMobile } = useSidebarStore();
 
