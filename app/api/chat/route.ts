@@ -734,12 +734,7 @@ export async function POST(request: NextRequest) {
       // freshOrgQuota fetched in step 8 — use it as the base for the optimistic count
       const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
 
-      triggerUsageUpdated(org.id, {
-        messagesUsed: newMessagesUsed,
-        messagesLimit: freshOrgQuota.messagesLimit,
-      }).catch(console.error);
-
-      // DB transaction after Pusher — cold start doesn't block dashboard update
+      // DB transaction first — fast, and ensures Pusher-triggered refetches read committed data
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
           orgId: org.id,
@@ -770,12 +765,17 @@ export async function POST(request: NextRequest) {
           );
       });
 
-      // Fire conversation:message AFTER transaction — RecentConversationsPanel
-      // refetches only after the message exists in DB, otherwise it gets stale data
+      // Fire both AFTER transaction — refetches triggered by these events
+      // read committed data, eliminating off-by-one and stale-read races
       triggerOrgEvent(org.id, "conversation:message", {
         conversationId,
         role: "assistant",
         handoffStatus: "ai",
+      }).catch(console.error);
+
+      triggerUsageUpdated(org.id, {
+        messagesUsed: newMessagesUsed,
+        messagesLimit: freshOrgQuota.messagesLimit,
       }).catch(console.error);
 
       trackEvent(org.id, "chat_message_sent", {
