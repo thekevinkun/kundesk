@@ -71,9 +71,9 @@ export async function POST(
   }
 
   // Canned message — tells customer staff is now handling
-  // Inserted as assistant so it renders as KUN-style bubble, not staff bubble
+  // Inserted as human_agent — staff has taken over
   const cannedMessage =
-    "Halo, staff kami mengambil alih percakapan ini! 😊 Silakan lanjutkan pesanmu.";
+    "Halo, staff kami mengambil alih percakapan ini. Silakan lanjutkan pesanmu! 😊";
 
   // Second bubble — natural greeting from staff, always sent after cannedMessage
   const cannedGreeting = "Ada yang bisa dibantu kak?";
@@ -99,11 +99,11 @@ export async function POST(
 
     if (!result) return false;
 
-    // Insert canned message as assistant — KUN identity preserved in DB
+    // Insert canned takeover announcement as human_agent — staff is now handling
     await tx.insert(messages).values({
       orgId,
       conversationId,
-      role: "assistant",
+      role: "human_agent",
       content: cannedMessage,
     });
 
@@ -111,7 +111,7 @@ export async function POST(
     await tx.insert(messages).values({
       orgId,
       conversationId,
-      role: "assistant",
+      role: "human_agent",
       content: cannedGreeting,
     });
 

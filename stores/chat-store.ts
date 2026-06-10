@@ -49,6 +49,20 @@ export const useChatStore = create<ChatStore>((set) => ({
       ],
     })),
 
+  // Adds a non-streaming assistant message via Pusher — for canned KUN messages
+  // (return confirmation, dismiss apology) that arrive as role: "assistant"
+  addAssistantMessage: (content) =>
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        {
+          localId: crypto.randomUUID(),
+          role: "assistant" as const,
+          content,
+        },
+      ],
+    })),
+
   // Adds an empty assistant message bubble that tokens will stream into
   startAssistantMessage: () => {
     const localId = crypto.randomUUID();

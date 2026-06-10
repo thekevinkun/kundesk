@@ -111,7 +111,10 @@ export interface ChatStore {
   setChannelToken: (token: string) => void;
   setHandoffStatus: (status: HandoffStatus) => void;
   addUserMessage: (content: string) => void;
-  addHumanAgentMessage: (content: string) => void; // Appends a staff reply directly — called when Pusher fires conversation:message with role human_agent
+  // Appends a staff reply directly — called when Pusher fires conversation:message with role human_agent
+  addHumanAgentMessage: (content: string) => void;
+  // Appends an assistant reply
+  addAssistantMessage: (content: string) => void;
   startAssistantMessage: () => string; // returns localId of the new message
   appendToken: (localId: string, token: string) => void;
   finalizeAssistantMessage: (localId: string) => void;

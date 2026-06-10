@@ -115,10 +115,10 @@ export async function POST(
   }
 
   // Send canned message to customer widget via Pusher
-  // role: "human_agent" so ChatPage's existing handler picks it up and renders it
+  // role: "assistant" so ChatPage renders it with KUN avatar
   triggerConversationMessage(orgId, conversation.channelToken, {
     conversationId,
-    role: "human_agent",
+    role: "assistant",
     content: cannedMessage,
     handoffStatus: "ai",
   }).catch(console.error);

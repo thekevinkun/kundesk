@@ -115,7 +115,10 @@ export function usePusherChannel(
         forceTLS: true,
         channelAuthorization: {
           endpoint: "/api/pusher/auth",
-          transport: "ajax",
+          transport: "fetch" as "ajax",
+          headersProvider: () => ({
+            "Content-Type": "application/x-www-form-urlencoded",
+          }),
         },
       });
 

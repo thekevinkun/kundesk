@@ -119,11 +119,10 @@ export async function POST(
   }
 
   // Send canned message to customer widget — appears as KUN bubble in chat
-  // role: "human_agent" so ChatPage's existing handler picks it up
-  // handoffStatus: "ai" so ChatPage does NOT set status to human
+  // role: "assistant" so ChatPage renders it with KUN avatar
   await triggerConversationMessage(orgId, conversation.channelToken, {
     conversationId,
-    role: "human_agent",
+    role: "assistant",
     content: cannedMessage,
     handoffStatus: "ai",
   }).catch(console.error);

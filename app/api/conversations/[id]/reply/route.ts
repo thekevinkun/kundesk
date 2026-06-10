@@ -137,6 +137,7 @@ export async function POST(
     conversationId,
     role: "human_agent",
     content,
+    handoffStatus: "human",
   }).catch(console.error);
 
   // If transitioned from pending_handoff — update dashboard row live

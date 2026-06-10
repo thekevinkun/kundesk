@@ -155,7 +155,7 @@ async function insertQuotaWebhookOnce(externalId: string): Promise<boolean> {
     .insert(processedWebhooks)
     .values({
       externalId,
-      source: "quota",
+      source: "system",
     })
     .onConflictDoNothing()
     .returning({ id: processedWebhooks.id });
@@ -732,9 +732,14 @@ export async function POST(request: NextRequest) {
   ) => {
     try {
       // freshOrgQuota fetched in step 8 — use it as the base for the optimistic count
-      // Avoids a second DB read after the transaction just to get the incremented value
       const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
 
+      triggerUsageUpdated(org.id, {
+        messagesUsed: newMessagesUsed,
+        messagesLimit: freshOrgQuota.messagesLimit,
+      }).catch(console.error);
+
+      // DB transaction after Pusher — cold start doesn't block dashboard update
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
           orgId: org.id,
@@ -765,18 +770,12 @@ export async function POST(request: NextRequest) {
           );
       });
 
-      // Fire conversation:message immediately after transaction completes
-      // Include role + handoffStatus so dashboard PusherProvider can route correctly
+      // Fire conversation:message AFTER transaction — RecentConversationsPanel
+      // refetches only after the message exists in DB, otherwise it gets stale data
       triggerOrgEvent(org.id, "conversation:message", {
         conversationId,
         role: "assistant",
         handoffStatus: "ai",
-      }).catch(console.error);
-
-      // Fire usage:updated immediately — no DB read, dashboard updates without delay
-      triggerUsageUpdated(org.id, {
-        messagesUsed: newMessagesUsed,
-        messagesLimit: freshOrgQuota.messagesLimit,
       }).catch(console.error);
 
       trackEvent(org.id, "chat_message_sent", {
@@ -792,7 +791,6 @@ export async function POST(request: NextRequest) {
       )
         .then(async (shouldSendEmail) => {
           if (shouldSendEmail) {
-            // Send the warning email once per billing period — idempotency handled inside
             sendUsageWarningEmail(
               org.ownerEmail ?? "",
               org.name ?? "",

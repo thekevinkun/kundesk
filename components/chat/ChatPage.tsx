@@ -51,6 +51,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
     setHandoffStatus,
     clearError,
     addHumanAgentMessage,
+    addAssistantMessage,
   } = useChatStore();
 
   // Derive — single source of truth
@@ -154,6 +155,10 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
           if (payload.handoffStatus === "human") {
             setHandoffStatus("human");
           }
+        } else if (payload.role === "assistant") {
+          // Canned KUN messages from return and dismiss — stored as assistant in DB
+          // Must be rendered with KUN avatar, not staff icon
+          addAssistantMessage(payload.content);
         }
       });
 
@@ -185,7 +190,7 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       cancelled = true;
       cleanup?.();
     };
-  }, [orgId, addHumanAgentMessage, conversationId, channelToken]);
+  }, [orgId, addHumanAgentMessage, addAssistantMessage, conversationId, channelToken]);
 
   // Notify parent window (widget iframe) when a new bot/staff message arrives
   // Widget uses this to increment the unread badge when the panel is closed
