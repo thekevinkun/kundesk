@@ -58,7 +58,9 @@ export async function getAnsweredRate(orgId: string): Promise<number> {
   if (total === 0) return 0;
 
   // e.g. 97.3 — what percentage of customer messages KUN handled automatically
-  return Math.round((answered / total) * 1000) / 10;
+  // Capped at 100 — canned assistant messages (takeover/return) can inflate the
+  // numerator beyond the user-message denominator, but the rate can't exceed 100%
+  return Math.min(Math.round((answered / total) * 1000) / 10, 100);
 }
 
 // ── Unique visitors — distinct sessionIds across all conversations ──
