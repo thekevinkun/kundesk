@@ -114,11 +114,25 @@ export function usePusherChannel(
         cluster,
         forceTLS: true,
         channelAuthorization: {
-          endpoint: "/api/pusher/auth",
-          transport: "fetch" as "ajax",
-          headersProvider: () => ({
-            "Content-Type": "application/x-www-form-urlencoded",
-          }),
+          // customHandler gives full control over the auth request
+          // Using fetch with credentials ensures Clerk session cookie is sent
+          // transport: "ajax" (XHR) was dropping cookies intermittently — causing 401s
+          customHandler: async ({
+            socketId,
+            channelName,
+          }: {
+            socketId: string;
+            channelName: string;
+            }) => {
+            const res = await fetch("/api/pusher/auth", {
+              method: "POST",
+              credentials: "same-origin", // ensures Clerk session cookie is sent
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({ socket_id: socketId, channel_name: channelName }),
+            });
+            if (!res.ok) throw new Error(`Pusher auth failed: ${res.status}`);
+            return res.json() as Promise<{ auth: string }>;
+          },
         },
       });
 
