@@ -272,10 +272,10 @@ const NotificationPanel = ({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden"
+                className="absolute top-3 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden"
                 aria-label="Tutup notifikasi"
               >
-                <XIcon className="size-4" />
+                <XIcon className="size-5" />
               </button>
               {panelBody}
             </motion.aside>

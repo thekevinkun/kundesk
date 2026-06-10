@@ -171,7 +171,8 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
   return (
     <TooltipProvider>
       <motion.header
-        className="h-[68px] bg-(--color-bg-card) border-b border-(--color-border) flex items-center gap-4 px-4 md:px-7 sticky top-0 z-40 flex-shrink-0"
+        className="h-[68px] bg-(--color-bg-card) border-b border-(--color-border) 
+          flex items-center gap-2.5 sm:gap-4 px-4 md:px-7 sticky top-0 z-40 flex-shrink-0"
         variants={fadeIn}
         initial="hidden"
         animate="visible"
@@ -179,9 +180,9 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
         {/* Hamburger — mobile only */}
         <button
           onClick={toggleMobile}
-          className="lg:hidden w-9 h-9 rounded-[10px] bg-(--color-bg-page) 
+          className="lg:hidden w-10.5 h-10.5 rounded-[10px] bg-(--color-bg-page) 
             border border-(--color-border) flex justify-center 
-            text-xl text-(--color-text-500) hover:border-(--color-brand) 
+            text-[20px] text-(--color-text-500) hover:border-(--color-brand) 
             hover:text-(--color-brand) transition-all"
           aria-label="Buka menu navigasi"
         >
@@ -294,7 +295,10 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
                       onClick={() =>
                         setTheme(theme === "dark" ? "light" : "dark")
                       }
-                      className="w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) border border-(--color-border) flex items-center justify-center text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) transition-all"
+                      className="w-[38px] h-[38px] rounded-[10px] bg-(--color-bg-page) 
+                        border border-(--color-border) flex items-center justify-center 
+                        text-(--color-text-500) hover:border-(--color-brand) 
+                        hover:text-(--color-brand) transition-all"
                       aria-label={
                         theme === "dark"
                           ? "Aktifkan mode terang"
@@ -351,7 +355,10 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => setColorPanelOpen((p) => !p)}
-                        className="flex items-center gap-2 px-3 py-[7px] bg-(--color-bg-page) border border-(--color-border) rounded-full text-[12px] font-semibold text-(--color-text-500) hover:border-(--color-brand) hover:text-(--color-brand) transition-all"
+                        className="flex items-center gap-2 px-3 py-[7px] bg-(--color-bg-page) 
+                          border border-(--color-border) rounded-full text-[12px] font-semibold 
+                          text-(--color-text-500) hover:border-(--color-brand) 
+                          hover:text-(--color-brand) transition-all"
                         aria-label="Pilih warna brand"
                         aria-expanded={colorPanelOpen}
                       >

@@ -48,9 +48,9 @@ const DeleteOrgDialog = ({
         }
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md border-red-900 dark:border-red-200 ring-2 ring-red-900/20 dark:ring-red-200/20">
         <DialogHeader>
-          <DialogTitle className="text-[16px] font-bold text-red-600 dark:text-red-400">
+          <DialogTitle className="text-[16px] font-bold text-red-400 dark:text-red-600">
             Hapus Akun Bisnis
           </DialogTitle>
 
@@ -61,8 +61,8 @@ const DeleteOrgDialog = ({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="rounded-[10px] border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 p-4">
-            <p className="text-[12px] font-bold text-red-700 dark:text-red-400 mb-2">
+          <div className="rounded-[10px] border border-red-900 bg-red-950/30 dark:border-red-200 dark:bg-red-50 p-4">
+            <p className="text-[12px] font-bold text-red-400 dark:text-red-700 mb-2">
               Yang akan dihapus permanen:
             </p>
 
@@ -70,7 +70,7 @@ const DeleteOrgDialog = ({
               {DELETE_ITEMS.map((item) => (
                 <li
                   key={item}
-                  className="text-[12px] text-red-600 dark:text-red-400 flex items-center gap-2"
+                  className="text-[12px] text-red-400 dark:text-red-600 flex items-center gap-2"
                 >
                   <span className="text-red-400">✕</span>
 
@@ -86,7 +86,7 @@ const DeleteOrgDialog = ({
               className="text-[13px] font-semibold text-(--color-text-700) mb-1.5 block"
             >
               Ketik{" "}
-              <span className="font-mono text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded">
+              <span className="font-mono text-red-400 dark:text-red-600 bg-red-950/30 dark:bg-red-50 px-1.5 py-0.5 rounded">
                 {orgName}
               </span>{" "}
               untuk konfirmasi
@@ -97,7 +97,7 @@ const DeleteOrgDialog = ({
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={orgName}
-              className="input-base"
+              className="mt-2 input-base"
               aria-describedby="delete-confirm-hint"
               disabled={isDeleting}
               onKeyDown={(e) => {

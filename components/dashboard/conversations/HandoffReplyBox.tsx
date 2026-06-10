@@ -75,7 +75,8 @@ const HandoffReplyBox = ({
         <button
           onClick={handleReturn}
           disabled={isReturning}
-          className="text-[11.5px] font-semibold text-(--color-text-500) hover:text-(--color-brand) transition-colors disabled:opacity-50"
+          className="text-[11.5px] font-semibold text-(--color-text-500) 
+            hover:text-(--color-brand) transition-colors disabled:opacity-50"
         >
           {isReturning ? "Mengembalikan..." : "↩ Kembalikan ke KUN"}
         </button>
@@ -90,12 +91,13 @@ const HandoffReplyBox = ({
           placeholder="Tulis balasan... (Enter untuk kirim, Shift+Enter untuk baris baru)"
           rows={2}
           maxLength={1000}
-          className="flex-1 input-base text-[13px] resize-none py-2 px-3 min-h-[60px]"
+          className="flex-1 input-base no-zoom resize-none py-2 px-3 min-h-[60px]"
         />
         <button
           onClick={handleSend}
           disabled={isSending || !content.trim()}
-          className="btn-brand h-[60px] px-4 text-[13px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+          className="btn-brand h-[60px] px-4 text-[14px] font-semibold disabled:opacity-50 
+            disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
           aria-label="Kirim balasan"
         >
           {isSending ? <span className="animate-spin">⏳</span> : <>Kirim ↗</>}

@@ -213,7 +213,7 @@ const GlobalSearch = ({
         }}
         placeholder="Cari percakapan, dokumen..."
         className={cn(
-          "w-full bg-(--color-bg-page) border border-(--color-border) rounded-full py-2 pl-9 pr-4 text-[16px] lg:text-[13px] text-(--color-text-700) placeholder:text-(--color-text-400) outline-none focus:border-(--color-brand) focus:bg-(--color-bg-card) focus:ring-2 focus:ring-(--color-brand-light) transition-all",
+          "w-full bg-(--color-bg-page) border border-(--color-border) rounded-full py-1.5 pl-9 pr-4 text-[16px]! text-(--color-text-700) placeholder:text-(--color-text-400) outline-none focus:border-(--color-brand) focus:bg-(--color-bg-card) focus:ring-2 focus:ring-(--color-brand-light) transition-all",
         )}
         aria-label="Cari percakapan dan dokumen"
         aria-expanded={isOpen}

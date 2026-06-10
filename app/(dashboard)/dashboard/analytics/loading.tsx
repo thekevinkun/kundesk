@@ -33,7 +33,7 @@ export default function AnalyticsLoading() {
 
       <div className="space-y-5">
         {/* ── Row 1: KPI strip — 4 cards ── */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <SkeletonCard key={i} className="flex items-center gap-4">
               {/* Icon block */}
@@ -47,9 +47,9 @@ export default function AnalyticsLoading() {
         </div>
 
         {/* ── Row 2: Handoff insight (2/3) + Channel breakdown (1/3) ── */}
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Handoff insight */}
-          <SkeletonCard className="col-span-2">
+          <SkeletonCard className="col-span-1 lg:col-span-2">
             {/* Header */}
             <div className="flex items-start justify-between mb-5">
               <div className="space-y-2">
@@ -98,7 +98,7 @@ export default function AnalyticsLoading() {
         </div>
 
         {/* ── Row 3: Top questions + Peak hours ── */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Top questions */}
           <SkeletonCard>
             <div className="space-y-2 mb-5">
@@ -139,7 +139,7 @@ export default function AnalyticsLoading() {
         </div>
 
         {/* ── Row 4: Volume trend + Response time trend ── */}
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {Array.from({ length: 2 }).map((_, i) => (
             <SkeletonCard key={i}>
               <div className="space-y-2 mb-4">

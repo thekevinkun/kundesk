@@ -87,7 +87,7 @@ const DocumentRow = ({ doc, onDelete, isDeleting }: DocumentRowProps) => {
       <FileIcon filename={doc.name} />
 
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-(--color-text-900) truncate mb-0.5">
+        <div className="text-[13px] font-semibold text-(--color-text-900) mb-0.5">
           {doc.name}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -117,7 +117,7 @@ const DocumentRow = ({ doc, onDelete, isDeleting }: DocumentRowProps) => {
         onClick={() => onDelete(doc.id)}
         disabled={isDeleting}
         aria-label={`Hapus dokumen ${doc.name}`}
-        className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[13px]
+        className="w-6 h-6 sm:w-7 sm:h-7 rounded-[6px] flex items-center justify-center text-[11px] sm:text-[13px]
           transition-all hover:bg-(--color-danger-bg) hover:text-(--color-danger) disabled:opacity-40"
       >
         {isDeleting ? "⏳" : "🗑️"}

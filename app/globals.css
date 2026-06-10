@@ -478,3 +478,18 @@
     }
   }
 }
+
+/* ─── OVERRIDES & ZOOM PREVENTION ─── */
+/* Placing this outside of any @layer ensures it overrides Tailwind utilities and components */
+input.no-zoom,
+textarea.no-zoom {
+  font-size: 14px !important;
+}
+
+/* Focus swap rule applied only to screens smaller than 1024px */
+@media (max-width: 1023px) {
+  input.no-zoom:focus,
+  textarea.no-zoom:focus {
+    font-size: 16px !important; /* Blocks zoom on tap */
+  }
+}

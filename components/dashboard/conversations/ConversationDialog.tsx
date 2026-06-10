@@ -337,12 +337,12 @@ const ConversationDialog = ({
                 placeholder="Balas sebagai staff... (Enter kirim, Shift+Enter baris baru)"
                 rows={2}
                 maxLength={1000}
-                className="flex-1 input-base resize-none text-[13px] py-2 px-3 min-h-[56px] sm:min-h-[60px]"
+                className="flex-1 input-base no-zoom resize-none py-2 px-3 min-h-[56px] sm:min-h-[60px]"
               />
               <button
                 onClick={handleSend}
                 disabled={isSending || !replyContent.trim()}
-                className="btn-brand h-11 w-full px-4 text-[13px] font-semibold disabled:opacity-50 
+                className="btn-brand h-11 w-full px-4 text-[14px] font-semibold disabled:opacity-50 
                   disabled:cursor-not-allowed flex items-center justify-center gap-1.5 whitespace-nowrap sm:h-[60px] sm:w-auto"
                 aria-label="Kirim balasan"
               >

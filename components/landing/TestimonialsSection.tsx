@@ -63,7 +63,7 @@ const TestimonialsSection = () => {
 
       {/* Carousel */}
       <div className="max-w-[800px] mx-auto">
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-visible">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={current}
@@ -72,11 +72,13 @@ const TestimonialsSection = () => {
               initial="enter"
               animate="center"
               exit="exit"
-              className="bg-white border border-(--color-border) rounded-3xl p-10 md:p-14 shadow-[var(--shadow-md)]"
+              className="h-[340px] sm:h-[360px] md:h-[340px] bg-white border border-(--color-border)
+                rounded-3xl p-8 sm:p-10 md:p-14 shadow-[0_18px_50px_rgba(0,0,0,0.08)]
+                ring-1 ring-black/5 flex flex-col overflow-hidden"
             >
               {/* Opening quote mark — serif accent */}
               <div
-                className="text-[72px] leading-[0.6] mb-6 text-(--color-brand-mid) select-none"
+                className="text-[64px] sm:text-[72px] leading-[0.6] mb-4 sm:mb-6 text-(--color-brand-mid) select-none"
                 style={{ fontFamily: "var(--font-serif)" }}
               >
                 "
@@ -84,16 +86,16 @@ const TestimonialsSection = () => {
 
               {/* Quote text */}
               {testi?.quote && (
-                <p className="text-[17px] text-(--color-text-700) leading-[1.75] mb-8 font-normal">
+                <p className="text-[16px] sm:text-[17px] text-(--color-text-700) leading-[1.7] sm:leading-[1.75] mb-6 sm:mb-8 font-normal flex-1 overflow-hidden line-clamp-5 sm:line-clamp-6">
                   {testi.quote}
                 </p>
               )}
 
               {/* Author */}
-              <div className="flex items-center gap-4">
+              <div className="mt-auto flex items-center gap-4">
                 {testi?.initials && (
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white text-[18px] font-extrabold flex-shrink-0"
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white text-[17px] sm:text-[18px] font-extrabold flex-shrink-0 shadow-[0_8px_24px_rgba(6,148,148,0.22)]"
                     style={{
                       background:
                         "linear-gradient(135deg, var(--color-brand), #0891b2)",

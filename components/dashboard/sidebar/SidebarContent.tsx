@@ -32,7 +32,7 @@ const SidebarContent = ({
   if (!mounted) return null;
 
   return (
-    <div className="flex flex-col h-dvh">
+    <div className="flex flex-col h-full">
       {/* ── Logo + Org Switcher ── */}
       <div className="py-5 border-b border-(--color-border) flex-shrink-0">
         <div className="px-6 mb-3">
@@ -69,7 +69,7 @@ const SidebarContent = ({
 
       {/* ── Nav sections ── */}
       <motion.nav
-        className="flex-1 px-3 py-4 overflow-y-auto 
+        className="flex-1 px-3 py-4 overflow-y-auto
           [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar]:h-[6px]
           [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
           hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"

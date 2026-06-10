@@ -3,6 +3,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["0ca6-182-8-161-201.ngrok-free.app"],
   serverExternalPackages: ["@napi-rs/canvas", "@napi-rs/canvas-linux-x64-gnu"],
   images: {
     // Allow next/image to serve QR codes from our own API route with query strings

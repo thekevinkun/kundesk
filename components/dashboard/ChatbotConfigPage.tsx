@@ -313,7 +313,7 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
                 placeholder="Contoh: Selalu sarankan pelanggan untuk menghubungi nomor WhatsApp jika pertanyaan terlalu kompleks."
                 maxLength={2000}
                 rows={4}
-                className="input-base resize-none"
+                className="input-base no-zoom resize-none h-[120px] overflow-y-auto"
                 aria-describedby="prompt-hint"
               />
               <p

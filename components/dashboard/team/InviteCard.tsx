@@ -3,6 +3,14 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { inviteMember } from "@/lib/actions/team";
 import { INVITE_COPY, ROLE_OPTIONS } from "./constants";
 
@@ -60,32 +68,34 @@ const InviteCard = ({ onInvited }: InviteCardProps) => {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        {/* Hidden inputs for Select values — Selects are controlled but form needs raw values */}
+        <input type="hidden" name="role" value={role} />
+
         {/* Email input */}
-        <input
+        <Input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder={INVITE_COPY.emailPlaceholder}
           required
           disabled={isPending}
-          className="input-base flex-1"
-          aria-label="Email anggota baru"
+          className="flex-1 no-zoom min-h-[45px] sm:min-h-fit"
         />
 
         {/* Role selector */}
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          disabled={isPending}
-          className="input-base w-full sm:w-[140px] cursor-pointer"
-          aria-label="Role anggota baru"
-        >
-          {ROLE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <Select value={role} onValueChange={setRole} disabled={isPending}>
+          <SelectTrigger className="w-full sm:w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+
+          <SelectContent>
+            {ROLE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <Button
           type="submit"

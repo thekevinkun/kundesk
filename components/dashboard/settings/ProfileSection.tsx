@@ -41,7 +41,7 @@ const ProfileSection = ({
             onChange={(e) => setName(e.target.value)}
             placeholder="Contoh: Kedai Bu Sari"
             maxLength={80}
-            className="input-base"
+            className="input-base no-zoom"
             aria-describedby="name-hint"
           />
 
@@ -72,7 +72,7 @@ const ProfileSection = ({
               onChange={handleSlugChange}
               placeholder="nama-bisnis-kamu"
               maxLength={50}
-              className="input-base rounded-l-none border-l-0 font-mono text-[13px]"
+              className="input-base no-zoom rounded-l-none border-l-0 font-mono text-[13px]"
               aria-describedby="slug-hint"
             />
           </div>

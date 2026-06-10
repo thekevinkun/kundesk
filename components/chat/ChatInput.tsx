@@ -43,7 +43,10 @@ const ChatInput = ({
   return (
     <footer className="flex-shrink-0 bg-white border-t border-gray-100">
       <div className="px-4 py-3">
-        <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2 focus-within:border-gray-300 transition-colors">
+        <div
+          className="flex items-end gap-2 bg-gray-50 border border-gray-200 rounded-2xl 
+          px-3 py-2 focus-within:border-gray-300 transition-colors"
+        >
           <textarea
             ref={inputRef}
             value={value}
@@ -56,7 +59,8 @@ const ChatInput = ({
                 : "Ketik pesan kamu..."
             }
             rows={1}
-            className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none py-1 max-h-[120px] disabled:opacity-50"
+            className="flex-1 resize-none no-zoom bg-transparent text-gray-800 
+              placeholder-gray-400 outline-none py-1 max-h-[120px] disabled:opacity-50"
             aria-label="Input pesan"
             aria-busy={isDisabled}
           />
@@ -64,14 +68,16 @@ const ChatInput = ({
           <button
             onClick={onSend}
             disabled={isDisabled || !value.trim()}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+            className="w-8 h-8 rounded-xl flex items-center justify-center 
+              text-white transition-all flex-shrink-0 disabled:opacity-40 
+              disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
             style={{ background: accentColor }}
             aria-label="Kirim pesan"
             aria-busy={isDisabled}
           >
             <svg
-              width="14"
-              height="14"
+              width="15"
+              height="15"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -102,9 +108,7 @@ const ChatInput = ({
             Ketik{" "}
             <span className="font-semibold text-gray-500">hubungi admin</span>{" "}
             untuk berbicara dengan staff ·{" "}
-            <span className="font-semibold text-[#069494]">
-              Kundesk
-            </span>
+            <span className="font-semibold text-[#069494]">Kundesk</span>
           </p>
         )}
       </div>
