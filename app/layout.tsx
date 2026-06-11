@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: "%s | Kundesk",
   },
   description:
-    "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Tanpa coding.",
+    "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Hanya perlu upload dokumen bisnis kamu.",
   keywords: [
     "KUN AI",
     "AI chatbot Indonesia",
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     siteName: "Kundesk",
     title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Tanpa coding.",
+      "Kenalkan KUN — AI customer service dari Kundesk yang menjawab pelanggan bisnis kamu 24/7, akurat, dalam Bahasa Indonesia. Hanya perlu upload dokumen bisnis kamu.",
     images: [
       {
         url: "/images/og-image.jpg",
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Kenalkan KUN — AI customer service yang menjawab pelanggan bisnis kamu 24/7. Tanpa coding.",
+      "Kenalkan KUN — AI customer service yang menjawab pelanggan bisnis kamu 24/7. Hanya perlu upload dokumen bisnis kamu.",
     images: ["/images/og-image.jpg"],
     creator: "@kunborneo",
   },

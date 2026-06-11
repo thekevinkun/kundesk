@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   twitter: {
     title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Kenalkan KUN — AI asisten virtual dari Kundesk yang menjawab pelanggan bisnis kamu 24/7. Tanpa coding.",
+      "Kenalkan KUN — AI asisten virtual dari Kundesk yang menjawab pelanggan bisnis kamu 24/7. Hanya perlu upload dokumen bisnis kamu.",
   },
 };
 
