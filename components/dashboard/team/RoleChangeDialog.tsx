@@ -105,14 +105,14 @@ const RoleChangeDialog = ({
                 className={[
                   "w-full text-left p-3 rounded-(--radius-sm) border transition-all",
                   isSelected
-                    ? "border-(--color-brand) bg-(--color-brand-light)"
+                    ? "border-(--color-brand) bg-(--color-brand)/20"
                     : "border-(--color-border) hover:border-(--color-brand-mid) hover:bg-(--color-bg-page)",
                 ].join(" ")}
                 aria-pressed={isSelected}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span
-                    className={`text-[13px] font-600 ${isSelected ? "text-(--color-brand-dark)" : "text-(--color-text-900)"}`}
+                    className={`text-[13px] font-600 ${isSelected ? "text-(--color-brand)" : "text-(--color-text-900)"}`}
                   >
                     {config.label}
                   </span>
@@ -127,7 +127,7 @@ const RoleChangeDialog = ({
                   )}
                 </div>
                 <p
-                  className={`text-[12px] leading-relaxed ${isSelected ? "text-(--color-brand-dark)/70" : "text-(--color-text-400)"}`}
+                  className={`text-[12px] leading-relaxed ${isSelected ? "text-(--color-text-500)" : "text-(--color-text-400)"}`}
                 >
                   {config.description}
                 </p>
@@ -141,6 +141,7 @@ const RoleChangeDialog = ({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
+            className="hover:bg-(--color-danger)/10 hover:border-(--color-danger)"
           >
             {ROLE_CHANGE_COPY.cancelLabel}
           </Button>

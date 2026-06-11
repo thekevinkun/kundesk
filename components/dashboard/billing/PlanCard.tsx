@@ -82,7 +82,7 @@ const PlanCard = ({
       {/* "Paling Populer" badge — Starter only */}
       {isFeatured && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="badge-base bg-(--color-text-900) text-white text-[10px] px-3 py-1 rounded-(--radius-full) whitespace-nowrap shadow-sm">
+          <span className="badge-base bg-(--color-text-900) text-(--color-bg-page) text-[10px] px-3 py-1 rounded-(--radius-full) whitespace-nowrap shadow-sm">
             Paling Populer
           </span>
         </div>
@@ -149,8 +149,8 @@ const PlanCard = ({
           disabled={isDisabled}
           className={`w-full py-2.5 px-4 rounded-(--radius-full) text-sm font-bold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
             isFeatured
-              ? "bg-(--color-brand) text-white hover:bg-(--color-brand-dark) shadow-md hover:shadow-lg"
-              : "bg-(--color-text-900) text-white hover:bg-(--color-text-700)"
+              ? "bg-(--color-brand)/85 text-(--color-bg-page) hover:bg-(--color-brand) shadow-md hover:shadow-lg"
+              : "bg-(--color-text-900) text-(--color-bg-page) hover:bg-(--color-text-700)"
           }`}
         >
           {isPending ? "Memproses..." : ctaLabel}

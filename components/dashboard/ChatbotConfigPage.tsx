@@ -245,14 +245,14 @@ const ChatbotConfigPage = ({ config }: { config: ChatbotConfig }) => {
                   {chips.map((chip, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-medium bg-(--color-brand-light) text-(--color-brand-dark) border border-(--color-brand-mid)"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-medium bg-(--color-brand)/25 text-(--color-text-900)/75 border border-(--color-brand)"
                     >
                       {chip}
                       <button
                         type="button"
                         onClick={() => removeChip(index)}
                         aria-label={`Hapus "${chip}"`}
-                        className="text-(--color-brand) hover:text-(--color-brand-dark) transition-colors leading-none"
+                        className="text-(--color-danger) hover:text-(--color-text-900) transition-colors leading-none"
                       >
                         ×
                       </button>

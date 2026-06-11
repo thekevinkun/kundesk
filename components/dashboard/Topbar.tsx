@@ -300,12 +300,17 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
                         text-(--color-text-500) hover:border-(--color-brand) 
                         hover:text-(--color-brand) transition-all"
                       aria-label={
-                        theme === "dark"
-                          ? "Aktifkan mode terang"
-                          : "Aktifkan mode gelap"
+                        !mounted
+                          ? "Ubah tema"
+                          : theme === "dark"
+                            ? "Aktifkan mode terang"
+                            : "Aktifkan mode gelap"
                       }
                     >
-                      {theme === "dark" ? (
+                      {!mounted ? (
+                        // Placeholder during SSR/hydration — avoids icon mismatch
+                        <span className="w-4 h-4 inline-block" />
+                      ) : theme === "dark" ? (
                         // Sun icon — shown in dark mode, click to go light
                         <svg
                           width="16"
@@ -345,7 +350,11 @@ const Topbar = ({ initialAccentColor }: TopbarProps) => {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {theme === "dark" ? "Mode terang" : "Mode gelap"}
+                    {!mounted
+                      ? "Ubah tema"
+                      : theme === "dark"
+                        ? "Mode terang"
+                        : "Mode gelap"}
                   </TooltipContent>
                 </Tooltip>
 

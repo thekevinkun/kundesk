@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { Toaster } from "sonner";
 
 import { Sidebar, Topbar } from "@/components/dashboard";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { PusherProvider } from "@/components/providers/pusher-provider";
 import { PostHogProvider } from "@/components/providers/posthog-provider";
@@ -46,54 +47,61 @@ export default async function DashboardLayout({
   }
 
   return (
-    <QueryProvider>
-      <PostHogProvider orgId={orgId}>
-        <AccentColorProvider accentColor={accentColor} />
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem={false}
+      disableTransitionOnChange
+    >
+      <QueryProvider>
+        <PostHogProvider orgId={orgId}>
+          <AccentColorProvider accentColor={accentColor} />
 
-        <PusherProvider orgId={orgId} />
+          <PusherProvider orgId={orgId} />
 
-        {/* Skip link — keyboard users jump past sidebar directly to main content */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4
+          {/* Skip link — keyboard users jump past sidebar directly to main content */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4
             focus:z-[9999] focus:px-4 focus:py-2 focus:bg-(--color-brand) 
             focus:text-white focus:rounded-[10px] focus:font-semibold focus:text-sm"
-        >
-          Lewati navigasi
-        </a>
+          >
+            Lewati navigasi
+          </a>
 
-        <div className="min-h-screen bg-(--color-bg-page) flex">
-          {/* Pass subscriptionStatus so Sidebar can show billing warning badge */}
-          <Sidebar subscriptionStatus={subscriptionStatus} />
+          <div className="min-h-screen bg-(--color-bg-page) flex">
+            {/* Pass subscriptionStatus so Sidebar can show billing warning badge */}
+            <Sidebar subscriptionStatus={subscriptionStatus} />
 
-          <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
-            <Topbar initialAccentColor={accentColor} />
+            <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
+              <Topbar initialAccentColor={accentColor} />
 
-            <main id="main-content" className="flex-1 p-4 md:p-6 lg:p-7">
-              {children}
-            </main>
+              <main id="main-content" className="flex-1 p-4 md:p-6 lg:p-7">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster
-          position="bottom-right"
-          duration={5000}
-          toastOptions={{
-            style: {
-              display: "flex",
-              alignItems: "start",
-              fontFamily: "var(--font-body)",
-              fontSize: "12px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              background: "var(--color-bg-card)",
-              color: "var(--color-text-900)",
-            },
-            classNames: {
-              icon: "pt-1",
-            },
-          }}
-        />
-      </PostHogProvider>
-    </QueryProvider>
+          <Toaster
+            position="bottom-right"
+            duration={5000}
+            toastOptions={{
+              style: {
+                display: "flex",
+                alignItems: "start",
+                fontFamily: "var(--font-body)",
+                fontSize: "12px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--color-border)",
+                background: "var(--color-bg-card)",
+                color: "var(--color-text-900)",
+              },
+              classNames: {
+                icon: "pt-1",
+              },
+            }}
+          />
+        </PostHogProvider>
+      </QueryProvider>
+    </ThemeProvider>
   );
 }

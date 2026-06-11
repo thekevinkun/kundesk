@@ -100,7 +100,7 @@ const InviteCard = ({ onInvited }: InviteCardProps) => {
         <Button
           type="submit"
           disabled={isPending || !email.trim()}
-          className="btn-brand whitespace-nowrap"
+          className="btn-brand whitespace-nowrap text-(--color-bg-page)!"
           aria-busy={isPending}
         >
           {isPending ? INVITE_COPY.pendingLabel : INVITE_COPY.submitLabel}

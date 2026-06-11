@@ -105,6 +105,6 @@ export function getStatusDisplay(status: SubscriptionStatus): {
       return { label: "Dibatalkan", className: "badge-base badge-danger" };
     case "free":
     default:
-      return { label: "Gratis", className: "badge-base badge-brand" };
+      return { label: "Gratis", className: "badge-base badge-brand text-(--color-brand)" };
   }
 }

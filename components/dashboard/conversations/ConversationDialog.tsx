@@ -26,7 +26,7 @@ const ROLE_CONFIG = {
     label: "Staff",
     align: "justify-start",
     bubble:
-      "bg-amber-50 text-(--color-text-700) rounded-2xl rounded-bl-sm border border-amber-200",
+      "bg-(--color-brand)/20 text-(--color-text-700) rounded-2xl rounded-bl-sm border border-(--color-brand)",
     avatar: "👤",
   },
 } as const;

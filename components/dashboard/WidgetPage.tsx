@@ -229,7 +229,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                 <div className="text-[15px] font-bold text-(--color-text-900)">
                   Embed di Website
                 </div>
-                <span className="text-[11px] font-bold bg-(--color-brand-light) text-(--color-brand) px-2.5 py-1 rounded-full border border-(--color-brand-mid)">
+                <span className="text-[11px] font-bold bg-(--color-brand)/25 text-(--color-brand) px-2.5 py-1 rounded-full border border-(--color-brand)">
                   Starter & Pro
                 </span>
               </div>
@@ -240,7 +240,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
 
               {/* Code block */}
               <div className="relative">
-                <pre className="bg-(--color-text-900) text-green-400 text-[12px] font-mono p-4 rounded-[10px] overflow-x-auto leading-relaxed whitespace-pre">
+                <pre className="bg-(--color-text-900) text-(--color-brand) text-[12px] font-mono p-4 rounded-[10px] overflow-x-auto leading-relaxed whitespace-pre">
                   {embedCode}
                 </pre>
                 <button

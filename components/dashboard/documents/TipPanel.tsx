@@ -19,7 +19,7 @@ const TipPanel = () => {
       >
         <div className="flex items-center gap-2.5">
           <span className="text-base">💡</span>
-          <span className="text-[13px] font-semibold text-(--color-brand-dark)">
+          <span className="text-[13px] font-semibold text-(--color-brand)">
             Tips dokumen terbaik
           </span>
         </div>
@@ -46,7 +46,7 @@ const TipPanel = () => {
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-3 border-t border-(--color-brand-mid)">
-              <p className="text-[12.5px] text-(--color-brand-dark) mt-3 leading-relaxed">
+              <p className="text-[12.5px] text-(--color-text-900) mt-3 leading-relaxed">
                 AI kamu hanya sebaik dokumen yang kamu upload. Berikut struktur
                 terbaik:
               </p>
@@ -76,7 +76,7 @@ const TipPanel = () => {
                 ].map(({ icon, text }) => (
                   <li
                     key={text}
-                    className="flex items-start gap-2 text-[12px] text-(--color-brand-dark)"
+                    className="flex items-start gap-2 text-[12px] text-(--color-text-900)"
                   >
                     <span className="flex-shrink-0 mt-0.5">{icon}</span>
                     <span className="leading-relaxed">{text}</span>

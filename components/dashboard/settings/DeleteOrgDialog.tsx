@@ -124,7 +124,7 @@ const DeleteOrgDialog = ({
               setConfirmText("");
             }}
             disabled={isDeleting}
-            className="border-(--color-border) text-(--color-text-700)"
+            className="border-(--color-border) text-(--color-text-700) hover:bg-(--color-brand)/75"
           >
             Batal
           </Button>
