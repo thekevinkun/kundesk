@@ -198,7 +198,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
     periodEnd = result.periodEnd;
 
-    await markPaymentSuccess(order_id, payment_type /*, tx */);
+    await markPaymentSuccess(
+      org.id,
+      order_id,
+      plan,
+      parseInt(notification.gross_amount, 10),
+      payment_type,
+    );
 
     if (promoId !== null) {
       await tx

@@ -1,5 +1,6 @@
 import { formatRupiah, formatDate } from "@/helpers/format";
-import { PLAN_CONFIG, getPaymentMethodLabel } from "./constants";
+import { PLAN_CONFIG } from "./constants";
+import { getPaymentMethodLabel } from "@/types/billing";
 import type { PaymentHistoryItem } from "@/types/billing";
 
 interface PaymentHistoryCardProps {

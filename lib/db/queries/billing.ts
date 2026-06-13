@@ -223,21 +223,41 @@ export async function insertPendingPayment(
   });
 }
 
-// Marks an existing pending payment row as successful after Midtrans settlement
-// Called exclusively from the webhook handler — after activateSubscription succeeds
-// Updates by orderId (unique) — the row was created at checkout time
+// Marks an existing pending payment row as successful after Midtrans settlement.
+// Called exclusively from the webhook handler — after activateSubscription succeeds.
+// Updates by orderId (unique) — normally the row was created at checkout time.
+// If no row exists (e.g. webhook fired without a prior checkout — synthetic/test
+// notifications, or legacy flows), inserts a new success row instead so the
+// payment is never silently lost.
 export async function markPaymentSuccess(
+  orgId: string,
   orderId: string,
+  plan: PlanName,
+  amount: number,
   paymentMethod: string,
 ): Promise<void> {
-  await db
+  const result = await db
     .update(payments)
     .set({
       status: "success",
       paymentMethod,
       paidAt: new Date(),
     })
-    .where(eq(payments.orderId, orderId));
+    .where(eq(payments.orderId, orderId))
+    .returning({ id: payments.id });
+
+  if (result.length === 0) {
+    // No pending row existed — insert a fresh success record
+    await db.insert(payments).values({
+      orgId,
+      orderId,
+      plan,
+      amount,
+      paymentMethod,
+      paidAt: new Date(),
+      status: "success",
+    });
+  }
 }
 
 // Marks a pending payment as failed or expired — called when Midtrans reports
@@ -310,7 +330,7 @@ export async function getPaymentHistory(
       // Always scope to org — never fetch payments without orgId
       eq(payments.orgId, orgId),
     )
-    .orderBy(desc(payments.paidAt))
+    .orderBy(desc(sql`COALESCE(${payments.paidAt}, ${payments.createdAt})`))
     .limit(12);
 
   return rows.map((row) => ({

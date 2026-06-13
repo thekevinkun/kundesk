@@ -133,6 +133,20 @@ export async function createPayment(
 
     return { success: true, redirectUrl, finalAmount };
   } catch (err) {
+    // If insertPendingPayment hit the unique constraint, a concurrent request
+    // already created a pending payment — fetch it and return its redirectUrl
+    // instead of erroring, so the user still gets somewhere useful
+    if (err instanceof Error && "code" in err && err.code === "23505") {
+      const existing = await getPendingPayment(orgId);
+      if (existing) {
+        return {
+          success: false,
+          error: "Transaksi sudah dibuat. Lanjutkan pembayaran yang sudah ada.",
+          redirectUrl: existing.redirectUrl,
+        };
+      }
+    }
+
     console.error("[createPayment] Midtrans error:", err);
     return {
       success: false,

@@ -272,19 +272,17 @@ describe("POST /api/webhooks/midtrans", () => {
         from: vi.fn().mockReturnValue({
           // First select: idempotency check → not processed
           // Second select: org lookup → found
-          where: vi
-            .fn()
-            .mockResolvedValue(
-              callCount === 1
-                ? []
-                : [
-                    {
-                      id: "org_3DZHfake123",
-                      name: "Test Org",
-                      ownerEmail: "owner@test.com",
-                    },
-                  ],
-            ),
+          where: vi.fn().mockResolvedValue(
+            callCount === 1
+              ? []
+              : [
+                  {
+                    id: "org_3DZHfake123",
+                    name: "Test Org",
+                    ownerEmail: "owner@test.com",
+                  },
+                ],
+          ),
         }),
       } as unknown as ReturnType<typeof db.select>;
     });
@@ -417,7 +415,10 @@ describe("POST /api/webhooks/midtrans", () => {
 
     // Pending payment row marked as success
     expect(markPaymentSuccess).toHaveBeenCalledWith(
+      "org_3DZHfake123",
       notification.order_id,
+      "starter",
+      149000,
       "bank_transfer",
     );
   });

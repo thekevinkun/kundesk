@@ -13,7 +13,7 @@ import {
   PaymentPendingEmail,
   PlanUpgradedEmail,
 } from "@/emails";
-import { getPaymentMethodLabel } from "@/components/dashboard/billing/constants";
+import { getPaymentMethodLabel } from "@/types/billing";
 import type { PlanName } from "@/types/billing";
 
 // onboarding@resend.dev — Resend's free sender, no custom domain needed

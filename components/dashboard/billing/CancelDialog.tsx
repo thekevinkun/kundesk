@@ -36,7 +36,7 @@ const CancelDialog = ({ currentPlan }: CancelDialogProps) => {
   }, [state]);
 
   // Free plan has no subscription to cancel — render nothing
-  if (currentPlan !== "free") return null;
+  if (currentPlan === "free") return null;
 
   return (
     <Dialog>
