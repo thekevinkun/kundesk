@@ -8,17 +8,18 @@ import {
   CancelDialog,
   PaymentHistoryCard,
   PromoCodeInput,
+  PendingPaymentBanner,
+  PaymentResultBanner,
 } from "@/components/dashboard/billing";
 import { fadeUp } from "@/lib/animations";
 import type { BillingPageData, PlanName } from "@/types/billing";
 
 interface BillingPageProps {
   data: BillingPageData;
+  transactionStatus: string | null;
 }
 
-const BillingPage = ({ data }: BillingPageProps) => {
-  // Promo code applied by the user — passed down to all PlanCards
-  // null = no code entered/cleared, string = code applied
+const BillingPage = ({ data, transactionStatus }: BillingPageProps) => {
   const [promoCode, setPromoCode] = useState<string | null>(null);
 
   return (
@@ -38,6 +39,16 @@ const BillingPage = ({ data }: BillingPageProps) => {
             Kelola plan dan langganan bisnis kamu
           </p>
         </div>
+
+        {/* One-time result banner — only present right after Midtrans redirect */}
+        {transactionStatus && (
+          <PaymentResultBanner transactionStatus={transactionStatus} />
+        )}
+
+        {/* Persistent "resume payment" banner — shown while a pending row exists */}
+        {data.pendingPayment && (
+          <PendingPaymentBanner pendingPayment={data.pendingPayment} />
+        )}
 
         {/* Current plan status card */}
         <CurrentPlanCard data={data} />
@@ -92,7 +103,7 @@ const BillingPage = ({ data }: BillingPageProps) => {
         {/* Cancel link — only for paying subscribers who haven't already cancelled */}
         {data.currentPlan !== "free" &&
           data.subscriptionStatus !== "cancelled" && (
-            <div className="flex items-center justify-end pt-2">
+            <div className="flex items-center justify-end">
               <CancelDialog currentPlan={data.currentPlan} />
             </div>
           )}

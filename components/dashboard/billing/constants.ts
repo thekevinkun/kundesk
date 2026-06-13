@@ -66,24 +66,39 @@ export const PLAN_CONFIG: Record<PlanName, PlanUIConfig> = {
   },
 };
 
-// Maps Midtrans payment_type to a human-readable Indonesian label
-export function formatPaymentMethod(method: string): string {
-  switch (method) {
-    case "bank_transfer":
-      return "Transfer Bank";
-    case "gopay":
-      return "GoPay";
-    case "qris":
-      return "QRIS";
-    case "ovo":
-      return "OVO";
-    case "dana":
-      return "DANA";
-    case "credit_card":
-      return "Kartu Kredit";
-    default:
-      return method;
-  }
+// Human-readable labels for Midtrans payment_type values
+// Used in PlanUpgradedEmail receipt and PaymentHistoryCard
+// bank_transfer is the generic value Midtrans sends for VA settlements —
+// the *_va entries are kept for forward-compatibility but rarely seen directly
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  bank_transfer: "Transfer Bank",
+  qris: "QRIS",
+  other_qris: "QRIS",
+  credit_card: "Kartu Kredit/Debit",
+  bca_va: "BCA Virtual Account",
+  bni_va: "BNI Virtual Account",
+  bri_va: "BRI Virtual Account",
+  permata_va: "Permata Virtual Account",
+  echannel: "Mandiri Virtual Account",
+  cimb_va: "CIMB Niaga Virtual Account",
+  danamon_va: "Danamon Virtual Account",
+  bsi_va: "BSI Virtual Account",
+  seabank_va: "SeaBank Virtual Account",
+  saqu_va: "Bank Saqu Virtual Account",
+  gopay: "GoPay",
+  shopeepay: "ShopeePay",
+  dana: "DANA",
+  ovo: "OVO",
+  indomaret: "Indomaret",
+  alfamart: "Alfamart Group",
+  kredivo: "Kredivo",
+  akulaku: "Akulaku",
+};
+
+// Helper — falls back to the raw value if not in the map
+export function getPaymentMethodLabel(paymentType: string | null): string {
+  if (!paymentType) return "—";
+  return PAYMENT_METHOD_LABELS[paymentType] ?? paymentType;
 }
 
 // Maps subscriptionStatus to display label + badge class
@@ -105,6 +120,9 @@ export function getStatusDisplay(status: SubscriptionStatus): {
       return { label: "Dibatalkan", className: "badge-base badge-danger" };
     case "free":
     default:
-      return { label: "Gratis", className: "badge-base badge-brand text-(--color-brand)" };
+      return {
+        label: "Gratis",
+        className: "badge-base badge-brand text-(--color-brand)",
+      };
   }
 }

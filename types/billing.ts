@@ -100,9 +100,18 @@ export interface PaymentHistoryItem {
   orderId: string;
   plan: PlanName;
   amount: number;
-  paymentMethod: string;
-  paidAt: Date;
-  status: "success" | "failed" | "pending";
+  paymentMethod: string | null; // null until method chosen
+  paidAt: Date | null; // null until settled
+  status: "success" | "failed" | "pending" | "expired";
+}
+
+// Pending Payment from Midtrans - for the resume-payment banner on /billing
+export interface PendingPayment {
+  orderId: string;
+  plan: PlanName;
+  amount: number;
+  redirectUrl: string;
+  createdAt: Date;
 }
 
 // All data the billing page needs — fetched once in page.tsx via Promise.all
@@ -119,4 +128,5 @@ export interface BillingPageData {
   // true if at least one promo code is active and not expired right now
   // drives whether the promo code input appears on the billing page
   hasActivePromo: boolean;
+  pendingPayment: PendingPayment | null;
 }

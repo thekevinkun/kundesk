@@ -6,11 +6,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 import { trackEventImmediate } from "@/lib/posthog";
 import { verifyMidtransSignature } from "@/lib/midtrans";
+import { sendPlanUpgradedEmail } from "@/lib/email";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import { orgs, processedWebhooks, promoCodes } from "@/lib/db/schema";
-import { activateSubscription, insertPayment } from "@/lib/db/queries/billing";
+import {
+  activateSubscription,
+  markPaymentSuccess,
+  markPaymentClosed,
+} from "@/lib/db/queries/billing";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 
 // Midtrans sends POST — no auth header, verified via signature instead
@@ -61,11 +67,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Layer 3: Transaction status check ──
   // "settlement" = bank transfer/e-wallet paid
   // "capture" = credit card authorized and captured
-  // Everything else (pending, expire, cancel) — no action needed
   const isSettled =
     transaction_status === "settlement" || transaction_status === "capture";
 
   if (!isSettled) {
+    // expire/cancel/deny → close out the pending payment row so it stops
+    // showing on /billing as "resume payment" and history reflects the outcome
+    if (
+      transaction_status === "expire" ||
+      transaction_status === "cancel" ||
+      transaction_status === "deny"
+    ) {
+      const closedStatus =
+        transaction_status === "expire" ? "expired" : "failed";
+
+      await markPaymentClosed(order_id, closedStatus).catch(console.error);
+
+      // Mark processed so Midtrans stops retrying this notification
+      await db
+        .insert(processedWebhooks)
+        .values({ externalId: order_id, source: "midtrans" })
+        .catch(() => {
+          // Unique constraint violation on retry — already marked processed, ignore
+        });
+
+      console.log("[midtrans webhook] Payment closed", {
+        order_id,
+        transaction_status,
+        closedStatus,
+      });
+
+      return NextResponse.json({ message: "Payment closed" }, { status: 200 });
+    }
+
+    // "pending" status — VA created but not yet paid, no action needed
     console.log("[midtrans webhook] Non-settlement status — no action", {
       order_id,
       transaction_status,
@@ -129,9 +164,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── Layer 6: Look up org by id prefix ──
   // orgId slice is first 8 chars of Clerk orgId — e.g. "org_3DZH"
-  // Using raw SQL LEFT() — Drizzle has no built-in substring on columns
+  // Widened to include name + ownerEmail — used for the upgrade confirmation email
   const matchingOrgs = await db
-    .select({ id: orgs.id })
+    .select({ id: orgs.id, name: orgs.name, ownerEmail: orgs.ownerEmail })
     .from(orgs)
     .where(sql`LEFT(${orgs.id}, 8) = ${orgIdSlice}`);
 
@@ -149,22 +184,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const org = matchingOrgs[0]!;
 
-  // ── Layer 7: Activate subscription + record payment ──
+  // ── Layer 7: Activate subscription + mark payment success ──
   // Both run before marking processed — if either throws, Midtrans retries
   // activateSubscription is idempotent (SET) — safe to retry
-  // insertPayment has unique constraint on orderId — second attempt throws, caught by idempotency check above
-  // Wrap state transition writes atomically (or make each step conflict-safe/idempotent).
-  // Practical implementation may require threading a tx handle into query helpers.
+  // markPaymentSuccess updates the pending row created at checkout (by orderId)
+  let periodEnd!: Date;
+
   await db.transaction(async (tx) => {
-    await activateSubscription(org.id, plan, payment_type /*, tx */);
-    await insertPayment(
+    const result = await activateSubscription(
       org.id,
-      order_id,
       plan,
-      parseInt(notification.gross_amount, 10),
-      payment_type,
-      /* tx */
+      payment_type /*, tx */,
     );
+    periodEnd = result.periodEnd;
+
+    await markPaymentSuccess(order_id, payment_type /*, tx */);
 
     if (promoId !== null) {
       await tx
@@ -196,6 +230,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     `Plan berhasil diupgrade ke ${planLabel}`,
     `Pembayaran dikonfirmasi · ${order_id}`,
   ).catch(console.error);
+
+  // Send receipt/confirmation email — fire-and-forget, doesn't block webhook response
+  sendPlanUpgradedEmail(
+    org.ownerEmail ?? "",
+    org.name,
+    plan,
+    parseInt(notification.gross_amount, 10),
+    payment_type,
+    order_id,
+    new Date(),
+    periodEnd,
+    env.logoUrl,
+  ).catch((err) =>
+    console.error("[midtrans webhook] Failed to send upgrade email:", err),
+  );
 
   // Track plan upgrades — wait for delivery before ending the webhook response.
   await trackEventImmediate(org.id, "plan_upgraded", {

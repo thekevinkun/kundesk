@@ -4,16 +4,26 @@ import { getBillingData } from "@/lib/db/queries/billing";
 import { BillingPage } from "@/components/dashboard";
 
 export const metadata: Metadata = {
-  // Root layout template appends " | Kundesk" automatically
   title: "Billing",
 };
 
-export default async function BillingPageRoute() {
-  // requireOrg() — always first, orgId comes from session never from URL
-  const { orgId } = await requireOrg();
+// Next.js 16 — searchParams is async, like params
+interface BillingPageRouteProps {
+  searchParams: Promise<{ transaction_status?: string; order_id?: string }>;
+}
 
-  // Fetch all billing data in one query — no Promise.all needed, single source
+export default async function BillingPageRoute({
+  searchParams,
+}: BillingPageRouteProps) {
+  const { orgId } = await requireOrg();
   const billingData = await getBillingData(orgId);
 
-  return <BillingPage data={billingData} />;
+  // Read Midtrans redirect params — present only right after returning
+  // from the Snap payment page (callbacks.finish/pending/error)
+  const params = await searchParams;
+  const transactionStatus = params.transaction_status ?? null;
+
+  return (
+    <BillingPage data={billingData} transactionStatus={transactionStatus} />
+  );
 }

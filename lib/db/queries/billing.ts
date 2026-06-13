@@ -11,7 +11,11 @@ import type {
   SubscriptionStatus,
 } from "@/types/billing";
 import type { PromoCode } from "@/types/billing";
-import { PLAN_LIMITS, PaymentHistoryItem } from "@/types/billing";
+import {
+  PLAN_LIMITS,
+  PaymentHistoryItem,
+  PendingPayment,
+} from "@/types/billing";
 
 // Fetches all billing data the billing page needs in one query
 // Called in /dashboard/billing/page.tsx via Promise.all alongside other fetches
@@ -44,6 +48,7 @@ export async function getBillingData(orgId: string): Promise<BillingPageData> {
     paymentHistory: await getPaymentHistory(orgId),
     hasUsedFirstPurchase: org.hasUsedFirstPurchase,
     hasActivePromo: await checkHasActivePromo(),
+    pendingPayment: await getPendingPayment(orgId),
   };
 }
 
@@ -53,7 +58,7 @@ export async function activateSubscription(
   orgId: string,
   plan: PlanName,
   paymentMethod: string,
-): Promise<void> {
+): Promise<{ periodEnd: Date }> {
   const [org] = await db
     .select({ slug: orgs.slug })
     .from(orgs)
@@ -62,12 +67,8 @@ export async function activateSubscription(
   if (!org) throw new Error("Organization not found");
 
   const now = new Date();
-
-  // Billing period: 30 days from payment date
   const periodEnd = new Date(now);
   periodEnd.setDate(periodEnd.getDate() + 30);
-
-  // Next billing date: same as period end — cron picks this up
   const nextBilling = new Date(periodEnd);
 
   await db
@@ -79,13 +80,15 @@ export async function activateSubscription(
       currentPeriodEnd: periodEnd,
       nextBillingDate: nextBilling,
       lastPaymentMethod: paymentMethod,
-      // Consume the first-time discount — any paid purchase burns it forever
       hasUsedFirstPurchase: true,
     })
     .where(eq(orgs.id, orgId));
 
-  // Invalidate org cache
   await invalidateOrgCache(orgId);
+
+  // Returned so the webhook handler can build the "berlaku hingga" date
+  // in PlanUpgradedEmail without a second query
+  return { periodEnd };
 }
 
 // Marks a subscription as past_due
@@ -200,25 +203,91 @@ export async function getOrgsDueForRenewal(): Promise<
   }));
 }
 
-// Inserts a payment record after successful Midtrans settlement
-// Called exclusively from the webhook handler — after activateSubscription succeeds
-// Never called directly — billing history must only reflect confirmed payments
-export async function insertPayment(
+// Inserts a pending payment record at checkout creation time
+// This row is the single source of truth for "org has an in-flight payment"
+// Replaces the old processedWebhooks same-day lock entirely
+export async function insertPendingPayment(
   orgId: string,
   orderId: string,
   plan: PlanName,
   amount: number,
-  paymentMethod: string,
+  redirectUrl: string,
 ): Promise<void> {
   await db.insert(payments).values({
     orgId,
     orderId,
     plan,
     amount,
-    paymentMethod,
-    // paidAt defaults to now() — matches when webhook was processed
-    status: "success",
+    redirectUrl,
+    // status defaults to "pending", paymentMethod/paidAt stay null
   });
+}
+
+// Marks an existing pending payment row as successful after Midtrans settlement
+// Called exclusively from the webhook handler — after activateSubscription succeeds
+// Updates by orderId (unique) — the row was created at checkout time
+export async function markPaymentSuccess(
+  orderId: string,
+  paymentMethod: string,
+): Promise<void> {
+  await db
+    .update(payments)
+    .set({
+      status: "success",
+      paymentMethod,
+      paidAt: new Date(),
+    })
+    .where(eq(payments.orderId, orderId));
+}
+
+// Marks a pending payment as failed or expired — called when Midtrans reports
+// expire/cancel/deny and no settlement ever occurred
+export async function markPaymentClosed(
+  orderId: string,
+  status: "failed" | "expired",
+): Promise<void> {
+  await db
+    .update(payments)
+    .set({ status })
+    .where(eq(payments.orderId, orderId));
+}
+
+// Fetches an org's pending payment if one exists and is <24h old
+// Used by /billing to show the "resume payment" banner
+// Older pending rows are treated as expired — not returned, new checkout allowed
+export async function getPendingPayment(
+  orgId: string,
+): Promise<PendingPayment | null> {
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [row] = await db
+    .select({
+      orderId: payments.orderId,
+      plan: payments.plan,
+      amount: payments.amount,
+      redirectUrl: payments.redirectUrl,
+      createdAt: payments.createdAt,
+    })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.orgId, orgId),
+        eq(payments.status, "pending"),
+        gte(payments.createdAt, twentyFourHoursAgo),
+      ),
+    )
+    .orderBy(desc(payments.createdAt))
+    .limit(1);
+
+  if (!row || !row.redirectUrl) return null;
+
+  return {
+    orderId: row.orderId,
+    plan: row.plan as PlanName,
+    amount: row.amount,
+    redirectUrl: row.redirectUrl,
+    createdAt: row.createdAt,
+  };
 }
 
 // Fetches payment history for an org — newest first, max 12 records

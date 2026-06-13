@@ -3,9 +3,11 @@
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+
 import { createPayment } from "@/lib/actions/billing";
-import { PLAN_CONFIG } from "@/components/dashboard/billing/constants";
+
 import { formatRupiah } from "@/helpers/format";
+import { PLAN_CONFIG } from "@/components/dashboard/billing/constants";
 import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 import type { BillingPageData, PlanName } from "@/types/billing";
 
@@ -55,6 +57,16 @@ const PlanCard = ({
     if (!state) return;
     if (state.success) {
       window.location.href = state.redirectUrl;
+    } else if (state.redirectUrl) {
+      // Blocked by an existing pending payment — offer resume instead of dead-end
+      toast.error(state.error, {
+        action: {
+          label: "Lanjutkan",
+          onClick: () => {
+            window.location.href = state.redirectUrl!;
+          },
+        },
+      });
     } else {
       toast.error(state.error);
     }

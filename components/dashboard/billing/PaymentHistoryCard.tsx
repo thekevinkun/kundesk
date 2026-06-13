@@ -1,5 +1,5 @@
 import { formatRupiah, formatDate } from "@/helpers/format";
-import { PLAN_CONFIG, formatPaymentMethod } from "./constants";
+import { PLAN_CONFIG, getPaymentMethodLabel } from "./constants";
 import type { PaymentHistoryItem } from "@/types/billing";
 
 interface PaymentHistoryCardProps {
@@ -76,7 +76,7 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
               >
                 {/* Date */}
                 <td className="px-5 py-3.5 text-[13px] text-(--color-text-700) whitespace-nowrap">
-                  {formatDate(item.paidAt)}
+                  {item.paidAt ? formatDate(item.paidAt) : "—"}
                 </td>
 
                 {/* Plan badge */}
@@ -88,7 +88,7 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
 
                 {/* Payment method */}
                 <td className="px-5 py-3.5 text-[13px] text-(--color-text-700)">
-                  {formatPaymentMethod(item.paymentMethod)}
+                  {getPaymentMethodLabel(item.paymentMethod)}
                 </td>
 
                 {/* Order ID — monospace, truncated */}
@@ -115,7 +115,9 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
                         ? "badge-success"
                         : item.status === "pending"
                           ? "badge-warning"
-                          : "badge-danger"
+                          : item.status === "expired"
+                            ? "badge-warning"
+                            : "badge-danger"
                     }`}
                   >
                     <span
@@ -126,7 +128,9 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
                       ? "Berhasil"
                       : item.status === "pending"
                         ? "Pending"
-                        : "Gagal"}
+                        : item.status === "expired"
+                          ? "Kedaluwarsa"
+                          : "Gagal"}
                   </span>
                 </td>
               </tr>

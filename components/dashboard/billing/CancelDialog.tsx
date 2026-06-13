@@ -36,12 +36,12 @@ const CancelDialog = ({ currentPlan }: CancelDialogProps) => {
   }, [state]);
 
   // Free plan has no subscription to cancel — render nothing
-  if (currentPlan === "free") return null;
+  if (currentPlan !== "free") return null;
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="text-xs text-(--color-text-400) hover:text-(--color-danger) underline underline-offset-2 transition-colors cursor-pointer">
+        <button className="text-[11.5px] text-(--color-text-400) hover:text-(--color-danger) underline underline-offset-2 transition-colors cursor-pointer">
           Batalkan langganan
         </button>
       </DialogTrigger>
@@ -60,7 +60,7 @@ const CancelDialog = ({ currentPlan }: CancelDialogProps) => {
               type="submit"
               variant="destructive"
               disabled={isPending}
-              className="cursor-pointer"
+              className="bg-(--color-danger)/75 hover:bg-(--color-danger) cursor-pointer"
             >
               {isPending ? "Membatalkan..." : "Ya, batalkan"}
             </Button>

@@ -371,7 +371,6 @@ export const payments = pgTable(
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
 
-    // Tenant isolation — always filter by orgId first
     orgId: text("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
@@ -379,27 +378,40 @@ export const payments = pgTable(
     // Full Midtrans order ID — e.g. KUNDESK-org_3DZH-STARTER-1234567890
     orderId: text("order_id").notNull().unique(),
 
-    // Plan that was paid for — derived from order_id but stored explicitly for fast reads
+    // Plan being paid for — known at checkout creation time
     plan: text("plan").notNull(),
 
-    // Amount paid in Rupiah — stored as integer (no decimals in IDR)
+    // Amount in Rupiah — known at checkout creation time
     amount: integer("amount").notNull(),
 
-    // Midtrans payment_type — "bank_transfer" | "gopay" | "qris" | "ovo" | "dana"
-    paymentMethod: text("payment_method").notNull(),
+    // Midtrans payment_type — null until customer selects a method on Snap page
+    paymentMethod: text("payment_method"),
 
-    // When Midtrans confirmed the payment — from webhook processedAt timestamp
-    paidAt: timestamp("paid_at").notNull().defaultNow(),
+    // Snap redirect URL — stored so /billing can show a "resume payment" link
+    // Valid 24h from creation regardless of which method is later selected
+    redirectUrl: text("redirect_url"),
 
-    // Always "success" for now — we only insert on settlement + fraud_status=accept
-    // "failed" reserved for future partial failure tracking
-    status: text("status").notNull().default("success"),
+    // When Midtrans confirmed settlement — null until paid
+    paidAt: timestamp("paid_at"),
+
+    // "pending" | "success" | "failed" | "expired"
+    // pending: created at checkout, no webhook yet
+    // success: settlement/capture confirmed
+    // failed: deny/cancel from Midtrans (fraud or user-cancelled)
+    // expired: payment link expired without payment
+    status: text("status").notNull().default("pending"),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    // Index on orgId — all payment history queries are scoped to org
     index("payments_org_id_idx").on(table.orgId),
-    // Index on paidAt DESC — history is always shown newest first
     index("payments_paid_at_idx").on(table.paidAt),
+    // New — /billing queries "does this org have a pending payment <24h old"
+    index("payments_org_status_created_idx").on(
+      table.orgId,
+      table.status,
+      table.createdAt,
+    ),
   ],
 );
 

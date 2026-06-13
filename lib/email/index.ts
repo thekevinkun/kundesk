@@ -10,11 +10,22 @@ import {
   PastDueEmail,
   OrgDeletionEmail,
   HandoffEmail,
+  PaymentPendingEmail,
+  PlanUpgradedEmail,
 } from "@/emails";
+import { getPaymentMethodLabel } from "@/components/dashboard/billing/constants";
+import type { PlanName } from "@/types/billing";
 
 // onboarding@resend.dev — Resend's free sender, no custom domain needed
 // Switch to "Kundesk <noreply@kundesk.app>" once domain is verified
 const DEFAULT_FROM = "Kundesk <onboarding@resend.dev>";
+
+// ── Plan label map — local to this file, mirrors PLAN_CONFIG.label in dashboard ──
+const PLAN_LABELS: Record<PlanName, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+};
 
 interface EmailPayload {
   to: string;
@@ -225,6 +236,82 @@ export async function sendOrgDeletionEmail(
   await sendEmail({
     to,
     subject: `Akun ${orgName} telah dihapus dari Kundesk`,
+    html,
+  });
+}
+
+export async function sendPaymentPendingEmail(
+  to: string,
+  orgName: string,
+  plan: PlanName,
+  amount: number,
+  redirectUrl: string,
+  logoUrl: string,
+): Promise<void> {
+  const formattedAmount = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(amount);
+
+  const html = await render(
+    PaymentPendingEmail({
+      orgName,
+      logoUrl,
+      planLabel: PLAN_LABELS[plan],
+      amount: formattedAmount,
+      redirectUrl,
+    }),
+  );
+
+  await sendEmail({
+    to,
+    subject: `Selesaikan pembayaran plan ${PLAN_LABELS[plan]} kamu`,
+    html,
+  });
+}
+
+export async function sendPlanUpgradedEmail(
+  to: string,
+  orgName: string,
+  plan: PlanName,
+  amount: number,
+  paymentMethod: string,
+  orderId: string,
+  paidAt: Date,
+  periodEnd: Date,
+  logoUrl: string,
+): Promise<void> {
+  const formattedAmount = new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(amount);
+
+  const dateFormatter = (d: Date) =>
+    d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+  const html = await render(
+    PlanUpgradedEmail({
+      orgName,
+      logoUrl,
+      planLabel: PLAN_LABELS[plan],
+      amount: formattedAmount,
+      paymentMethod: getPaymentMethodLabel(paymentMethod),
+      orderId,
+      paidAt: dateFormatter(paidAt),
+      periodEnd: dateFormatter(periodEnd),
+      dashboardUrl: `${env.appUrl}/dashboard`,
+    }),
+  );
+
+  await sendEmail({
+    to,
+    subject: `Pembayaran berhasil — plan ${PLAN_LABELS[plan]} aktif 🎉`,
     html,
   });
 }

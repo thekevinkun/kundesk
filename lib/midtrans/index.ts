@@ -82,8 +82,15 @@ export async function createSubscriptionTransaction(
       customer_details: {
         email: customerEmail,
       },
-      // Push VA/Bank Transfer as default — lowest fee (Rp 4.000 flat)
-      enabled_payments: ["bank_transfer", "gopay", "qris", "ovo", "dana"],
+      // Per-request callbacks override the dashboard's single Finish Redirect URL —
+      // all three point to /billing since Kundesk has no separate status pages.
+      // Midtrans appends order_id, status_code, and transaction_status as query
+      // params on redirect — used by /billing to show an immediate result banner.
+      callbacks: {
+        finish: `${env.appUrl}/dashboard/billing`,
+        error: `${env.appUrl}/dashboard/billing`,
+        pending: `${env.appUrl}/dashboard/billing`,
+      },
     }),
   });
 

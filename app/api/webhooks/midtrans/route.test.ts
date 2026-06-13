@@ -82,8 +82,16 @@ vi.mock("@/lib/db", () => {
 // ── Mock billing queries ──
 // We verify these get called with correct args on the happy path
 vi.mock("@/lib/db/queries/billing", () => ({
-  activateSubscription: vi.fn().mockResolvedValue(undefined),
-  insertPayment: vi.fn().mockResolvedValue(undefined),
+  activateSubscription: vi
+    .fn()
+    .mockResolvedValue({ periodEnd: new Date("2026-07-12") }),
+  markPaymentSuccess: vi.fn().mockResolvedValue(undefined),
+  markPaymentClosed: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/email", () => ({
+  sendPlanUpgradedEmail: vi.fn().mockResolvedValue(undefined),
+  sendPaymentPendingEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ── Mock drizzle operators ──
@@ -101,13 +109,17 @@ vi.mock("drizzle-orm", () => ({
 // Handler imports { processedWebhooks, orgs } — just need the shape
 vi.mock("@/lib/db/schema", () => ({
   processedWebhooks: { id: "id", source: "source", externalId: "externalId" },
-  orgs: { id: "id" },
+  orgs: { id: "id", name: "name", ownerEmail: "ownerEmail" },
 }));
 
 // ── Import after all mocks are registered ──
 import { POST } from "./route";
 import { verifyMidtransSignature } from "@/lib/midtrans";
-import { activateSubscription, insertPayment } from "@/lib/db/queries/billing";
+import {
+  activateSubscription,
+  markPaymentSuccess,
+  markPaymentClosed,
+} from "@/lib/db/queries/billing";
 import { db } from "@/lib/db";
 
 // ── Helper: build a NextRequest with a JSON body ──
@@ -204,7 +216,7 @@ describe("POST /api/webhooks/midtrans", () => {
 
     // Critical: subscription must NOT be activated on duplicate
     expect(activateSubscription).not.toHaveBeenCalled();
-    expect(insertPayment).not.toHaveBeenCalled();
+    expect(markPaymentSuccess).not.toHaveBeenCalled();
   });
 
   // ── Layer 3: Transaction status ──
@@ -220,14 +232,33 @@ describe("POST /api/webhooks/midtrans", () => {
     expect(activateSubscription).not.toHaveBeenCalled();
   });
 
-  it("returns 200 with no action for expire status", async () => {
+  it("closes the payment as expired for expire status", async () => {
     const res = await POST(
       makeRequest(validNotification({ transaction_status: "expire" })),
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.message).toBe("No action required");
+    expect(body.message).toBe("Payment closed");
+    expect(markPaymentClosed).toHaveBeenCalledWith(
+      "KUNDESK-org_3DZH-STARTER-1234567890",
+      "expired",
+    );
+    expect(activateSubscription).not.toHaveBeenCalled();
+  });
+
+  it("closes the payment as failed for cancel status", async () => {
+    const res = await POST(
+      makeRequest(validNotification({ transaction_status: "cancel" })),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toBe("Payment closed");
+    expect(markPaymentClosed).toHaveBeenCalledWith(
+      "KUNDESK-org_3DZH-STARTER-1234567890",
+      "failed",
+    );
     expect(activateSubscription).not.toHaveBeenCalled();
   });
 
@@ -244,7 +275,15 @@ describe("POST /api/webhooks/midtrans", () => {
           where: vi
             .fn()
             .mockResolvedValue(
-              callCount === 1 ? [] : [{ id: "org_3DZHfake123" }],
+              callCount === 1
+                ? []
+                : [
+                    {
+                      id: "org_3DZHfake123",
+                      name: "Test Org",
+                      ownerEmail: "owner@test.com",
+                    },
+                  ],
             ),
         }),
       } as unknown as ReturnType<typeof db.select>;
@@ -273,7 +312,7 @@ describe("POST /api/webhooks/midtrans", () => {
 
     // Subscription must NOT activate on fraud flag
     expect(activateSubscription).not.toHaveBeenCalled();
-    expect(insertPayment).not.toHaveBeenCalled();
+    expect(markPaymentSuccess).not.toHaveBeenCalled();
 
     // But must be marked as processed so Midtrans stops retrying
     expect(db.insert).toHaveBeenCalled();
@@ -340,18 +379,24 @@ describe("POST /api/webhooks/midtrans", () => {
 
   // ── Layer 7+8: Happy path ──
 
-  it("activates subscription and records payment on valid settlement", async () => {
+  it("activates subscription and marks payment as success on valid settlement", async () => {
     // Two db.select calls: idempotency check (empty) then org lookup (found)
     let callCount = 0;
     vi.mocked(db.select).mockImplementation(() => {
       callCount++;
       return {
         from: vi.fn().mockReturnValue({
-          where: vi
-            .fn()
-            .mockResolvedValue(
-              callCount === 1 ? [] : [{ id: "org_3DZHfake123" }],
-            ),
+          where: vi.fn().mockResolvedValue(
+            callCount === 1
+              ? []
+              : [
+                  {
+                    id: "org_3DZHfake123",
+                    name: "Test Org",
+                    ownerEmail: "owner@test.com",
+                  },
+                ],
+          ),
         }),
       } as unknown as ReturnType<typeof db.select>;
     });
@@ -370,12 +415,9 @@ describe("POST /api/webhooks/midtrans", () => {
       "bank_transfer",
     );
 
-    // Payment recorded with correct args
-    expect(insertPayment).toHaveBeenCalledWith(
-      "org_3DZHfake123",
+    // Pending payment row marked as success
+    expect(markPaymentSuccess).toHaveBeenCalledWith(
       notification.order_id,
-      "starter",
-      149000,
       "bank_transfer",
     );
   });
@@ -386,11 +428,17 @@ describe("POST /api/webhooks/midtrans", () => {
       callCount++;
       return {
         from: vi.fn().mockReturnValue({
-          where: vi
-            .fn()
-            .mockResolvedValue(
-              callCount === 1 ? [] : [{ id: "org_3DZHfake123" }],
-            ),
+          where: vi.fn().mockResolvedValue(
+            callCount === 1
+              ? []
+              : [
+                  {
+                    id: "org_3DZHfake123",
+                    name: "Test Org",
+                    ownerEmail: "owner@test.com",
+                  },
+                ],
+          ),
         }),
       } as unknown as ReturnType<typeof db.select>;
     });
