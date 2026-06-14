@@ -39,7 +39,7 @@ export default function PlanUpgradedEmail({
   return (
     <Html>
       <Head />
-      <Preview>{`Pembayaran berhasil — plan ${planLabel} aktif`}</Preview>
+      <Preview>{`Pembayaran plan ${planLabel} kamu telah berhasil dan kini sudah aktif`}</Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Img

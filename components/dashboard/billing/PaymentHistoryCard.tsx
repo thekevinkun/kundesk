@@ -77,7 +77,7 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
               >
                 {/* Date */}
                 <td className="px-5 py-3.5 text-[13px] text-(--color-text-700) whitespace-nowrap">
-                  {item.paidAt ? formatDate(item.paidAt) : "—"}
+                  {formatDate(item.paidAt ?? item.createdAt)}
                 </td>
 
                 {/* Plan badge */}
@@ -114,11 +114,11 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
                     className={`inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full ${
                       item.status === "success"
                         ? "badge-success"
-                        : item.status === "pending"
+                        : item.status === "pending" ||
+                            item.status === "expired" ||
+                            item.status === "cancelled"
                           ? "badge-warning"
-                          : item.status === "expired"
-                            ? "badge-warning"
-                            : "badge-danger"
+                          : "badge-danger"
                     }`}
                   >
                     <span
@@ -131,7 +131,9 @@ const PaymentHistoryCard = ({ history }: PaymentHistoryCardProps) => {
                         ? "Pending"
                         : item.status === "expired"
                           ? "Kedaluwarsa"
-                          : "Gagal"}
+                          : item.status === "cancelled"
+                            ? "Dibatalkan"
+                            : "Gagal"}
                   </span>
                 </td>
               </tr>

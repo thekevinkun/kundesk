@@ -3,7 +3,11 @@ import {
   PLAN_CONFIG,
   getStatusDisplay,
 } from "@/components/dashboard/billing/constants";
-import { formatDate, formatPaymentMethod } from "@/helpers/format";
+import {
+  formatDate,
+  formatPaymentMethod,
+  getNextMonthFirstDay,
+} from "@/helpers/format";
 import type { BillingPageData } from "@/types/billing";
 
 interface CurrentPlanCardProps {
@@ -83,17 +87,21 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
         </div>
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-(--color-text-400)">
-            Reset:{" "}
+            Reset Kuota:{" "}
             <span className="font-semibold text-(--color-text-500)">
-              {formatDate(data.currentPeriodEnd)}
+              {formatDate(getNextMonthFirstDay())}
             </span>
           </p>
-          {/* Urgent warning — only shown above 90% */}
-          {usagePct >= 90 && (
+          {/* Quota warning — distinct messaging at 100% vs approaching limit */}
+          {usagePct >= 100 ? (
+            <span className="badge-base badge-danger text-[10px]">
+              🚫 Kuota telah habis
+            </span>
+          ) : usagePct >= 90 ? (
             <span className="badge-base badge-danger text-[10px]">
               ⚠ Hampir habis
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 

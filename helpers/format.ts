@@ -43,6 +43,12 @@ export function getLocalTimezone(): string {
   }
 }
 
+// Get every 1st day on next month from current month
+export function getNextMonthFirstDay(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+}
+
 // Format local time as HH:MM:SS string in id-ID locale
 export function formatLocalClock(date: Date): string {
   return date.toLocaleTimeString("id-ID", {

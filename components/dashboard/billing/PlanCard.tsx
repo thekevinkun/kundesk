@@ -18,6 +18,7 @@ interface PlanCardProps {
   hasUsedFirstPurchase: boolean;
   // null = no promo entered, string = code to apply at checkout
   promoCode: string | null;
+  hasPendingPayment: boolean;
 }
 
 const PlanCard = ({
@@ -26,6 +27,7 @@ const PlanCard = ({
   subscriptionStatus,
   hasUsedFirstPurchase,
   promoCode,
+  hasPendingPayment,
 }: PlanCardProps) => {
   const config = PLAN_CONFIG[plan];
   const isCurrent = plan === currentPlan;
@@ -74,12 +76,15 @@ const PlanCard = ({
 
   // CTA label — contextual based on current plan + status
   let ctaLabel = "Pilih Plan Ini";
+  if (hasPendingPayment) ctaLabel = "Selesaikan Pembayaran Dulu";
   if (isCurrent && subscriptionStatus === "active") ctaLabel = "Plan Aktif";
   if (plan === "free")
     ctaLabel = isCurrent ? "Plan Aktif" : "Gunakan menu Batalkan Langganan";
 
+  // Disable PLAN card CTA for several cases
   const isDisabled =
     isPending ||
+    hasPendingPayment ||
     (isCurrent && subscriptionStatus === "active") ||
     plan === "free"; // Free plan has no payment flow
 

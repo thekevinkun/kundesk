@@ -137,7 +137,8 @@ export interface PaymentHistoryItem {
   amount: number;
   paymentMethod: string | null; // null until method chosen
   paidAt: Date | null; // null until settled
-  status: "success" | "failed" | "pending" | "expired";
+  createdAt: Date;
+  status: "success" | "failed" | "pending" | "expired" | "cancelled";
 }
 
 // Pending Payment from Midtrans - for the resume-payment banner on /billing

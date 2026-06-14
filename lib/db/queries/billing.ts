@@ -310,6 +310,16 @@ export async function getPendingPayment(
   };
 }
 
+// User-initiated cancellation of their own pending payment — lets them
+// pick a different plan without waiting for the 24h Snap link to expire.
+// Only cancels rows still in "pending" — no-op if already resolved.
+export async function cancelPendingPayment(orgId: string): Promise<void> {
+  await db
+    .update(payments)
+    .set({ status: "cancelled" })
+    .where(and(eq(payments.orgId, orgId), eq(payments.status, "pending")));
+}
+
 // Fetches payment history for an org — newest first, max 12 records
 // Used by the billing page PaymentHistoryCard
 // Scoped to orgId — tenant isolation + IDOR protection
@@ -323,6 +333,7 @@ export async function getPaymentHistory(
       amount: payments.amount,
       paymentMethod: payments.paymentMethod,
       paidAt: payments.paidAt,
+      createdAt: payments.createdAt,
       status: payments.status,
     })
     .from(payments)
@@ -339,6 +350,7 @@ export async function getPaymentHistory(
     amount: row.amount,
     paymentMethod: row.paymentMethod,
     paidAt: row.paidAt,
+    createdAt: row.createdAt,
     status: row.status as PaymentHistoryItem["status"],
   }));
 }

@@ -15,6 +15,7 @@ import {
   validatePromoCode,
   getPendingPayment,
   insertPendingPayment,
+  cancelPendingPayment,
 } from "@/lib/db/queries/billing";
 import type { PlanName } from "@/types/billing";
 import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
@@ -152,6 +153,22 @@ export async function createPayment(
       success: false,
       error: "Gagal membuat transaksi. Coba lagi dalam beberapa saat.",
     };
+  }
+}
+
+// cancelPendingPayment action
+export async function cancelPendingPaymentAction(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const { orgId } = await requireOrg();
+    await cancelPendingPayment(orgId);
+    revalidatePath("/dashboard/billing");
+    return { success: true };
+  } catch (err) {
+    console.error("[cancelPendingPaymentAction] error:", err);
+    return { success: false, error: "Gagal membatalkan transaksi. Coba lagi." };
   }
 }
 

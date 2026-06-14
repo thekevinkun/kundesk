@@ -95,6 +95,7 @@ const BillingPage = ({ data, transactionStatus }: BillingPageProps) => {
                 subscriptionStatus={data.subscriptionStatus}
                 hasUsedFirstPurchase={data.hasUsedFirstPurchase}
                 promoCode={promoCode}
+                hasPendingPayment={!!data.pendingPayment}
               />
             ))}
           </div>

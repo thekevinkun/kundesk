@@ -266,7 +266,7 @@ export async function sendPaymentPendingEmail(
 
   await sendEmail({
     to,
-    subject: `Selesaikan pembayaran plan ${PLAN_LABELS[plan]} kamu`,
+    subject: `Selesaikan pembayaran kamu`,
     html,
   });
 }
@@ -311,7 +311,7 @@ export async function sendPlanUpgradedEmail(
 
   await sendEmail({
     to,
-    subject: `Pembayaran berhasil — plan ${PLAN_LABELS[plan]} aktif 🎉`,
+    subject: `Pembayaran plan ${PLAN_LABELS[plan]} berhasil 🎉`,
     html,
   });
 }
