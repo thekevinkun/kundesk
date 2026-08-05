@@ -34,6 +34,19 @@ When a customer needs a human, they can ask KUN to connect them with the busines
 
 ---
 
+## Early Traction
+
+Two LinkedIn posts in July 2026 announcing Kundesk reached **45,371 impressions** and generated **365 total reactions**:
+
+- **[Launch announcement](https://www.linkedin.com/feed/update/urn:li:activity:7475759720574763009/)** — 4 screenshots, product overview (256 reactions, 11 comments, 26,371 impressions)
+- **[Technical walkthrough video](https://www.linkedin.com/feed/update/urn:li:activity:7477677344254705665/)** — 6-minute demo + architecture breakdown (109 reactions, 11 comments, 19,764 impressions)
+
+**Real engagement:** 13 signups to create organizations. 2 uploaded documents and started testing. 4 attempted a paid subscription (but didn't complete checkout).
+
+This validates the product-market fit signal: Indonesian SMEs recognize the problem and want the solution. The next focus is reducing friction in the onboarding and checkout flows.
+
+---
+
 ## Screenshots
 
 > Landing Page - Hero
@@ -127,11 +140,87 @@ Business owner uploads file
 ### Mock Mode System
 Every external paid service has a `mock` mode — OpenAI, S3, Midtrans, Pusher, Resend. The entire product can be built and tested without spending a cent. Mode switching is a single env variable change per service; the caller never checks the mode directly.
 
+### Design Decisions (Why We Built It This Way)
+
+**Midtrans over Stripe:** Indonesian SMEs pay with GoPay, OVO, DANA, BCA Virtual Account. Stripe doesn't support these. Midtrans does. Market fit > ecosystem convenience.
+
+**pgvector over Pinecone/Weaviate:** RAG needs vector similarity search. Rather than spin up a separate vector DB with another API key and bill, we use Neon's pgvector extension. Same SQL query, one connection string. Trade-off: optimized for 100MB–1GB, not petabyte-scale. Refactor later if needed.
+
+**Next.js 16 Server Actions over tRPC:** Server Actions are simpler for our use case — no API schema duplication, automatic type safety, native to Next.js. tRPC would add a code generation step without much benefit at our scale.
+
+**Pusher for dashboard live updates:** We don't need real-time for customers (they see their own messages instantly via optimistic UI). We *do* need real-time for staff — new conversation counter, live conversation status, human handoff notifications. Pusher is battle-tested and costs nothing at our scale.
+
+**Clerk Organizations for multi-tenancy:** We could use custom JWT + a `tenant_id` header. Clerk gives us instant org switching, invite workflows, RBAC foundation, and free webhooks for org/user sync. Trade-off: tied to Clerk. We chose the convenience.
+
+**Mock mode for every external service:** Building without spending money on OpenAI, Midtrans, S3 means faster iteration. One env variable changes the entire behavior — the caller never checks the mode. This meant we could build the full payment flow without a live Midtrans account.
+
 ### Security Model (11 layers)
 `proxy.ts` route guards → `requireOrg()` tenant isolation → Zod input validation → prompt injection detection (15 regex patterns) → 4 Upstash rate limiters → Clerk (Svix) + Midtrans (SHA512) webhook verification → S3 file validation (MIME + magic bytes) → atomic plan limit enforcement → security headers + CSP → slug enumeration protection → Sentry PII scrubbing.
 
 ### Subscription Logic (Midtrans has no native recurring)
 Manual subscription management via Vercel Cron: daily renewal check → Midtrans charge creation → payment link via Resend → `past_due` after 3 days → `suspended` after 7 days → reactivated on payment webhook settlement. Full idempotency via `processedWebhooks` table.
+
+---
+
+## Challenges & Lessons Learned
+
+### 1. Multi-Tenant Live-Update Race Condition (Phase 14)
+
+**Problem:** Dashboard stat cards lagged one message behind. Every time a customer sent a message, the "Total Pesan" card showed the *previous* count, catching up on the next message.
+
+**Root cause:** `triggerOrgEvent()` fired Pusher notifications *before* `db.transaction()` committed. TanStack Query refetched immediately on Pusher event, but the DB write hadn't committed yet — the query saw stale data.
+
+**Solution:** Separated Pusher ordering by path:
+- **AI-mode (`handleStreamComplete`):** Fire Pusher *AFTER* transaction. The LLM stream is already done; no user-facing latency from the DB write.
+- **Human/handoff paths:** Fire Pusher *BEFORE* writes. User is actively waiting; small inserts are fast; cold-start risk is real.
+
+**Learning:** "Fire before to avoid cold start" doesn't apply to all paths. Cold start risk is real for user-waiting scenarios, not for async background tasks that finish hours later.
+
+### 2. Quota Webhook Silent Failure
+
+**Problem:** Quota warnings and "you've exceeded limit" notifications never fired.
+
+**Root cause:** `insertQuotaWebhookOnce` was using `source: "quota"`, but the `processedWebhooks.source` column only accepts `"midtrans" | "clerk" | "system"`. Every insert threw a constraint error, which was caught and swallowed silently by upstream `.catch(console.error)`.
+
+**Solution:** Changed `source: "quota"` → `source: "system"` in all quota idempotency inserts.
+
+**Learning:** Silent failures are worse than crashes. Upfront schema validation (TypeScript discriminated unions, database constraints) catches these before production.
+
+### 3. Handoff Message Consistency Across Channels
+
+**Problem:** After staff took over a conversation, the customer's chat wouldn't update to show they're talking to a person. The footer still showed "Menunggu staff kami" even after staff replied.
+
+**Root cause:** Three separate bugs layered:
+1. Staff reply's Pusher payload didn't include `handoffStatus: "human"` — customer's `ChatPage` had no handler to update the UI
+2. Canned messages from "Return to KUN" and "Dismiss" were stored as `role: "assistant"` in the database but fired to Pusher as `role: "human_agent"` — customer's UI handler only had a branch for `human_agent`, so assistant messages were silently dropped
+3. No handler in `ChatPage` for `role: "assistant"` messages from Pusher
+
+**Solution:** Established a single invariant: **DB role === Pusher payload role, always, for every message.** Now:
+- Staff replies: `role: "human_agent"` in DB and Pusher
+- Canned KUN messages: `role: "assistant"` in DB and Pusher
+- Customer messages: `role: "user"` in DB and Pusher (no Pusher event needed)
+
+**Learning:** Multi-layer message pipes (DB insert → Pusher event → client handler → UI render) need one consistent "source of truth" for message attributes. Misalignment between layers is easy to miss and breaks silently.
+
+### 4. Why Midtrans, Not Stripe?
+
+**Problem:** Stripe is market-leading, well-documented, production-proven. Why deviate?
+
+**Answer:** Stripe doesn't support GoPay, OVO, DANA, BCA Virtual Account — the payment methods 95% of Indonesian SMEs use. Market fit > developer convenience.
+
+**Implementation:** Midtrans lacks native recurring subscriptions, so we built manual renewal via Vercel Cron + daily checks + Midtrans charge creation + payment links via Resend. Same outcome, slightly more code, but every rupiah collected goes to the business (not a third-party subscription middleman).
+
+**Learning:** Early-stage products must fit their market, even if it means more integration complexity. Stripe would have been "wrong" here despite being "easier."
+
+### 5. pgvector Instead of a Separate Vector DB
+
+**Problem:** RAG requires vector similarity search. Industry best practice is a dedicated vector DB (Pinecone, Weaviate, Qdrant). But that's another infrastructure dependency, another auth token, another cost.
+
+**Answer:** Neon (our PostgreSQL host) includes pgvector as a built-in extension. Cosine similarity search runs in the same SQL query. One connection string, one bill, zero new dependencies.
+
+**Trade-off:** pgvector is slightly slower than specialized vector DBs at massive scale. We're optimized for 100MB–1GB vector data (typical for SME document stores), not for millions of embeddings. If Kundesk grows to that scale, migrating to a specialized DB is a one-week refactor.
+
+**Learning:** "Pick the simplest tool that solves your problem today" beats "pick the industry-standard tool for tomorrow's scale." You can always refactor later.
 
 ---
 
@@ -266,6 +355,8 @@ KUNDESK_EMAIL_MODE=mock
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 ```
+
+> **Why mock mode?** Every external service (OpenAI, S3, Midtrans, Pusher, Resend) has a mock implementation. This means you can run the entire product — upload documents, train RAG, send messages, process payments, receive live updates — without spending money or hitting rate limits. Switch any service to `real` mode when ready. Mock mode is not a hack; it's a deliberate architectural choice that enables fast iteration.
 
 **3. Run database migrations**
 ```bash
