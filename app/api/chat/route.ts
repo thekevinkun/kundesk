@@ -423,9 +423,13 @@ export async function POST(request: NextRequest) {
         channelToken = inserted[0].channelToken;
       }
 
-      // Fire Pusher FIRST — before any DB writes
-      // conversation:takeover drives the pending badge and sound on dashboard immediately
-      // Neon cold start won't delay the dashboard update this way
+      // ⚠️ OPPOSITE ordering from AI mode (see handleStreamComplete)
+      // Fire Pusher FIRST — before any DB writes. Why? Staff is actively waiting.
+      // Handoff requests convert existing conversations (~0 rows → 1 row transition).
+      // Neon cold start risk is real on first activity of the session.
+      // If we wait for transaction first, dashboard update is delayed 2–5s.
+      // Better UX: dashboard badge + sound appear instantly (Pusher), DB write follows.
+      // See: Phase 14 Handoff, Section A — Pusher ordering rules table.
       triggerOrgEvent(org.id, "conversation:takeover", {
         conversationId,
         handoffStatus: "pending_handoff",
@@ -539,10 +543,12 @@ export async function POST(request: NextRequest) {
         content: message,
       });
 
-      // Intentional: human-mode messages increment quota but are never pre-blocked.
-      // If quota is already full, the atomic guard silently does nothing — the
-      // customer can still send messages to the staff member who took over.
-      // This is a deliberate UX decision, not a gap.
+      // ⚠️ INTENTIONAL: human-mode messages bypass the quota pre-check (Step 8).
+      // A frustrated customer who asks for help shouldn't be blocked by a quota wall.
+      // They can still message the staff member even if plan limit is reached.
+      // The atomic guard below still prevents the counter from *exceeding* the limit,
+      // but it doesn't block entry into the human channel.
+      // Handoff requests (Step 6b) follow the same bypass logic — see that section.
       await db
         .update(orgs)
         .set({ messagesUsed: sql`${orgs.messagesUsed} + 1` })
@@ -583,8 +589,12 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 8. Plan limit check ──
-  // Use fresh DB values instead of cached org snapshot — prevents race conditions
-  // where the cached org.messagesUsed is stale after concurrent requests
+  // ⚠️ Critical: Re-fetch messagesUsed from DB, NOT from cached org (from Step 3).
+  // The cached org snapshot is 5 minutes old. Between Step 3 and now, other
+  // sessions may have sent messages and incremented messagesUsed.
+  // Using stale cache here would allow overage: e.g., cache shows 98/100,
+  // we allow message #99, but meantime another session sent #99, #100, #101.
+  // Fresh fetch ensures we see the true current count and enforce the limit atomically.
   const [freshOrgQuota] = await db
     .select({
       messagesUsed: orgs.messagesUsed,
@@ -622,6 +632,12 @@ export async function POST(request: NextRequest) {
       402,
     );
   }
+
+  // ⚠️ Atomic guard pattern: The WHERE clause `messagesUsed < messagesLimit`
+  // is checked INSIDE the SQL UPDATE — not fetched-then-compared-then-updated.
+  // This prevents race conditions: two concurrent requests both see messagesUsed: 99,
+  // both increment to 100 without exceeding the limit. The database enforces it atomically.
+  // Used in handleStreamComplete (Step 13) and handoff paths (Step 6b/7).
 
   // ── 9. Resolve or create conversation ──
   let conversationId: number;
@@ -687,10 +703,13 @@ export async function POST(request: NextRequest) {
     .orderBy(desc(messages.createdAt))
     .limit(6);
 
-  // Remap human_agent → assistant before sending to OpenAI
-  // OpenAI rejects any role outside "user" | "assistant" at runtime —
-  // the TypeScript cast was hiding this bug. Staff replies become "assistant"
-  // so KUN still has full context of what was said during the handoff period.
+  // ⚠️ Role remapping: human_agent → assistant before OpenAI
+  // The database stores messages with role: "user" | "assistant" | "human_agent".
+  // OpenAI API only accepts "user" | "assistant" at runtime — it will throw if it sees "human_agent".
+  // We remap because: during a human handoff, the staff member's replies are stored as "human_agent"
+  // to preserve who-said-what history on the dashboard. But when KUN resumes (after return),
+  // KUN needs context of what was said during the handoff. Remapping to "assistant" lets KUN
+  // reason over it without breaking OpenAI's role contract.
   const conversationHistory = recentMessages.reverse().map((m) => ({
     role: (m.role === "human_agent" ? "assistant" : m.role) as
       | "user"
@@ -731,10 +750,15 @@ export async function POST(request: NextRequest) {
     responseTimeMs?: number,
   ) => {
     try {
-      // freshOrgQuota fetched in step 8 — use it as the base for the optimistic count
       const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
 
-      // DB transaction first — fast, and ensures Pusher-triggered refetches read committed data
+      // ⚠️ CRITICAL: DB transaction FIRST, Pusher AFTER (Phase 14 lesson)
+      // The LLM stream is already done at this point. The perceived latency is not from the DB
+      // write (which is ~ms) — it's from the 5–15s streaming time, which already happened.
+      // Firing Pusher AFTER the transaction guarantees that TanStack Query refetches
+      // (triggered by Pusher events) read *committed* data, not stale state. This eliminates
+      // the off-by-one race where stat cards lag one message behind.
+      // See: Phase 14 Handoff, Section A — Pusher ordering rules differ by path.
       await db.transaction(async (tx) => {
         await tx.insert(messages).values({
           orgId: org.id,

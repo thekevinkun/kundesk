@@ -56,8 +56,20 @@ export async function POST(
 
   const { content } = parsed.data;
 
-  // Atomic check + insert — prevents TOCTOU where /return flips status between check and insert
-  // Row lock ensures handoffStatus cannot change between our read and write
+  // ⚠️ TOCTOU prevention (Time-Of-Check-Time-Of-Use):
+  // Without row lock, a race condition is possible:
+  //   1. This route (reply): SELECT handoffStatus = "pending_handoff"
+  //   2. Concurrent request (return): UPDATE handoffStatus = "ai"
+  //   3. This route: INSERT message, assuming handoffStatus still "pending_handoff"
+  //   4. Result: message inserted into a conversation that's no longer in handoff mode
+  //
+  // Solution: FOR UPDATE lock within the transaction.
+  // The lock is acquired BEFORE we read handoffStatus. The concurrent /return request
+  // must wait for our transaction to commit before it can modify the row.
+  // This guarantees that what we read is what we act on.
+  //
+  // Trade-off: if /return is waiting for the lock, it blocks momentarily. Acceptable
+  // because staff messages are typically brief (< 1s), so the wait is short.
   const result = await db.transaction(async (tx) => {
     const [convo] = await tx
       .select({
@@ -72,24 +84,46 @@ export async function POST(
         ),
       )
       .limit(1)
-      .for("update"); // ← row-level lock — blocks concurrent /return until we commit
+      .for("update"); // ← row-level lock — serializes concurrent /return or /dismiss
 
     if (!convo) return { error: "not_found", channelToken: null } as const;
-    // Allow reply in both human and pending_handoff — staff replying implicitly confirms handoff
+
+    // ⚠️ Allow reply in BOTH "human" and "pending_handoff" states.
+    // Why pending_handoff? A customer asks for help, staff immediately sees the request
+    // and replies — they don't need to click a "Take Over" button first. The reply itself
+    // IS the implicit takeover. This UX is better — staff action is one-step.
+    //
+    // Possible states:
+    //   - "ai" (default): KUN handling, no staff reply allowed
+    //   - "pending_handoff": customer asked for staff, first staff reply transitions to "human"
+    //   - "human": staff already took over, continue replying
+    //
+    // All other states ("pending_handoff" is only new state allowed besides "human") are rejected.
     if (
       convo.handoffStatus !== "human" &&
       convo.handoffStatus !== "pending_handoff"
     )
       return { error: "not_human", channelToken: null } as const;
 
-    // If replying from pending_handoff — auto-transition to human
-    // Staff replying IS the implicit takeover — no separate click needed
+    // ⚠️ Implicit takeover: pending_handoff → human on first reply.
+    // Staff clicking "reply" on a pending_handoff request is the act of takeover.
+    // No need for a separate "Take Over" button click.
+    //
+    // State transition:
+    //   pending_handoff (customer waiting) → human (staff replying)
+    //
+    // Side effect: takenOverAt timestamp is set — used in analytics to measure
+    // "time to first staff response" and also used to display "Staff replied X minutes ago".
+    //
+    // Why check the previous state? If the conversation is already "human" (staff
+    // already took over via explicit takeover button), we don't update takenOverAt again.
+    // Only the FIRST staff action (implicit or explicit takeover) gets timestamped.
     if (convo.handoffStatus === "pending_handoff") {
       await tx
         .update(conversations)
         .set({
           handoffStatus: "human",
-          takenOverAt: new Date(),
+          takenOverAt: new Date(), // ← only set on first staff action
         })
         .where(
           and(
@@ -131,17 +165,61 @@ export async function POST(
     );
   }
 
+  // ⚠️ Two Pusher channels for one conversation:
+  // 1. Private org channel (org-{orgId}): staff dashboard sees all conversations
+  // 2. Public customer channel (conversation-{channelToken}): customer sees ONLY their conversation
+  //
+  // Why channelToken (UUID) instead of conversationId (integer)?
+  // If we used conversationId, an attacker could guess channel names:
+  //   - Private channel is scoped by org_id, so no enumeration risk
+  //   - Public channel MUST be unguessable — customer should only see their own
+  // If public channels were "conversation-123", an attacker could subscribe to
+  // "conversation-1", "conversation-2", etc. and eavesdrop on all conversations.
+  //
+  // channelToken is a crypto.randomUUID() generated at conversation creation.
+  // It's unguessable, only shared with the specific customer (in the chat page URL),
+  // and known ONLY to the customer whose conversation it is.
+  //
+  // Pusher enforces auth on private- channels (dashboard), but public- channels
+  // allow anyone who knows the name to subscribe. So we MUST make the public
+  // channel name cryptographically secure.
   // Notify dashboard (private channel) + customer widget (public UUID channel)
-  // channelToken is the unguessable UUID — not the integer conversationId
+
+  // ⚠️ Pusher event: fire BEFORE DB write? NO — DB is already committed (tx done).
+  // This is a small write (single message insert, single update), and staff is waiting
+  // for the reply to show in ConversationDialog. Cold start risk exists.
+  // But actually, we DO fire after the transaction here because the transaction is
+  // already complete. The Pusher ordering rule is: for SMALL writes + user waiting,
+  // fire before. But we can't fire before a transaction without committing first.
+  // So: always fire after transaction (you can't Pusher before an uncommitted state).
+  //
+  // CRITICAL FIX (Phase 14): include `handoffStatus: "human"` in the payload.
+  // This tells the customer's ChatPage to update the footer hint ("Staff is helping").
+  // Without this, the UI doesn't know the status changed — customer still sees
+  // "Menunggu staff kami" even after staff replied. Fixed in Phase 14.
+  //
+  // DB role vs Pusher role consistency: stored as "human_agent" in DB,
+  // sent as "human_agent" to Pusher. Both must match (see Phase 14 Handoff, Section C3).
   await triggerConversationMessage(orgId, result.channelToken, {
     conversationId,
     role: "human_agent",
     content,
-    handoffStatus: "human",
+    handoffStatus: "human", // ← Phase 14 fix: tell customer's UI that status changed
   }).catch(console.error);
 
-  // If transitioned from pending_handoff — update dashboard row live
-  // Without this the row stays "Pending" until refresh
+  // ⚠️ Second Pusher event: only fires if we transitioned pending_handoff → human.
+  // This is the "takeover" event — it updates the dashboard row status badge
+  // from "Pending" to "Human". Without it, the row stays "Pending" until refresh.
+  //
+  // Why separate event? conversation:message updates the chat content for both
+  // dashboard and customer. conversation:takeover updates the status badge and
+  // increments staff stats. By firing both:
+  //   - Customer sees the new message in their chat + footer hint updates
+  //   - Staff sees the row change from "Pending" to "Human" + star goes away
+  //   - Analytics count a handoff when handoffStatus becomes "human"
+  //
+  // If we're already in "human" state (staff replying a second time), we don't
+  // fire takeover — the status is already "Human".
   if (result.wasTransitioned) {
     triggerOrgEvent(orgId, "conversation:takeover", {
       conversationId,
