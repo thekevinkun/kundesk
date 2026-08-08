@@ -371,7 +371,7 @@ describe("POST /api/webhooks/midtrans", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.error).toBe("Org resolution ambiguous");
+    expect(body.error).toBe("Org resolution failed");
     expect(activateSubscription).not.toHaveBeenCalled();
   });
 
