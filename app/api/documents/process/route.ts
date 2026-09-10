@@ -3,6 +3,7 @@
 // Called by the client immediately after the presigned URL PUT completes
 
 import { type NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -179,6 +180,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // Defense-in-depth — client's s3Key must match what was persisted at upload
+  // time. A legitimate client always echoes the same value it got back from
+  // /api/documents/upload, so any mismatch is either a stale client or an
+  // attempt to point processing at a different (possibly cross-tenant) object.
+  if (s3Key !== document.s3Key) {
+    console.error(
+      `[documents/process] s3Key mismatch for document ${documentId} in org ${orgId}`,
+    );
+    // Explicit Sentry capture — plain console.error is not auto-forwarded.
+    // orgId/documentId are safe (not in beforeSend's scrub list).
+    Sentry.captureMessage("documents/process: s3Key mismatch", {
+      level: "error",
+      extra: {
+        orgId,
+        documentId,
+        reason: "client s3Key did not match persisted document.s3Key",
+      },
+    });
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Invalid s3Key", status: 400 },
+      { status: 400 },
+    );
+  }
+
   // Helper — marks document as failed and notifies dashboard via Pusher
   async function markFailed(): Promise<void> {
     await db
@@ -208,7 +233,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let pipelineResult: Awaited<ReturnType<typeof runProcessingPipeline>>;
   try {
     pipelineResult = await Promise.race([
-      runProcessingPipeline(orgId, document, s3Key, controller.signal),
+      // Use document.s3Key (persisted, tenant-verified) — never the client
+      // value — so the S3 download can't be redirected to another org's file.
+      runProcessingPipeline(orgId, document, document.s3Key, controller.signal),
       timeoutPromise,
     ]);
   } catch (err) {
