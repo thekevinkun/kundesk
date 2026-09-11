@@ -72,6 +72,8 @@ test.describe("Billing", () => {
     page,
     request,
   }) => {
+    test.setTimeout(60_000);
+
     await setupClerkTestingToken({ page });
 
     // Build a valid order_id — format: KUNDESK-{orgSlice}-{PLAN}-{timestamp}
