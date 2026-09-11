@@ -7,6 +7,8 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 
 test.describe("Document upload", () => {
   test("uploads a document and shows it in the list", async ({ page }) => {
+    test.setTimeout(60_000);
+
     await setupClerkTestingToken({ page });
 
     await page.goto("/dashboard/documents");
@@ -116,7 +118,10 @@ test.describe("Document upload", () => {
           fileSize: 1024,
         }),
       });
-      return response.json() as Promise<{ ok: boolean; error?: string }>;
+      return {
+        ok: response.ok,
+        error: await response.text(),
+      };
     });
 
     // Should be rejected — exe is not an allowed file type

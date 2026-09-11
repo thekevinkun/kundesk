@@ -40,7 +40,7 @@ setup("authenticate and save state", async ({ page }) => {
   await page.waitForTimeout(1000);
 
   // Navigate to dashboard to confirm auth + org both work
-  await page.goto("/dashboard");
+  await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
   await page.waitForURL("**/dashboard", { timeout: 20_000 });
 
   // Save auth state
