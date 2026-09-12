@@ -171,7 +171,7 @@ const DocumentsPage = () => {
                 {isLoading
                   ? "Memuat..."
                   : usage?.limit !== null && usage?.limit !== undefined
-                    ? `${visibleDocuments.length} / ${usage.limit} dokumen · ${totalChunks} chunks`
+                    ? `${usage.used} / ${usage.limit} dokumen · ${totalChunks} chunks`
                     : `${visibleDocuments.length} dokumen · ${totalChunks} chunks`}
               </div>
             </div>

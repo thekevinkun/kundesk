@@ -39,37 +39,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Plan document limit check — fresh read, not the 5-min-stale org cache.
-  // Same principle as the chat route's quota gate (Step 8): the resource-creation
-  // gate must see current state, not a snapshot that may be minutes old.
-  const [freshOrg] = await db
-    .select({ plan: orgs.plan })
-    .from(orgs)
-    .where(eq(orgs.id, orgId))
-    .limit(1);
-
-  if (!freshOrg) {
-    return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Organization not found", status: 404 },
-      { status: 404 },
-    );
-  }
-
-  const documentLimit = PLAN_LIMITS[freshOrg.plan as PlanName].documents;
-  const currentDocumentCount = await getOrgDocumentUsageCount(orgId);
-
-  if (currentDocumentCount >= documentLimit) {
-    return NextResponse.json<ApiResponse>(
-      {
-        ok: false,
-        error:
-          "Batas dokumen tercapai. Upgrade plan untuk upload lebih banyak.",
-        status: 403,
-      },
-      { status: 403 },
-    );
-  }
-
   // Parse and validate the request body
   let body: {
     filename?: unknown;
@@ -111,6 +80,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const safeFilename = (filename as string).trim();
 
   // Generate presigned URL — mock or real S3 depending on KUNDESK_STORAGE_MODE
+  // Safe to do before the lock — this is pure local signing, no network call,
+  // even in real S3 mode (getSignedUrl never hits AWS over the wire)
   const { uploadUrl, s3Key } = await generatePresignedUploadUrl(
     orgId,
     safeFilename,
@@ -119,20 +90,77 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       : "application/octet-stream",
   );
 
-  // Insert the document record — status starts as "processing"
-  // We create the record BEFORE the upload so the UI can show it immediately
-  const [document] = await db
-    .insert(documents)
-    .values({
-      orgId,
-      name: safeFilename,
-      s3Key,
-      status: "processing",
-      chunkCount: 0,
-    })
-    .returning({ id: documents.id });
+  // Plan limit check + document insert — one atomic unit.
+  // CodeRabbit finding: a plain count-then-insert lets two concurrent uploads
+  // both read the same pre-insert count, both pass the check, and both insert —
+  // silently exceeding the plan limit. FOR UPDATE locks the org row so a second
+  // concurrent request queues behind the first and re-reads the count only
+  // after the first request's insert has committed.
+  let documentId: number;
+  try {
+    documentId = await db.transaction(async (tx) => {
+      // Lock the org row — serializes concurrent uploads from the same org.
+      // Other orgs are unaffected; this only blocks requests for THIS orgId.
+      const [lockedOrg] = await tx
+        .select({ plan: orgs.plan })
+        .from(orgs)
+        .where(eq(orgs.id, orgId))
+        .for("update");
 
-  if (!document) {
+      if (!lockedOrg) {
+        throw new Error("ORG_NOT_FOUND");
+      }
+
+      // Count runs inside the lock — guaranteed to see any insert committed
+      // by a prior request that held this same lock, not a stale pre-lock read
+      const documentLimit = PLAN_LIMITS[lockedOrg.plan as PlanName].documents;
+      const currentDocumentCount = await getOrgDocumentUsageCount(orgId, tx);
+
+      if (currentDocumentCount >= documentLimit) {
+        throw new Error("DOCUMENT_LIMIT_REACHED");
+      }
+
+      // Insert happens before the lock releases — the next queued request
+      // (if any) will count this row
+      const [document] = await tx
+        .insert(documents)
+        .values({
+          orgId,
+          name: safeFilename,
+          s3Key,
+          status: "processing",
+          chunkCount: 0,
+        })
+        .returning({ id: documents.id });
+
+      if (!document) {
+        throw new Error("INSERT_FAILED");
+      }
+
+      return document.id;
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+
+    if (message === "ORG_NOT_FOUND") {
+      return NextResponse.json<ApiResponse>(
+        { ok: false, error: "Organization not found", status: 404 },
+        { status: 404 },
+      );
+    }
+    if (message === "DOCUMENT_LIMIT_REACHED") {
+      return NextResponse.json<ApiResponse>(
+        {
+          ok: false,
+          error:
+            "Batas dokumen tercapai. Upgrade plan untuk upload lebih banyak.",
+          status: 403,
+        },
+        { status: 403 },
+      );
+    }
+
+    console.error("[documents/upload] Transaction failed:", err);
     return NextResponse.json<ApiResponse>(
       { ok: false, error: "Failed to create document record", status: 500 },
       { status: 500 },
@@ -144,7 +172,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     data: {
       uploadUrl,
       s3Key,
-      documentId: document.id,
+      documentId,
     },
   });
 }
