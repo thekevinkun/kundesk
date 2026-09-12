@@ -11,7 +11,9 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ─── CUSTOM TYPES ───
 
@@ -181,6 +183,12 @@ export const chunks = pgTable(
     index("chunks_org_id_idx").on(table.orgId),
     // Index on documentId — used when deleting all chunks for a document
     index("chunks_document_id_idx").on(table.documentId),
+
+    // HNSW index for cosine similarity search — applied manually to Neon,
+    // now declared here so future `drizzle-kit generate` calls don't try to drop it.
+    index("chunks_embedding_idx")
+      .using("hnsw", sql`(embedding::vector(1536)) vector_cosine_ops`)
+      .with({ m: 16, ef_construction: 128 }),
   ],
 );
 
@@ -370,48 +378,32 @@ export const payments = pgTable(
   "payments",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
     orgId: text("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
-
-    // Full Midtrans order ID — e.g. KUNDESK-org_3DZH-STARTER-1234567890
     orderId: text("order_id").notNull().unique(),
-
-    // Plan being paid for — known at checkout creation time
     plan: text("plan").notNull(),
-
-    // Amount in Rupiah — known at checkout creation time
     amount: integer("amount").notNull(),
-
-    // Midtrans payment_type — null until customer selects a method on Snap page
     paymentMethod: text("payment_method"),
-
-    // Snap redirect URL — stored so /billing can show a "resume payment" link
-    // Valid 24h from creation regardless of which method is later selected
     redirectUrl: text("redirect_url"),
-
-    // When Midtrans confirmed settlement — null until paid
     paidAt: timestamp("paid_at"),
-
-    // "pending" | "success" | "failed" | "expired"
-    // pending: created at checkout, no webhook yet
-    // success: settlement/capture confirmed
-    // failed: deny/cancel from Midtrans (fraud or user-cancelled)
-    // expired: payment link expired without payment
     status: text("status").notNull().default("pending"),
-
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
     index("payments_org_id_idx").on(table.orgId),
     index("payments_paid_at_idx").on(table.paidAt),
-    // New — /billing queries "does this org have a pending payment <24h old"
-    index("payments_org_status_created_idx").on(
-      table.orgId,
-      table.status,
-      table.createdAt,
-    ),
+    // Enforces at most one "pending" payment per org — DB-level backstop for
+    // the TOCTOU race between getPendingPayment and insertPendingPayment.
+    // createPayment's catch block already handles the 23505 violation this
+    // produces. Confirmed live in Neon; was undocumented until this reconciliation.
+    uniqueIndex("payments_org_pending_unique_idx")
+      .on(table.orgId)
+      .where(sql`status = 'pending'`),
+    // NOTE: payments_org_status_created_idx (org_id, status, created_at) was
+    // documented as applied in the Phase 15 handoff but does NOT exist live.
+    // getPendingPayment currently runs unindexed on this shape. Add for real
+    // in a follow-up migration — not declared here since it isn't live yet.
   ],
 );
 
@@ -423,34 +415,29 @@ export const promoCodes = pgTable(
   "promo_codes",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-
-    // The code customers type — stored uppercase, matched case-insensitively
     code: text("code").notNull().unique(),
-
-    // Discount percentage — e.g. 50 means 50% off
     discountPercent: integer("discount_percent").notNull(),
-
-    // Which plans this code applies to — JSON array string e.g. '["starter","pro"]'
-    // null = applies to all paid plans
     applicablePlans: text("applicable_plans"),
-
-    // Validity window — null validUntil means no expiry
     validFrom: timestamp("valid_from").notNull().defaultNow(),
     validUntil: timestamp("valid_until"),
-
-    // Usage cap — null means unlimited
     maxUses: integer("max_uses"),
-
-    // How many times this code has been successfully used
     usedCount: integer("used_count").notNull().default(0),
-
-    // Manual kill switch — set false to disable without deleting
     isActive: boolean("is_active").notNull().default(true),
-
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    // Index on code — lookup by code at checkout
-    uniqueIndex("promo_codes_code_idx").on(table.code),
+    // Case-insensitive uniqueness — matches validatePromoCode's LOWER() lookup.
+    // Live in Neon; previously undeclared here.
+    uniqueIndex("promo_codes_code_lower_idx").on(sql`lower(${table.code})`),
+    // Live in Neon, previously undeclared anywhere in the codebase.
+    check(
+      "chk_discount_percent",
+      sql`${table.discountPercent} >= 1 AND ${table.discountPercent} <= 100`,
+    ),
+    check(
+      "chk_max_uses",
+      sql`${table.maxUses} IS NULL OR ${table.maxUses} >= 0`,
+    ),
+    check("chk_used_count", sql`${table.usedCount} >= 0`),
   ],
 );
