@@ -52,6 +52,24 @@ export function generateOrderId(
   return `KUNDESK-${orgId.slice(0, 8)}-${plan.toUpperCase()}-${timestamp}${promoSuffix}`;
 }
 
+// Formats a Date into the exact format Midtrans's expiry.start_time requires:
+// "yyyy-MM-dd HH:mm:ss Z" — e.g. "2026-09-12 14:30:00 +0700"
+// Using WIB (Asia/Jakarta) — matches the timezone convention already used
+// elsewhere in the codebase (lib/ai/rag.ts's date injection).
+function formatMidtransExpiryStartTime(date: Date): string {
+  const wib = new Date(
+    date.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
+  );
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = wib.getFullYear();
+  const m = pad(wib.getMonth() + 1);
+  const d = pad(wib.getDate());
+  const h = pad(wib.getHours());
+  const min = pad(wib.getMinutes());
+  const s = pad(wib.getSeconds());
+  return `${y}-${m}-${d} ${h}:${min}:${s} +0700`;
+}
+
 // Creates a Midtrans transaction for a plan subscription
 export async function createSubscriptionTransaction(
   orgId: string,
@@ -106,14 +124,18 @@ export async function createSubscriptionTransaction(
       customer_details: {
         email: customerEmail,
       },
-      // ⚠️ All three callbacks point to /billing (not separate success/error pages).
-      // Why? Kundesk has no dedicated payment status pages. The /billing page itself
-      // is the source of truth — it shows subscription status, payment history, and
-      // handles Midtrans query params (order_id, status_code, transaction_status).
-      // Midtrans redirects the customer's browser after payment with these query params.
-      // The webhook runs async and updates the org independently — eventual consistency.
-      // If the customer closes the browser before the webhook fires, the next page
-      // load will see the updated subscription status (webhook finished in background).
+      // Expire the Snap transaction at exactly the same 24h cutoff our own
+      // payments table uses (insertPendingPayment's stale-row expiry,
+      // getPendingPayment's resume-banner window). Without this, Midtrans
+      // defaults to a longer window, so a customer could settle a payment
+      // after our local row was already marked "expired" — the scenario
+      // CodeRabbit flagged. Structurally closing it here is safer than
+      // reconciling two independent 24h clocks after the fact.
+      expiry: {
+        start_time: formatMidtransExpiryStartTime(new Date()),
+        unit: "hours",
+        duration: 24,
+      },
       callbacks: {
         finish: `${env.appUrl}/dashboard/billing`, // payment succeeded
         error: `${env.appUrl}/dashboard/billing`, // customer canceled or payment failed
