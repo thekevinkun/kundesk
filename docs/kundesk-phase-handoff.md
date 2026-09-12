@@ -1,6 +1,6 @@
 # Kundesk — Phase Handoff Document
 
-> **Document Type:** Living document. Replace entirely after each phase completes. **Current State:** Phase 15 complete. Full Midtrans payment lifecycle tracking — pending payment detection, resume/cancel UX, Finish Redirect URL fix, result banners, lifecycle emails, and billing display fixes. Production deployed at `kundesk.vercel.app`. **Last Updated:** June 2026. **Always read `kundesk-project-bible.md` before this document.**
+> **Document Type:** Living document. Replace entirely after each phase completes. **Current State:** Phase 16 (Security & Reliability Stabilization) — IN PROGRESS. Three PRs merged this session, closing the three highest-severity findings from a full-codebase audit. Several medium/high items remain open — see below. Production deployed at `kundesk.vercel.app`. **Last Updated:** September 2026. **Always read `kundesk-project-bible.md` before this document.**
 
 ---
 
@@ -20,7 +20,7 @@
 12. Before writing any UI code — read `/mnt/skills/public/frontend-design/SKILL.md` first.
 13. Always use `npm run typecheck` — NEVER `npx tsc --noEmit`.
 14. Always use `npm run lint` after typecheck before committing.
-15. ALWAYS ask to see an existing file before rewriting or modifying it. Never assume what's in a file — ask Kevin to paste it first.
+15. ALWAYS ask to see an existing file before rewriting or modifying it. Never assume what's in a file — ask Kevin to paste it first. **Claude has no direct access to Kevin's repo or local machine — Claude gives exact code/diffs in chat; Kevin applies, commits, and pushes himself.**
 16. After CI passes — THEN write the handoff document. Never write it before merge.
 17. Answer conversationally in chat — never dump walls of markdown mid-build. This is a conversation, not a document session.
 18. When making surgical changes to existing files — specify EXACTLY which lines to change, what to replace, and what to add. Never force a full rewrite unless truly necessary.
@@ -117,7 +117,7 @@
 109. **Docker is NOT used** — Vercel handles containerization.
 110. **OG image** — `/public/images/og-image.webp`. Under 300KB. Never revert to PNG.
 111. **Midtrans webhook URL** — `https://kundesk.vercel.app/api/webhooks/midtrans`.
-112. **Midtrans Finish Redirect URL** — handled via per-request `callbacks` (see Phase 15 below). Dashboard-level setting alone does NOT work for Kundesk's integration — per-request `callbacks.finish/error/pending` override it.
+112. **Midtrans Finish Redirect URL** — handled via per-request `callbacks` (see Phase 15). Dashboard-level setting alone does NOT work for Kundesk's integration — per-request `callbacks.finish/error/pending` override it.
 113. **Neon cold start context** — Neon serverless sleeps after inactivity. First query after waking takes 2–5 seconds. AI-mode DB transaction fires BEFORE Pusher events — transaction itself is fast (ms), so cold start adds only a small fixed delay, not a 25s stall.
 114. **Pusher channel auth — `transport: "ajax"` + `headersProvider`** — DO NOT change to `"fetch"` or `customHandler`. Confirmed working via direct A/B test; `customHandler` causes total live-update regression.
 115. **Dark mode is scoped to dashboard only** — `ThemeProvider` (next-themes) lives in `app/(dashboard)/dashboard/layout.tsx`, NOT in root `app/layout.tsx`. Landing page is always light.
@@ -125,312 +125,138 @@
 117. **Theme toggle hydration guard** — `Topbar.tsx` dark mode toggle renders a neutral placeholder until `mounted === true`.
 118. **PlanCard CTA/badge text colors use `text-white`, never `text-(--color-bg-page)`** — `--color-bg-page` is theme-dependent and produces dark-on-dark text in dark mode.
 119. **`getAnsweredRate` is capped at 100%** — `Math.min(..., 100)`. Never remove the cap.
+120. **`payments_org_pending_unique_idx` is real and live in Neon** — DB-level partial unique index, one `pending` row per `org_id`. `createPayment` already catches its `23505` violation gracefully. `insertPendingPayment` proactively expires stale (>24h) pending rows before inserting, so this constraint can no longer permanently lock an org out of checkout.
+121. **`insertPendingPayment` must be called before EVERY Midtrans transaction creation, including renewals** — not just manual checkout. This is what makes the webhook's amount validation actually work; without a pending row, validation silently no-ops and trusts whatever Midtrans reports.
+122. **`lib/db/schema.ts` is the only source of truth for the schema** — never trust `drizzle-kit introspect` output as a long-term artifact. It's a one-time diagnostic tool for detecting drift, not something to keep or maintain going forward.
+123. **`lib/db/migrations/0000_equal_brood.sql` must never be run against production Neon** — it documents schema that already exists there. It exists so the NEXT real schema change produces an accurate diff via `drizzle-kit generate`, not so it can be executed. A literal warning comment is at the top of the file.
+124. **Any future manual Neon schema change must be mirrored in `lib/db/schema.ts` in the same sitting.** This is exactly how the original migration-chain drift happened, and nothing structurally prevents it happening again.
+125. **Midtrans real-mode transactions set `expiry: { unit: "hours", duration: 24 }`** — matches the local `payments` staleness cutoff used by `insertPendingPayment`'s expiry logic. Do not remove one without reconciling the other.
+126. **`documents/process` always downloads `document.s3Key` from the DB, never the client-supplied `s3Key`** — client value is validated for exact match and rejected on mismatch, but never trusted for the actual S3 call, even as defense-in-depth.
+127. **Sentry (`sentry.server.config.ts` etc.) only auto-captures uncaught exceptions and client-side crashes** — it does NOT capture anything from a `console.error` inside a `try/catch`, which is this codebase's dominant error-handling pattern. Only two call sites (`documents/process` s3Key mismatch, midtrans webhook amount mismatch + fraud flag) have explicit `Sentry.captureMessage` calls as of Phase 16. A full audit of every other catch block is deferred — see Open Items.
 
 ---
 
-## Phase 15 — Midtrans Payment Lifecycle (This Session)
+## Phase 15 — Midtrans Payment Lifecycle (Prior Session — Summary Retained)
 
-> Two PRs this session: `feature/midtrans-payment-lifecycle` (core lifecycle tracking, banners, emails, redirect fix) and `feature/billing-ux-refinements` (pending-payment controls, history display, quota display fixes). Both merged and tested live in production.
+> Full detail preserved from the prior handoff for reference. Two PRs: `feature/midtrans-payment-lifecycle` and `feature/billing-ux-refinements`. Both merged and tested live in production before this session began.
 
-### Context — What Was Broken Before This Phase
+**Core changes:** `payments` table shifted from success-only ledger to full lifecycle tracking (`pending → success/failed/expired/cancelled`), with `insertPendingPayment`, `markPaymentSuccess` (UPDATE + INSERT fallback), `markPaymentClosed`, `getPendingPayment`, `cancelPendingPayment` added to `lib/db/queries/billing.ts`. `createPayment`'s same-day lock replaced by the pending-payment check. Midtrans `callbacks.finish/error/pending` added to fix the redirect-back-to-`/billing` issue. `PaymentResultBanner` (one-time, query-param-driven) and `PendingPaymentBanner` (persistent, DB-row-driven) both added. Webhook handler gained non-settlement status handling (`expire`/`cancel`/`deny` → `markPaymentClosed`). Two new lifecycle emails (`PaymentPendingEmail`, `PlanUpgradedEmail`). `PAYMENT_METHOD_LABELS`/`getPaymentMethodLabel` replaced the old `formatPaymentMethod`. `CurrentPlanCard` got a 100%-quota badge and a corrected "Reset Kuota" date via `getNextMonthFirstDay()`.
 
-Three issues identified after Phase 14:
+**CodeRabbit finding at the time (Section K):** TOCTOU gap between `getPendingPayment` and `insertPendingPayment` was flagged. **This session's investigation (Phase 16) found this was already resolved at the DB level** — a partial unique index (`payments_org_pending_unique_idx`) exists live in Neon and is already handled by a `23505` catch in `createPayment` — but this was never documented in Phase 15's decision log, which incorrectly states "no unique constraint was added." See rule 120.
 
-1. **Abandoned checkouts were a dead end.** Clicking a plan created a Midtrans Snap transaction and a `processedWebhooks` row keyed `PAYMENT-{orgId}-{plan}-{date}` — a same-day lock with no payment data. If the customer closed the Snap tab without paying, re-clicking the plan returned: _"Transaksi untuk plan ini sudah dibuat hari ini. Selesaikan pembayaran sebelumnya atau coba lagi besok."_ — no link back to the payment, no way to cancel, stuck until the next calendar day.
-    
-2. **Midtrans Finish Redirect URL didn't work.** The Midtrans Sandbox dashboard setting for "Finish Redirect URL" was set to `/dashboard/billing`, but after a successful sandbox payment, Midtrans showed its own default confirmation page instead of redirecting back.
-    
-3. **No feedback on `/billing` after payment**, success or failure. No banner, no email receipt. `expire`/`cancel`/`deny` webhook notifications were silently ignored — `payments` table only ever had `status: "success"` rows, created fresh on settlement.
-    
-
-### A. `payments` Table — Full Lifecycle Tracking
-
-**Core architectural shift:** `payments` changed from "success-only ledger, one row inserted per settlement" to "one row per checkout attempt, status evolves in place." This mirrors the pattern used in Kevin's Padel Court project (`payments`/`bookings` rows that transition `PENDING → SUCCESS/FAILED`).
-
-**Schema changes** (applied manually via Neon SQL editor — `db:migrate` does not work against Neon, per existing rule):
-
-```sql
--- Widen payments table for full lifecycle tracking (pending → success/failed/expired/cancelled)
-ALTER TABLE payments ALTER COLUMN payment_method DROP NOT NULL;
-ALTER TABLE payments ALTER COLUMN paid_at DROP NOT NULL;
-ALTER TABLE payments ALTER COLUMN paid_at DROP DEFAULT;
-ALTER TABLE payments ALTER COLUMN status SET DEFAULT 'pending';
-ALTER TABLE payments ADD COLUMN redirect_url TEXT;
-
--- New composite index for "does this org have a pending payment" lookup
-CREATE INDEX payments_org_status_created_idx ON payments (org_id, status, created_at);
-
--- Discovered during this phase: created_at was in lib/db/schema.ts but had
--- never been migrated to Neon — pre-existing drift, unrelated to this phase's
--- changes but blocked getPendingPayment until fixed
-ALTER TABLE payments ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT now();
-```
-
-**`payments.status` is now a 5-value union:** `"pending" | "success" | "failed" | "expired" | "cancelled"`
-
-|Status|Set by|Meaning|
-|---|---|---|
-|`pending`|`insertPendingPayment` at checkout creation|Snap transaction created, awaiting payment|
-|`success`|`markPaymentSuccess` on settlement/capture webhook|Payment confirmed, subscription activated|
-|`failed`|`markPaymentClosed` on `cancel`/`deny` webhook|Midtrans-side denial or user cancelled in Snap|
-|`expired`|`markPaymentClosed` on `expire` webhook|Payment link expired, never paid|
-|`cancelled`|`cancelPendingPayment` (user-initiated, this session's second PR)|User clicked "Batalkan" on the pending banner to pick a different plan|
-
-**New/changed query functions in `lib/db/queries/billing.ts`:**
-
-- `insertPendingPayment(orgId, orderId, plan, amount, redirectUrl)` — INSERT at checkout creation, `status: "pending"`
-- `markPaymentSuccess(orgId, orderId, plan, amount, paymentMethod)` — UPDATE by `orderId` to `status: "success"`. **Falls back to INSERT if zero rows matched** (e.g. synthetic webhook notifications in E2E tests that never went through `createPayment` — discovered via `04-billing.spec.ts` failure). This guarantees a settlement is never silently lost regardless of whether a pending row exists.
-- `markPaymentClosed(orderId, status: "failed" | "expired")` — UPDATE by `orderId` for non-settlement terminal states
-- `getPendingPayment(orgId)` — returns the org's `pending` row if `<24h` old (matches Midtrans Snap's `payment-list` page expiry), else `null`. Used for the resume banner AND as the new same-day-lock replacement.
-- `cancelPendingPayment(orgId)` — UPDATE `status: "pending" → "cancelled"`, only affects rows still pending. Added in the second PR.
-- `activateSubscription` now returns `{ periodEnd: Date }` (previously `void`) — used by the webhook handler to populate the `PlanUpgradedEmail` receipt without an extra query.
-
-`getPaymentHistory` now also selects `createdAt` and orders by `COALESCE(paidAt, createdAt) DESC` — so pending/failed/expired/cancelled rows (which have no `paidAt`) still sort correctly by creation time.
-
-### B. `createPayment` — Same-Day Lock Replaced
-
-**Old logic:** check `processedWebhooks` for `PAYMENT-{orgId}-{plan}-{date}`; if found, hard error, no redirect, wait until tomorrow.
-
-**New logic:** call `getPendingPayment(orgId)`. If a pending row `<24h` old exists:
-
-```ts
-return {
-  success: false,
-  error: "Kamu masih memiliki pembayaran yang belum diselesaikan. ...",
-  redirectUrl: pending.redirectUrl, // ← new field on BillingActionResult error variant
-};
-```
-
-`PlanCard.tsx`'s `useEffect` checks for `state.redirectUrl` on error and shows a toast with a "Lanjutkan" action button (sonner `toast.error` with `action: { label, onClick }`).
-
-On success, `insertPendingPayment` is called immediately after `createSubscriptionTransaction` returns — this row is now the single source of truth for "org has an in-flight payment," replacing the `processedWebhooks` lock entirely. `processedWebhooks` import removed from `lib/actions/billing.ts`.
-
-### C. Midtrans `callbacks.finish/error/pending` — Redirect Fix
-
-**Root cause of issue #2:** the Sandbox dashboard's "Finish Redirect URL" setting is overridden by **per-request `callbacks`** in the Snap transaction creation body — which Kundesk wasn't setting. Padel Court's working implementation (`callbacks: { finish, error, pending }` in `parameter` passed to `snap.createTransaction`) confirmed this.
-
-**Fix — `lib/midtrans/index.ts`, `createSubscriptionTransaction`, real-mode request body:**
-
-```ts
-callbacks: {
-  finish: `${env.appUrl}/dashboard/billing`,
-  error: `${env.appUrl}/dashboard/billing`,
-  pending: `${env.appUrl}/dashboard/billing`,
-},
-```
-
-All three point to `/billing` since Kundesk has no separate status pages (unlike Padel Court's `/booking/success/[ref]`, `/booking/failed`, `/booking/pending/[ref]`). Midtrans appends `order_id`, `status_code`, and `transaction_status` as query params on redirect — consumed by Step D below.
-
-**Confirmed behavior (tested live):** closing the Snap page without selecting/paying does NOT trigger any callback — the row stays `pending` and is picked up by `getPendingPayment` on next `/billing` visit regardless. Callbacks only fire after an actual payment attempt (success, pending-VA-created, or error).
-
-### D. `PaymentResultBanner` — One-Time Redirect Feedback
-
-New component, `components/dashboard/billing/PaymentResultBanner.tsx`. Reads `transaction_status` from `/billing`'s query params (passed down from `app/(dashboard)/dashboard/billing/page.tsx`, which now accepts `searchParams: Promise<{ transaction_status?, order_id? }>` per Next.js 16's async searchParams).
-
-Maps `transaction_status`:
-
-- `settlement` / `capture` → green, "Pembayaran berhasil"
-- `pending` → brand/amber, "Pembayaran sedang diproses"
-- anything else (`deny`/`cancel`/`expire`) → red, "Pembayaran tidak berhasil"
-
-On mount, `useEffect` calls `router.replace("/dashboard/billing")` — strips the query param so a refresh shows a clean page. **This is purely client-side URL cleanup, nothing persisted** — distinguishes it from `PendingPaymentBanner` (Step E), which is driven by a real DB row and persists across refreshes until resolved.
-
-Used real `--color-success`/`--color-danger` tokens with opacity modifiers (`bg-(--color-success)/10 border-(--color-success)/30`) — NOT fabricated `-light` variants which don't exist in `globals.css`.
-
-### E. `PendingPaymentBanner` — Persistent Resume/Cancel
-
-New component, `components/dashboard/billing/PendingPaymentBanner.tsx`. Rendered when `data.pendingPayment` (from `getPendingPayment`) is non-null — persists across every page load while the row is `status: "pending"` and `<24h` old.
-
-Shows plan + amount + two actions:
-
-- **"Lanjutkan Pembayaran"** — link to `pendingPayment.redirectUrl` (the original Snap `payment-list` URL, valid 24h regardless of which payment method is later selected within it)
-- **"Batalkan"** — calls `cancelPendingPaymentAction` (second PR), marks the row `cancelled`, `revalidatePath("/dashboard/billing")`. Lets the user pick a different plan (e.g. Starter → Pro) without waiting for the Snap link to expire. The abandoned Snap link is left to expire naturally on Midtrans's side; if somehow still paid, `markPaymentSuccess` updates by `orderId` regardless of status — no payment lost, just a slightly odd history entry (accepted edge case).
-
-**Plan cards disabled while pending payment exists** (second PR) — `PlanCard` receives `hasPendingPayment: boolean`, added to `isDisabled`, with CTA label "Selesaikan Pembayaran Dulu" (distinct from "Plan Aktif"). Prevents creating concurrent Snap transactions for the same org.
-
-**Render order on `/billing`:** `PaymentResultBanner` (one-time, if present) → `PendingPaymentBanner` (persistent, if present) → `CurrentPlanCard` → plan grid → ... Both banners can coexist (e.g. VA chosen → `transaction_status=pending` on redirect shows the green-ish one-time banner AND the persistent resume banner, since the row is still `pending` until the settlement webhook lands).
-
-### F. Webhook Handler — Non-Settlement Statuses Now Handled
-
-**Old behavior:** `expire`/`cancel`/`deny`/`pending` transaction_status all fell into "no action required" — `payments` row (which didn't exist yet under the old model) was simply never created.
-
-**New behavior** — new branch in `app/api/webhooks/midtrans/route.ts`, inside the `!isSettled` block:
-
-```ts
-if (transaction_status === "expire" || transaction_status === "cancel" || transaction_status === "deny") {
-  const closedStatus = transaction_status === "expire" ? "expired" : "failed";
-  await markPaymentClosed(order_id, closedStatus).catch(console.error);
-  await db.insert(processedWebhooks)
-    .values({ externalId: order_id, source: "midtrans" })
-    .catch(() => { /* unique constraint on retry — already marked, ignore */ });
-  return NextResponse.json({ message: "Payment closed" }, { status: 200 });
-}
-// "pending" status falls through to existing "No action required" — VA created,
-// awaiting payment, row correctly stays status: "pending"
-```
-
-Note: `.onConflictDoNothing()` was tried first but isn't available on the test mock's `db.insert().values()` chain — replaced with `.catch()`, which works with both the real Drizzle client and the Vitest mock.
-
-**Settlement path** — `insertPayment` replaced with `markPaymentSuccess(org.id, order_id, plan, amount, payment_type)`. `matchingOrgs` select widened to `{ id, name, ownerEmail }` (previously just `{ id }`) — needed for the new receipt email (Step G). `activateSubscription`'s returned `periodEnd` is captured via `let periodEnd!: Date` (definite assignment, set inside `db.transaction`).
-
-### G. Two New Lifecycle Emails
-
-Both follow the existing minimal `UsageWarningEmail`-style template (NOT Padel Court's heavy table layout — kept consistent with Kundesk's email suite).
-
-**`emails/PaymentPendingEmail.tsx`** + `sendPaymentPendingEmail` — sent from `createPayment` (fire-and-forget, `.catch(console.error)`) immediately after `insertPendingPayment` succeeds. Contains plan, amount, and the resume `redirectUrl` (same link as `PendingPaymentBanner`, valid 24h).
-
-**`emails/PlanUpgradedEmail.tsx`** + `sendPlanUpgradedEmail` — sent from the webhook handler (fire-and-forget) after settlement. Doubles as a receipt: plan, amount, payment method (human-readable via `getPaymentMethodLabel`), order ID, paid date, "berlaku hingga" (period end, from `activateSubscription`'s returned `periodEnd`).
-
-Both registered in `emails/index.ts` via `export { default as X } from "./X"`.
-
-### H. `PAYMENT_METHOD_LABELS` / `getPaymentMethodLabel`
-
-Added to `components/dashboard/billing/constants.ts` (NOT `types/billing.ts` — UI-presentation data stays with `PLAN_CONFIG`). Full mapping of Midtrans `payment_type` values (`bank_transfer`, `qris`, `gopay`, `*_va` variants, `shopeepay`, `dana`, `ovo`, `indomaret`, `alfamart`, `kredivo`, `akulaku`, etc.) to Indonesian human-readable labels. Falls back to the raw value if unmapped.
-
-**The old `formatPaymentMethod` switch-statement function was removed** — `getPaymentMethodLabel` supersedes it (more complete mapping) and is now the single source used by both `PaymentHistoryCard` and the email senders.
-
-### I. `PaymentHistoryCard` Updates
-
-- `getPaymentMethodLabel` replaces `formatPaymentMethod` — handles `null` → `"—"` internally
-- Status badge: `"pending"`, `"expired"`, `"cancelled"` all render as `badge-warning` with labels "Pending"/"Kedaluwarsa"/"Dibatalkan"; `"failed"` is `badge-danger` "Gagal"; `"success"` is `badge-success` "Berhasil"
-- **Date column** — was `formatDate(item.paidAt)`, which showed "—" for any non-success row (since `paidAt` is null until settlement). Now `formatDate(item.paidAt ?? item.createdAt)` — every row shows a meaningful date (when the attempt was made, or when it was paid)
-
-### J. `CurrentPlanCard` — Two Display Fixes
-
-**1. Quota at 100%:** previously showed "⚠ Hampir habis" at both 90% and 100%. Now:
-
-```tsx
-{usagePct >= 100 ? (
-  <span className="badge-base badge-danger text-[10px]">🚫 Kuota telah habis</span>
-) : usagePct >= 90 ? (
-  <span className="badge-base badge-danger text-[10px]">⚠ Hampir habis</span>
-) : null}
-```
-
-**2. "Reset" label was misleading.** Previously `formatDate(data.currentPeriodEnd)` — `currentPeriodEnd` is `null` for Free plans (shows "—"), and for paid plans it's the _subscription renewal date_, not the _quota reset date_. These are different: `messagesUsed` resets monthly via `/cron/reset-usage` (always 1st of calendar month, for every org regardless of plan), completely decoupled from each org's individual 30-day billing cycle (`currentPeriodEnd = activatedAt + 30 days`).
-
-Fixed by computing the actual quota reset date client-side:
-
-```ts
-// helpers/format.ts
-export function getNextMonthFirstDay(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
-}
-```
-
-```tsx
-<p className="text-xs text-(--color-text-400)">
-  Reset Kuota: <span className="font-semibold text-(--color-text-500)">
-    {formatDate(getNextMonthFirstDay())}
-  </span>
-</p>
-```
-
-**No cron/query changes** — `/cron/reset-usage` behavior was already correct (resets all orgs monthly on the 1st); this was purely a display bug. The existing "Tagihan Berikutnya" field (in the billing-meta block, `data.nextBillingDate`) remains the correct source for subscription renewal date.
-
-### K. CodeRabbit Finding — TOCTOU on Pending Payment Creation
-
-CodeRabbit flagged: the gap between `getPendingPayment` (check) and `insertPendingPayment` (write) — separated by a non-idempotent `createSubscriptionTransaction` call — could allow concurrent requests to both pass the check and create multiple Snap transactions for the same org.
-
-**Resolution: addressed at the UI level, not the DB level.** Plan cards are disabled (`isDisabled` includes `hasPendingPayment`) the moment `data.pendingPayment` is non-null, which `revalidatePath` ensures reflects immediately after `insertPendingPayment`. A genuinely concurrent double-click within the same request-response cycle (before revalidation) remains a theoretical residual risk, but is accepted — same risk class as other fire-and-forget patterns already present in this codebase (e.g. `processedWebhooks` pre-insert pattern in the renewal cron). **No unique constraint/partial index was added** — the UI-level guard plus `markPaymentSuccess`'s INSERT-fallback (which guarantees no payment is ever lost even if rows get into an unexpected state) was judged sufficient.
-
-### L. Test Fixes
-
-`app/api/webhooks/midtrans/route.test.ts`:
-
-- Mock `@/lib/db/queries/billing` now exports `activateSubscription` (resolving `{ periodEnd: Date }`), `markPaymentSuccess`, `markPaymentClosed` (was: `activateSubscription` resolving `undefined`, `insertPayment`)
-- New mock `@/lib/email` exports `sendPlanUpgradedEmail`, `sendPaymentPendingEmail`
-- Schema mock `orgs` widened to `{ id, name, ownerEmail }`
-- `"expire"` status test rewritten — now expects `{ message: "Payment closed" }` and `markPaymentClosed(orderId, "expired")`, not the old `"No action required"`
-- New test for `"cancel"` status → `markPaymentClosed(orderId, "failed")`
-- All org-lookup mock results widened from `[{ id: "org_3DZHfake123" }]` to include `name`/`ownerEmail`
-- `markPaymentSuccess` assertions updated to its new 5-arg signature: `(orgId, orderId, plan, amount, paymentMethod)`
-
-`e2e/04-billing.spec.ts` — the "activates subscription via mock webhook" test fires a synthetic webhook with no prior `createPayment`/pending row. This is exactly the scenario `markPaymentSuccess`'s INSERT-fallback (Step A) was designed for — no test changes needed once the fallback was added; the `payments` row is created fresh on the `UPDATE` matching zero rows.
-
-(The `05-human-handoff.spec.ts` "takeover API rejects invalid conversation ID" failure — expects 400, gets 500 — is pre-existing/unrelated to this phase, flagged as flaky by Playwright, out of scope.)
+**Full file-change list and prior Open Items are preserved below in the original Phase 15 record.**
 
 ---
 
-## Files Changed in Phase 15
+## Phase 16 — Security & Reliability Stabilization (Current Phase — IN PROGRESS)
 
-```
-lib/db/schema.ts                                   — payments: nullable paymentMethod/paidAt,
-                                                       new redirectUrl, status default "pending",
-                                                       new composite index
-lib/db/queries/billing.ts                          — insertPendingPayment, markPaymentSuccess
-                                                       (UPDATE + INSERT fallback), markPaymentClosed,
-                                                       getPendingPayment, cancelPendingPayment,
-                                                       activateSubscription returns periodEnd,
-                                                       getPaymentHistory selects createdAt,
-                                                       orders by COALESCE(paidAt, createdAt)
-types/billing.ts                                   — PendingPayment type, BillingPageData.pendingPayment,
-                                                       PaymentHistoryItem.createdAt + status union
-                                                       widened to include "expired"/"cancelled",
-                                                       nullable paymentMethod/paidAt
-lib/actions/billing.ts                             — same-day lock replaced with getPendingPayment;
-                                                       insertPendingPayment + sendPaymentPendingEmail
-                                                       after transaction creation; error variant
-                                                       carries redirectUrl; new
-                                                       cancelPendingPaymentAction
-lib/midtrans/index.ts                              — callbacks.finish/error/pending added to
-                                                       real-mode transaction request
-app/api/webhooks/midtrans/route.ts                 — expire/cancel/deny → markPaymentClosed branch;
-                                                       settlement uses markPaymentSuccess; org select
-                                                       widened to name/ownerEmail; sendPlanUpgradedEmail
-app/api/webhooks/midtrans/route.test.ts            — mocks updated for new query functions/signatures,
-                                                       new expire/cancel test cases
-app/(dashboard)/dashboard/billing/page.tsx         — searchParams (async, Next.js 16) →
-                                                       transactionStatus passed to BillingPage
-components/dashboard/BillingPage.tsx               — renders PaymentResultBanner + PendingPaymentBanner
-components/dashboard/billing/PaymentResultBanner.tsx — new — one-time success/pending/failed banner
-                                                       from ?transaction_status, strips param on mount
-components/dashboard/billing/PendingPaymentBanner.tsx — new — persistent resume/cancel banner
-components/dashboard/billing/PlanCard.tsx          — hasPendingPayment prop → isDisabled +
-                                                       "Selesaikan Pembayaran Dulu" CTA; resume toast
-                                                       action on blocked checkout
-components/dashboard/billing/PaymentHistoryCard.tsx — getPaymentMethodLabel (was formatPaymentMethod),
-                                                       expired/cancelled status badges,
-                                                       paidAt ?? createdAt date fallback
-components/dashboard/billing/CurrentPlanCard.tsx   — 100% quota "Kuota telah habis" badge;
-                                                       "Reset Kuota" via getNextMonthFirstDay()
-components/dashboard/billing/constants.ts          — PAYMENT_METHOD_LABELS + getPaymentMethodLabel
-                                                       added; old formatPaymentMethod removed
-components/dashboard/billing/index.ts              — export PendingPaymentBanner, PaymentResultBanner
-helpers/format.ts                                  — new getNextMonthFirstDay()
-emails/PaymentPendingEmail.tsx                     — new
-emails/PlanUpgradedEmail.tsx                       — new
-emails/index.ts                                    — export both new templates
-lib/email/index.ts                                 — sendPaymentPendingEmail, sendPlanUpgradedEmail
-```
+### Context — Why This Phase Started
 
----
+Kevin returned after a 2-month gap with a detailed external audit (run independently against the live codebase) comparing documentation claims to actual code. The audit surfaced several cosmetic doc-drift items and several genuinely severe findings. This session worked through the three highest-severity items end to end, plus two more that surfaced organically during that work.
 
-## Open Items / Deferred
+### PR 1 — `fix/document-process-s3-key-authorization` (merged)
 
-|Item|Status|
-|---|---|
-|Failed payment UX on `/billing`|**RESOLVED in Phase 15** — see sections D, E|
-|WhatsApp Integration (Phase 16)|Still on hold — needs Meta Business verification|
-|Domain purchase + Resend sender switch|Still waiting on domain purchase|
-|Midtrans production keys|Still sandbox|
-|`lib/ai/stream.ts` dead code|Still unused, can delete anytime|
-|CloudFront CDN|Still post-launch, $100 AWS credit reserved|
-|Admin panel for promo codes|Still manual via Neon SQL editor|
-|`orgs.midtransCustomerId`|Confirmed dead — Midtrans has no persistent customer concept (transaction-based, not account-based). Always `null`. Safe to remove in a future cleanup migration; not urgent.|
-|Quota reset / billing cycle decoupling|**Known limitation, not addressed.** `/cron/reset-usage` resets `messagesUsed` for ALL orgs on the 1st of the calendar month. Each paid org's `currentPeriodEnd`/`nextBillingDate` (renewal cycle) is `activatedAt + 30 days` — an independent date. A paid org's quota may reset a few days before/after their actual billing period ends. Would require per-org reset scheduling to fully align; judged not worth the complexity for now.|
+**Vulnerability:** `/api/documents/process` verified `documentId` ownership via `requireOrg()`/`orgId`, but then downloaded the **client-supplied** `s3Key` rather than the DB-persisted `document.s3Key`. An attacker with a valid `documentId` in their own org could point processing at a different (possibly cross-tenant) S3 object if they discovered its key.
+
+**Fix:**
+- Hard reject (400) if `s3Key !== document.s3Key`, logged via `console.error` AND `Sentry.captureMessage`
+- Pipeline now always downloads `document.s3Key`, never the client value, as defense-in-depth even if the check above were ever bypassed
+
+### PR 2 — `fix/midtrans-webhook-amount-validation` (merged)
+
+**Vulnerability:** Midtrans webhook signature verification proves Midtrans sent the notification — it does NOT prove the amount is correct. `MIDTRANS_CLIENT_KEY` is public; a caller could create their own Snap transaction using Kundesk's `order_id` format at a lower price and have it activate a full-price plan.
+
+**Fix:**
+- New `getPaymentByOrderId(orderId)` in `lib/db/queries/billing.ts`
+- Webhook handler compares `notification.gross_amount` against the recorded `payments.amount` before calling `activateSubscription`; mismatch → mark processed, return 200, `Sentry.captureMessage`, do NOT activate
+- Existing fraud-flag branch also now calls `Sentry.captureMessage` (previously `console.error` only)
+- **Gap found during CodeRabbit review, fixed in same PR:** the renewal cron (`app/api/cron/renewal/route.ts`) created Midtrans transactions but never called `insertPendingPayment` — meaning renewals had ZERO amount validation even after the fix above (no pending row to compare against). Fixed: renewal cron now calls `insertPendingPayment` right after `createSubscriptionTransaction`, using the already-returned (but previously discarded) `orderId`. Wrapped in try/catch for the `payments_org_pending_unique_idx` collision case (org already has an unresolved pending payment when renewal cron runs) → logged and skipped for that org, not treated as a hard failure.
+- New tests in `route.test.ts`: amount-mismatch reject, amount-match pass-through
+
+### PR 3 — `fix/migration-chain-baseline-reset` (merged)
+
+**Root problem:** `lib/db/migrations/meta/_journal.json` referenced a file (`0008_organic_namora`) that didn't exist on disk; three files existed on disk with no journal entry; no migration ever created the `payments` table. Root cause: schema changes have long been applied by hand directly in Neon (per existing rule — `db:migrate` doesn't work against Neon), and the local migration folder simply never stayed in sync with that manual process.
+
+**Deeper finding during reconciliation:** `lib/db/schema.ts` itself had drifted from *live* Neon (confirmed via `npx drizzle-kit introspect` against the real database), in three places:
+- `payments` — missing a **partial unique index** (`payments_org_pending_unique_idx`, one pending row per org) that is ALREADY LIVE in Neon and already relied upon (the `23505` catch in `createPayment` was written for it, but nobody had documented that the constraint actually exists). Also: `payments_org_status_created_idx` (composite, `org_id, status, created_at`) was documented in the Phase 15 handoff as applied via `ALTER TABLE`, but is **NOT actually live** — `getPendingPayment` has been running unindexed this whole time.
+- `promoCodes` — missing a case-insensitive unique index on `lower(code)` (live, matches the `LOWER()` lookup rule, just undeclared) and THREE `CHECK` constraints (`chk_discount_percent`, `chk_max_uses`, `chk_used_count`) that are live in Neon and completely undocumented anywhere in the codebase until now.
+- `chunks` — the HNSW vector index existed live but was never declared in `schema.ts`, meaning any future unrelated `drizzle-kit generate` on this table risked silently generating a `DROP INDEX` for it.
+
+**Fix:**
+- `lib/db/schema.ts` reconciled to match live Neon exactly for all three tables
+- Old `lib/db/migrations/` archived (not deleted) to `lib/db/migrations_archive_pre_reset/`
+- Fresh `lib/db/migrations/0000_equal_brood.sql` generated from the corrected schema via `drizzle-kit generate`, verified line-by-line against the introspected live schema
+- Explicit `-- DO NOT run this against production Neon` warning comment added at the top of the file, plus `CREATE EXTENSION IF NOT EXISTS vector;` as the first statement (CodeRabbit finding — a genuinely fresh DB would otherwise fail on the HNSW index with no pgvector extension enabled)
+- `lib/db/migrations/schema.ts` and `relations.ts` (one-time `introspect` diagnostic artifacts, NOT maintained migration definitions, and one had an actual syntax error — unterminated string literal, `default(')` — that broke `typecheck`/CI) were **deleted entirely**, not fixed. Source of truth is `lib/db/schema.ts`; the migration is `0000_equal_brood.sql`, generated from that file, not from the introspect output.
+- `insertPendingPayment` now expires any stale (>24h) pending row for the org before inserting a new one (CodeRabbit finding — without this, an abandoned checkout with no Midtrans-side interaction at all, so no `expire` webhook ever fires, would permanently block that org from any future checkout via the unique index)
+- `createSubscriptionTransaction` (real mode only) now sets Midtrans-side `expiry: { start_time, unit: "hours", duration: 24 }`, matching the local 24h cutoff — closes the same stale-payment race structurally on the Midtrans side, rather than only reconciling it after the fact
+
+**Explicitly accepted, not fixed (raised 3 times by CodeRabbit across threads, acknowledged each time):** `db:migrate` is still theoretically unsafe to run against live Neon (it would try to `CREATE TABLE` things that already exist). This is unchanged from before this PR — `db:migrate` was never invoked anywhere (confirmed: not in `ci.yml`, not in any `package.json` script actually used). A real fresh-database bootstrap mechanism (recording the baseline as "already applied" without running it) is legitimate future work, correctly flagged by CodeRabbit as a heavy lift, out of scope here.
+
+### Root Cause, Named Explicitly (for future reference)
+
+Two systemic patterns explain most of what this session found:
+
+1. **Manual Neon application has been standard practice for a long time** (confirmed as far back as Phase 15), but nothing ever kept the local migration folder or `schema.ts` in sync with what was actually run by hand. This is now reconciled as of PR 3, but the underlying practice is unchanged — the next schema change will drift again unless `schema.ts` is updated in the same sitting as the manual Neon change, every time, going forward (rule 124).
+
+2. **The codebase is disciplined about catching and gracefully handling errors** (returning clean JSON, never letting things 500) — which is good practice, but it also means almost nothing reaches Sentry, since Sentry here was only ever wired for uncaught exceptions. "Monitoring is set up" and "monitoring actually sees deliberately-handled failures" turned out to be two different, previously-unexamined claims (rule 127).
+
+### Incidental Fix — E2E Test Infrastructure (Discovered and Resolved Mid-Session)
+
+CI hadn't run in 2 months. First re-run failed 15/24 E2E tests across every unrelated spec file simultaneously — a strong signal of a foundational break, not a feature bug. Root cause: the Neon `e2e-test` branch (referenced by the `E2E_DATABASE_URL` GitHub secret) had auto-suspended/been removed after prolonged inactivity — a known Neon free-tier behavior. Resolved by: creating a fresh Neon branch, applying `0000_equal_brood.sql` to it in full, updating the `E2E_DATABASE_URL` secret, and confirming the `E2E_ORG_ID`/`E2E_ORG_SLUG`/Clerk test-user seed data still matched. A separate, real syntax error in `lib/db/migrations/schema.ts` (see PR 3) was also blocking CI independently and was discovered/fixed in the same session.
 
 ---
 
-## Coding Rules Reminder (Updated — New Rules from Phase 15)
+## Open Items — Carried Forward, Not Yet Started
 
-- **`payments` table is now lifecycle-tracked, not append-only.** One row per checkout attempt, `status` evolves via UPDATE (`pending → success/failed/expired/cancelled`). Never go back to insert-on-settlement-only.
-- **`markPaymentSuccess` has an INSERT fallback when UPDATE matches zero rows.** This is intentional — guarantees no settlement is ever silently lost (covers synthetic/test webhooks and any future edge case where no pending row exists). Never remove this fallback.
-- **`getPendingPayment`'s 24h window matches Midtrans Snap's `payment-list` page expiry** — not the per-method expiry (QRIS 15min, VA 24h, etc.), which only starts once a specific method is chosen. The `payment-list` link itself (returned at checkout, before method selection) is valid 24h regardless.
-- **Midtrans `callbacks.finish/error/pending` must always be set on `createSubscriptionTransaction`** — the dashboard-level "Finish Redirect URL" setting does NOT take effect when per-request callbacks are present; removing them silently breaks the redirect-back-to-`/billing` flow (rule 112).
-- **`PaymentResultBanner` (one-time, query-param-driven) and `PendingPaymentBanner` (persistent, DB-row-driven) are deliberately separate components with different lifecycles.** Don't merge them — they answer different questions ("what just happened" vs "what's still unresolved").
-- **`cancelPendingPayment` only marks our DB row `cancelled`** — it does NOT call any Midtrans API to invalidate the Snap session. The abandoned link is left to expire naturally (24h). If the user pays on it anyway, `markPaymentSuccess` still activates correctly (updates by `orderId` regardless of current status).
-- **`getPaymentMethodLabel` (in `components/dashboard/billing/constants.ts`) is the single source for Midtrans `payment_type` → Indonesian label.** Used by `PaymentHistoryCard` and both lifecycle emails. The old `formatPaymentMethod` switch function is gone — never recreate it.
-- **`PaymentHistoryCard` date column is `paidAt ?? createdAt`** — every row must show a date regardless of status.
-- **"Reset Kuota" on `/billing` is `getNextMonthFirstDay()`, NOT `currentPeriodEnd`.** These represent different things (quota reset vs subscription renewal) — see Open Items for the known decoupling.
+**High severity:**
+1. **Plan enforcement not server-side.** `PLAN_LIMITS` declares document/widget/analytics/branding flags per plan, but only message quota is actually enforced. Free users can currently get widget embed code and call the public widget endpoint. **Decision needed:** enforce literally per `PLAN_LIMITS`, or looser? Not yet decided.
+2. **Org member permissions — decided, not implemented.** Decision made in Phase 16: `org:member` should be conversations-only (view, reply, takeover, return, dismiss). Billing, org settings, documents, chatbot config, team management should require `org:admin`. No code changes made yet — current code reportedly allows members to do nearly everything.
+3. **`payments_org_status_created_idx` still not live.** Documented as applied in Phase 15, confirmed NOT live during Phase 16's introspection. Deliberately NOT added to the new baseline migration since it isn't live yet — needs a real `CREATE INDEX` applied to Neon, then captured in a proper follow-up migration file (would be `0001_...sql` on top of the new clean baseline).
+
+**Medium severity:**
+4. **Org deletion / data retention — decision in progress.** Current behavior only flips `subscriptionStatus` to `cancelled`; no `deletedAt`, no actual deletion or anonymization of documents/chunks/messages/PII. Leaning toward soft-delete + grace period + scheduled hard-delete (industry-standard pattern, likely UU PDP compliant), with `payments` anonymized-not-deleted for accounting retention — but not committed to yet.
+5. **Public Pusher channel security** — customer widget channels rely on UUID (`channelToken`) secrecy alone, no expiry or revocation mechanism.
+6. **Synchronous document processing vs. Vercel Free's 10s function limit.** Current code has a 55s in-process race timeout, which structurally cannot fit inside a 10s Vercel Free function limit if that limit is actually being enforced in production. Needs deployment-runtime confirmation, not just code reading.
+
+**Lower priority / cleanup, do opportunistically:**
+7. **Sentry blind-spot audit** — see rule 127. Full pass across every catch block in the codebase, not just the two touched in Phase 16. Explicitly deferred by Kevin's own call: "we're going to do it later."
+8. **Doc drift, cosmetic/informational only:**
+   - `/billing/mock-payment` route referenced in mock-mode `redirectUrl` does not actually exist as a page
+   - Message length: Bible/architecture say 500 chars, public chat actually accepts 1,000 (staff reply is still 500)
+   - CSP: Bible claims full CSP configured for Clerk/Pusher/Midtrans/CloudFront; actual global headers omit CSP, only `/chat/*` gets `frame-ancestors *`
+   - FK naming drift: live `payments_org_id_fkey` vs. Drizzle's auto-generated `payments_org_id_orgs_id_fk` — cosmetic, will resurface as a rename suggestion on the next real `drizzle-kit generate`, safe to ignore
+   - `generateMetadata()` on the public chat page reveals org name for an inactive chatbot, undermining the slug-enumeration protection that's otherwise correctly implemented
+9. **`orgs.midtransCustomerId`** — confirmed dead (Midtrans has no persistent customer concept). Safe to drop whenever `orgs` is next touched for an unrelated reason. Not urgent.
+
+**Unchanged from Phase 15, still deferred:**
+- WhatsApp/Meta integration — on hold pending Meta Business verification
+- Midtrans production keys — still sandbox
+- Domain purchase + Resend sender migration — still pending
+- CloudFront — still post-launch
+- Promo code administration — still manual via Neon SQL editor
+- Quota reset / billing cycle decoupling — known limitation, not addressed
+- `lib/ai/stream.ts` — still dead code, can delete anytime
+
+---
+
+## Decisions Made / Pending (5-Question List from the Original Audit)
+
+1. **Org member permissions:** conversations-only for `org:member`. ✅ Decided, not yet implemented (Open Item #2).
+2. **Org deletion:** leaning soft-delete + grace period + scheduled purge, payments anonymized not deleted. ⏳ Not finalized.
+3. **Free-tier technical enforcement:** ❓ Not yet discussed.
+4. **Manual Neon schema drift as accepted practice:** effectively reaffirmed by continuing the practice (Phase 16 cleaned up its bookkeeping, didn't change the practice itself). Whether reproducible migrations should become mandatory was not decided either way.
+5. **Next priority — security/reliability stabilization continues:** ✅ this whole phase is that. Suggested next: plan enforcement (Open Item #1) — most contained of the remaining high-severity items, doesn't risk another CI/CodeRabbit fire drill like the migration reset did.
+
+---
+
+## Coding Rules Reminder (New From Phase 16 — Also See Rules 120–127 Above)
+
+- **`payments_org_pending_unique_idx` is real and live** — see rule 120.
+- **`insertPendingPayment` must precede every Midtrans transaction, including renewals** — see rule 121.
+- **`lib/db/schema.ts` is the only source of truth for the schema** — see rule 122.
+- **`0000_equal_brood.sql` must never be run against production Neon** — see rule 123.
+- **Any future manual Neon schema change must be mirrored in `schema.ts` in the same sitting** — see rule 124.
+- **Midtrans real-mode transactions now set `expiry: 24 hours`** — see rule 125.
+- **`documents/process` always downloads `document.s3Key`, never the client value** — see rule 126.
+- **Sentry only auto-captures uncaught exceptions, not caught-and-logged errors** — see rule 127. Full audit deferred, not forgotten.
