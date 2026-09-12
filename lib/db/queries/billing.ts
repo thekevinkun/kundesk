@@ -213,6 +213,25 @@ export async function insertPendingPayment(
   amount: number,
   redirectUrl: string,
 ): Promise<void> {
+  // Expire any stale pending row for this org before inserting a new one.
+  // Midtrans's expire webhook only fires if the customer actually interacted
+  // with the Snap page — if they abandon the tab entirely, no webhook ever
+  // arrives, and payments_org_pending_unique_idx would otherwise block this
+  // org from creating any new payment, permanently. getPendingPayment already
+  // treats >24h pending rows as stale for display — this makes that same
+  // cutoff authoritative in the DB before it can conflict with a new insert.
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await db
+    .update(payments)
+    .set({ status: "expired" })
+    .where(
+      and(
+        eq(payments.orgId, orgId),
+        eq(payments.status, "pending"),
+        lt(payments.createdAt, twentyFourHoursAgo),
+      ),
+    );
+
   await db.insert(payments).values({
     orgId,
     orderId,
