@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDocumentStore } from "@/stores/document-store";
@@ -54,6 +54,31 @@ const DocumentsPage = () => {
       return json.data;
     },
   });
+
+  // ── Fetch document usage against plan limit ──
+  // Separate query/endpoint from the list above — keeps /api/documents
+  // untouched for existing consumers, this one is purely for the limit banner
+  const { data: usage } = useQuery({
+    queryKey: ["documents", "usage"],
+    queryFn: async () => {
+      const res = await fetch("/api/documents/usage");
+      const json = (await res.json()) as ApiResponse<{
+        used: number;
+        limit: number | null;
+      }>;
+      if (!json.ok) throw new Error("Gagal memuat batas dokumen");
+      return json.data;
+    },
+    // Usage changes on upload/delete — invalidated alongside ["documents"]
+    staleTime: 30_000,
+  });
+
+  // limit === null means unlimited (Pro plan) — never blocks
+  const isAtDocumentLimit = useMemo(
+    () =>
+      usage !== undefined && usage.limit !== null && usage.used >= usage.limit,
+    [usage],
+  );
 
   // ── Pusher — live document status updates ──
   useEffect(() => {
@@ -145,7 +170,9 @@ const DocumentsPage = () => {
               <div className="text-[11.5px] text-(--color-text-400) mt-0.5">
                 {isLoading
                   ? "Memuat..."
-                  : `${visibleDocuments.length} dokumen · ${totalChunks} chunks`}
+                  : usage?.limit !== null && usage?.limit !== undefined
+                    ? `${visibleDocuments.length} / ${usage.limit} dokumen · ${totalChunks} chunks`
+                    : `${visibleDocuments.length} dokumen · ${totalChunks} chunks`}
               </div>
             </div>
           </div>
@@ -210,8 +237,15 @@ const DocumentsPage = () => {
             )}
           </motion.div>
 
+          {/* Document limit warning — shown only when at capacity */}
+          {isAtDocumentLimit && (
+            <div className="mx-5 mb-4 px-4 py-3 rounded-(--radius-sm) bg-(--color-brand-light) border border-(--color-brand-mid) text-[12.5px] text-(--color-brand-dark)">
+              Batas dokumen tercapai. Upgrade plan untuk upload lebih banyak.
+            </div>
+          )}
+
           {/* Upload zone */}
-          <UploadZone onFiles={handleFiles} />
+          <UploadZone onFiles={handleFiles} disabled={isAtDocumentLimit} />
         </div>
       </div>
     </motion.div>

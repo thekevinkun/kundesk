@@ -4,9 +4,10 @@ import { useState, useCallback, useRef } from "react";
 
 interface UploadZoneProps {
   onFiles: (files: File[]) => void;
+  disabled?: boolean;
 }
 
-const UploadZone = ({ onFiles }: UploadZoneProps) => {
+const UploadZone = ({ onFiles, disabled = false }: UploadZoneProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -15,17 +16,24 @@ const UploadZone = ({ onFiles }: UploadZoneProps) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
+      // Blocked at the gate — don't even read the dropped files when disabled
+      if (disabled) return;
       const files = Array.from(e.dataTransfer.files);
       if (files.length > 0) onFiles(files);
     },
-    [onFiles],
+    [onFiles, disabled],
   );
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Don't show the "drop here" visual state if upload is blocked anyway
+      if (disabled) return;
+      setIsDragging(true);
+    },
+    [disabled],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     // Must preventDefault to allow drop — without this, browser rejects the drop
@@ -57,21 +65,28 @@ const UploadZone = ({ onFiles }: UploadZoneProps) => {
   return (
     <div
       role="button"
-      tabIndex={0}
-      aria-label="Upload dokumen — klik atau drag dan drop file PDF, TXT, MD, atau DOCX"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
+      aria-label={
+        disabled
+          ? "Upload dokumen dinonaktifkan — batas dokumen tercapai"
+          : "Upload dokumen — klik atau drag dan drop file PDF, TXT, MD, atau DOCX"
+      }
       className={`mx-5 my-3 border-2 border-dashed rounded-[10px] p-5 text-center
-        cursor-pointer transition-all duration-200 group
+        transition-all duration-200 group
+        ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
         ${
           isDragging
             ? "border-(--color-brand) bg-(--color-brand-light) scale-[1.01]"
             : "border-(--color-border) hover:border-(--color-brand) hover:bg-(--color-brand-light)/30"
         }`}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => !disabled && inputRef.current?.click()}
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onKeyDown={(e) => {
+        if (disabled) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           inputRef.current?.click();
@@ -115,6 +130,7 @@ const UploadZone = ({ onFiles }: UploadZoneProps) => {
         onChange={handleChange}
         aria-hidden="true"
         tabIndex={-1}
+        disabled={disabled}
       />
     </div>
   );

@@ -3,13 +3,16 @@
 // The client calls /api/documents/process after the upload completes
 
 import { type NextRequest, NextResponse } from "next/server";
-import { requireOrg } from "@/lib/auth";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { documents } from "@/lib/db/schema";
-import { generatePresignedUploadUrl } from "@/lib/aws/s3";
+import { requireOrg } from "@/lib/auth";
+import { documents, orgs } from "@/lib/db/schema";
 import { checkUploadRateLimit } from "@/lib/redis";
+import { generatePresignedUploadUrl } from "@/lib/aws/s3";
+import { getOrgDocumentUsageCount } from "@/lib/db/queries/documents";
 import { validateUploadRequest } from "@/helpers/security";
 import type { ApiResponse } from "@/types/api";
+import { PLAN_LIMITS, type PlanName } from "@/types/billing";
 
 // Shape returned to the client on success
 interface UploadUrlData {
@@ -33,6 +36,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         status: 429,
       },
       { status: 429 },
+    );
+  }
+
+  // Plan document limit check — fresh read, not the 5-min-stale org cache.
+  // Same principle as the chat route's quota gate (Step 8): the resource-creation
+  // gate must see current state, not a snapshot that may be minutes old.
+  const [freshOrg] = await db
+    .select({ plan: orgs.plan })
+    .from(orgs)
+    .where(eq(orgs.id, orgId))
+    .limit(1);
+
+  if (!freshOrg) {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Organization not found", status: 404 },
+      { status: 404 },
+    );
+  }
+
+  const documentLimit = PLAN_LIMITS[freshOrg.plan as PlanName].documents;
+  const currentDocumentCount = await getOrgDocumentUsageCount(orgId);
+
+  if (currentDocumentCount >= documentLimit) {
+    return NextResponse.json<ApiResponse>(
+      {
+        ok: false,
+        error:
+          "Batas dokumen tercapai. Upgrade plan untuk upload lebih banyak.",
+        status: 403,
+      },
+      { status: 403 },
     );
   }
 
