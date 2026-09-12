@@ -87,6 +87,7 @@ vi.mock("@/lib/db/queries/billing", () => ({
     .mockResolvedValue({ periodEnd: new Date("2026-07-12") }),
   markPaymentSuccess: vi.fn().mockResolvedValue(undefined),
   markPaymentClosed: vi.fn().mockResolvedValue(undefined),
+  getPaymentByOrderId: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/lib/email", () => ({
@@ -119,6 +120,7 @@ import {
   activateSubscription,
   markPaymentSuccess,
   markPaymentClosed,
+  getPaymentByOrderId,
 } from "@/lib/db/queries/billing";
 import { db } from "@/lib/db";
 
@@ -183,6 +185,8 @@ describe("POST /api/webhooks/midtrans", () => {
 
       return callback(tx as never);
     });
+
+    vi.mocked(getPaymentByOrderId).mockResolvedValue(null);
   });
 
   // ── Layer 1: Signature verification ──
@@ -476,5 +480,79 @@ describe("POST /api/webhooks/midtrans", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("Invalid JSON");
+  });
+
+  // ── Layer 9: Amount validation ──
+
+  it("rejects activation when reported amount doesn't match the payment record", async () => {
+    let callCount = 0;
+    vi.mocked(db.select).mockImplementation(() => {
+      callCount++;
+      return {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(
+            callCount === 1
+              ? []
+              : [
+                  {
+                    id: "org_3DZHfake123",
+                    name: "Test Org",
+                    ownerEmail: "owner@test.com",
+                  },
+                ],
+          ),
+        }),
+      } as unknown as ReturnType<typeof db.select>;
+    });
+
+    // Checkout recorded 149000, but the webhook reports only 1000
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      amount: 149000,
+      status: "pending",
+    });
+
+    const res = await POST(
+      makeRequest(validNotification({ gross_amount: "1000" })),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toBe("Amount mismatch — flagged for review");
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(markPaymentSuccess).not.toHaveBeenCalled();
+  });
+
+  it("activates normally when reported amount matches the payment record", async () => {
+    let callCount = 0;
+    vi.mocked(db.select).mockImplementation(() => {
+      callCount++;
+      return {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(
+            callCount === 1
+              ? []
+              : [
+                  {
+                    id: "org_3DZHfake123",
+                    name: "Test Org",
+                    ownerEmail: "owner@test.com",
+                  },
+                ],
+          ),
+        }),
+      } as unknown as ReturnType<typeof db.select>;
+    });
+
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      amount: 149000,
+      status: "pending",
+    });
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toBe("OK");
+    expect(activateSubscription).toHaveBeenCalled();
   });
 });

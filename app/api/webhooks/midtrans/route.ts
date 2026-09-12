@@ -4,6 +4,7 @@
 // Security: signature verification + idempotency check + fraud check
 
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -16,6 +17,7 @@ import {
   activateSubscription,
   markPaymentSuccess,
   markPaymentClosed,
+  getPaymentByOrderId,
 } from "@/lib/db/queries/billing";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 
@@ -148,6 +150,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       fraud_status,
       payment_type,
     });
+
+    // Explicit Sentry capture — this is exactly the kind of event that should
+    // page someone, not just sit in Vercel logs. orgId not yet resolved at
+    // this point in the handler, so order_id is the correlation key.
+    Sentry.captureMessage("midtrans webhook: fraud flag", {
+      level: "error",
+      extra: {
+        orderId: order_id,
+        fraudStatus: fraud_status,
+        paymentType: payment_type,
+      },
+    });
+
     // Mark processed so Midtrans stops retrying this notification
     await db.insert(processedWebhooks).values({
       externalId: order_id,
@@ -229,6 +244,46 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const org = matchingOrgs[0]!;
+
+  // ⚠️ Amount validation — gross_amount reported by Midtrans must match what
+  // we recorded at checkout. Signature verification only proves Midtrans sent
+  // this notification — it does NOT prove the amount matches what we expected
+  // to charge, since a caller with the public client key could create their
+  // own Snap transaction using our order_id format at a lower price.
+  //
+  // If no pending row exists (e.g. renewal-cron checkouts, which don't yet
+  // insert one), we can't validate and fall back to trusting the webhook —
+  // same behavior as before this fix, until that gap is closed separately.
+  const paymentRecord = await getPaymentByOrderId(order_id);
+  const reportedAmount = parseInt(notification.gross_amount, 10);
+
+  if (paymentRecord && paymentRecord.amount !== reportedAmount) {
+    console.error("[midtrans webhook] Amount mismatch — refusing to activate", {
+      order_id,
+      expected: paymentRecord.amount,
+      reported: reportedAmount,
+    });
+
+    Sentry.captureMessage("midtrans webhook: amount mismatch", {
+      level: "error",
+      extra: {
+        orgId: org.id,
+        orderId: order_id,
+        expectedAmount: paymentRecord.amount,
+        reportedAmount,
+      },
+    });
+
+    await db.insert(processedWebhooks).values({
+      externalId: order_id,
+      source: "midtrans",
+    });
+
+    return NextResponse.json(
+      { message: "Amount mismatch — flagged for review" },
+      { status: 200 },
+    );
+  }
 
   // ⚠️ CRITICAL ORDERING: processedWebhooks insert is INSIDE the transaction.
   // Why? If we insert outside, Midtrans sees 200 and stops retrying — even if the

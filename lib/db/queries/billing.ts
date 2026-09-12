@@ -272,6 +272,23 @@ export async function markPaymentClosed(
     .where(eq(payments.orderId, orderId));
 }
 
+// Fetches a payment row by orderId, regardless of status — used to validate
+// that the amount Midtrans reports at settlement matches what was agreed at
+// checkout (payments.amount, promo discount already applied server-side).
+// Returns null if no row exists yet (e.g. renewal-cron checkouts don't
+// currently insert a pending row — tracked separately in Open Items).
+export async function getPaymentByOrderId(
+  orderId: string,
+): Promise<{ amount: number; status: string } | null> {
+  const [row] = await db
+    .select({ amount: payments.amount, status: payments.status })
+    .from(payments)
+    .where(eq(payments.orderId, orderId))
+    .limit(1);
+
+  return row ?? null;
+}
+
 // Fetches an org's pending payment if one exists and is <24h old
 // Used by /billing to show the "resume payment" banner
 // Older pending rows are treated as expired — not returned, new checkout allowed
