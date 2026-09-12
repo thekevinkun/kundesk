@@ -9,7 +9,11 @@ import { db } from "@/lib/db";
 import { processedWebhooks } from "@/lib/db/schema";
 import { createSubscriptionTransaction } from "@/lib/midtrans";
 import { sendBillingReminderEmail } from "@/lib/email";
-import { getOrgsDueForRenewal, markPastDue } from "@/lib/db/queries/billing";
+import {
+  getOrgsDueForRenewal,
+  markPastDue,
+  insertPendingPayment,
+} from "@/lib/db/queries/billing";
 import { PLAN_PRICE, type PlanName } from "@/types/billing";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -80,13 +84,42 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       // ── Create Midtrans transaction FIRST ──
       // Record idempotency key only after Midtrans confirms the charge
       // If Midtrans throws here, renewalKey stays unrecorded — same-day retry is allowed
-      const { redirectUrl } = await createSubscriptionTransaction(
+      const { redirectUrl, orderId } = await createSubscriptionTransaction(
         org.id,
         org.plan,
         ownerEmail,
         // Renewals always charge the regular price — discounts are first-purchase only
         PLAN_PRICE[org.plan as PlanName],
       );
+
+      // ── Persist expected amount BEFORE the webhook can arrive ──
+      // Closes the gap CodeRabbit flagged: without this row, the webhook's
+      // amount-validation check (getPaymentByOrderId) has nothing to compare
+      // against for renewals, and silently falls back to trusting whatever
+      // gross_amount Midtrans reports. Same insertPendingPayment used by the
+      // manual checkout flow in createPayment — one source of truth either way.
+      try {
+        await insertPendingPayment(
+          org.id,
+          orderId,
+          org.plan as PlanName,
+          PLAN_PRICE[org.plan as PlanName],
+          redirectUrl,
+        );
+      } catch (err) {
+        // payments_org_pending_unique_idx — org already has an unresolved
+        // pending payment (e.g. mid-upgrade when renewal cron ran). Correct
+        // behavior is to skip this org's renewal charge rather than create a
+        // second concurrent Snap transaction with no way to validate its amount.
+        if (err instanceof Error && "code" in err && err.code === "23505") {
+          console.warn(
+            `[cron/renewal] Org ${org.id} already has a pending payment — skipping renewal charge`,
+          );
+          results.push({ orgId: org.id, status: "skipped" });
+          continue;
+        }
+        throw err; // any other error — let the outer catch handle it as "failed"
+      }
 
       // ── Record the attempt AFTER Midtrans succeeds ──
       // Real charge exists — block same-day retries to prevent double-charging
