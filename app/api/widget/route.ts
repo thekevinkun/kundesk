@@ -43,7 +43,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .limit(1);
 
   if (!org) {
-    return new NextResponse("// Org not found", {
+    return new NextResponse("// Not found", {
       status: 404,
       headers: { "Content-Type": "application/javascript" },
     });
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .limit(1);
 
   if (!chatbot?.isActive) {
-    return new NextResponse("// Chatbot not active", {
+    return new NextResponse("// Not found", {
       status: 404,
       headers: { "Content-Type": "application/javascript" },
     });
@@ -507,8 +507,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return new NextResponse(script, {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
-      // 5 minute cache — short enough for color/config changes to propagate
-      "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+      // No caching — this response is plan-gated (embedWidget check above).
+      // A cached copy would keep serving a working script after an org
+      // downgrades to Free, silently bypassing the plan check on every
+      // subsequent load until the cache expired. Correctness over caching here.
+      "Cache-Control": "private, no-cache",
     },
   });
 }
