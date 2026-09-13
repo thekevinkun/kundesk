@@ -6,11 +6,13 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { fadeUp } from "@/lib/animations";
+import { PLAN_LIMITS, type PlanName } from "@/types/billing";
 
 interface WidgetPageProps {
   data: {
     orgSlug: string;
     accentColor: string;
+    plan: PlanName;
   } | null;
 }
 
@@ -54,6 +56,10 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
       async>
     </script>
   `;
+
+  // Real plan check — replaces the previously decorative "Starter & Pro" badge,
+  // which displayed on every plan but never actually restricted anything
+  const canUseEmbedWidget = PLAN_LIMITS[data.plan].embedWidget;
 
   const tabs = [
     { id: "qr" as const, label: "QR Code", icon: "📱" },
@@ -233,53 +239,78 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                   Starter & Pro
                 </span>
               </div>
-              <p className="text-[13px] text-(--color-text-500) leading-relaxed mb-5">
-                Copy satu baris kode ini ke website kamu — chat bubble muncul di
-                pojok kanan bawah.
-              </p>
 
-              {/* Code block */}
-              <div className="relative">
-                <pre className="bg-(--color-text-900) text-(--color-brand) text-[12px] font-mono p-4 rounded-[10px] overflow-x-auto leading-relaxed whitespace-pre">
-                  {embedCode}
-                </pre>
-                <button
-                  onClick={() => copyToClipboard(embedCode, "Kode embed")}
-                  className="absolute top-3 right-3 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold rounded-[6px] transition-colors"
-                >
-                  Salin
-                </button>
-              </div>
+              {canUseEmbedWidget ? (
+                <>
+                  <p className="text-[13px] text-(--color-text-500) leading-relaxed mb-5">
+                    Copy satu baris kode ini ke website kamu — chat bubble
+                    muncul di pojok kanan bawah.
+                  </p>
 
-              {/* Install instructions */}
-              <div className="mt-5 space-y-3">
-                <div className="text-[12px] font-bold text-(--color-text-400) uppercase tracking-[0.08em]">
-                  Cara pasang
-                </div>
-                {[
-                  {
-                    step: "1",
-                    text: "Copy kode di atas",
-                  },
-                  {
-                    step: "2",
-                    text: "Paste sebelum tag </body> di website kamu",
-                  },
-                  {
-                    step: "3",
-                    text: "Chat bubble langsung muncul — tidak perlu restart",
-                  },
-                ].map(({ step, text }) => (
-                  <div key={step} className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-(--color-brand) text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {step}
-                    </div>
-                    <div className="text-[13px] text-(--color-text-500) leading-relaxed">
-                      {text}
-                    </div>
+                  {/* Code block */}
+                  <div className="relative">
+                    <pre className="bg-(--color-text-900) text-(--color-brand) text-[12px] font-mono p-4 rounded-[10px] overflow-x-auto leading-relaxed whitespace-pre">
+                      {embedCode}
+                    </pre>
+                    <button
+                      onClick={() => copyToClipboard(embedCode, "Kode embed")}
+                      className="absolute top-3 right-3 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold rounded-[6px] transition-colors"
+                    >
+                      Salin
+                    </button>
                   </div>
-                ))}
-              </div>
+
+                  {/* Install instructions */}
+                  <div className="mt-5 space-y-3">
+                    <div className="text-[12px] font-bold text-(--color-text-400) uppercase tracking-[0.08em]">
+                      Cara pasang
+                    </div>
+                    {[
+                      {
+                        step: "1",
+                        text: "Copy kode di atas",
+                      },
+                      {
+                        step: "2",
+                        text: "Paste sebelum tag </body> di website kamu",
+                      },
+                      {
+                        step: "3",
+                        text: "Chat bubble langsung muncul — tidak perlu restart",
+                      },
+                    ].map(({ step, text }) => (
+                      <div key={step} className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-(--color-brand) text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                          {step}
+                        </div>
+                        <div className="text-[13px] text-(--color-text-500) leading-relaxed">
+                          {text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                // Free plan — locked state, replaces code block entirely.
+                // Previously Free orgs saw the same working code as paid plans;
+                // this is the actual gate, not just a cosmetic badge.
+                <div className="py-10 text-center">
+                  <div className="text-4xl mb-3">🔒</div>
+                  <div className="text-[14px] font-semibold text-(--color-text-500)">
+                    Fitur ini tersedia di plan Starter & Pro
+                  </div>
+                  <p className="text-[12.5px] text-(--color-text-400) mt-1 max-w-sm mx-auto">
+                    Upgrade plan untuk memasang chat widget langsung di website
+                    kamu sendiri.
+                  </p>
+                  <Link
+                    href="/dashboard/billing"
+                    className="inline-block mt-4 px-5 py-2.5 bg-(--color-brand) text-white text-[13px] font-semibold rounded-[10px] hover:bg-(--color-brand-dark) transition-colors"
+                  >
+                    Lihat Plan
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -318,7 +349,7 @@ const WidgetPage = ({ data }: WidgetPageProps) => {
                       className="w-full h-full p-1.25 object-contain brightness-[.90]"
                     />
                   </div>
-                  
+
                   <div>
                     <div className="text-white font-semibold text-[13px]">
                       Talk with KUN

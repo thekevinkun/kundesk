@@ -18,6 +18,7 @@ import {
   documents,
   orgs,
 } from "@/lib/db/schema";
+import type { PlanName } from "@/types/billing";
 
 // ── Validation schema — matches chatbots table constraints ──
 const chatbotConfigSchema = z.object({
@@ -248,9 +249,12 @@ export async function getPendingHandoffCount(): Promise<number> {
 
 // ── Get widget data — org slug + chatbot config for the widget page ──
 // Returns everything needed to render embed code, QR, and live preview
+// plan is included so the UI can gate the embed-widget tab for Free orgs —
+// previously the tab showed a "Starter & Pro" badge but never actually checked
 export async function getWidgetData(): Promise<{
   orgSlug: string;
   accentColor: string;
+  plan: PlanName;
 } | null> {
   const { orgId } = await requireOrg();
 
@@ -258,6 +262,7 @@ export async function getWidgetData(): Promise<{
     .select({
       slug: orgs.slug,
       accentColor: chatbots.accentColor,
+      plan: orgs.plan,
     })
     .from(chatbots)
     .innerJoin(orgs, eq(orgs.id, chatbots.orgId))
@@ -269,5 +274,6 @@ export async function getWidgetData(): Promise<{
   return {
     orgSlug: result.slug,
     accentColor: result.accentColor,
+    plan: result.plan as PlanName,
   };
 }

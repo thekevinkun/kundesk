@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orgs, chatbots } from "@/lib/db/schema";
 import { checkWidgetRateLimit } from "@/lib/redis";
+import { PLAN_LIMITS, type PlanName } from "@/types/billing";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -34,15 +35,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // Verify org exists
+  // Verify org exists — plan included here so we don't need a second query
   const [org] = await db
-    .select({ id: orgs.id, slug: orgs.slug, name: orgs.name })
+    .select({ id: orgs.id, slug: orgs.slug, name: orgs.name, plan: orgs.plan })
     .from(orgs)
     .where(eq(orgs.slug, orgSlug))
     .limit(1);
 
   if (!org) {
     return new NextResponse("// Org not found", {
+      status: 404,
+      headers: { "Content-Type": "application/javascript" },
+    });
+  }
+
+  // Plan gate — embed widget is Starter/Pro only (Project Bible, Section 12).
+  // Same 404 treatment as the org-not-found and chatbot-inactive cases above —
+  // deliberately not a distinct 403, so plan-tier gating doesn't become a new
+  // enumerable signal (same principle as Layer 10's slug-enumeration protection).
+  if (!PLAN_LIMITS[org.plan as PlanName].embedWidget) {
+    return new NextResponse("// Not found", {
       status: 404,
       headers: { "Content-Type": "application/javascript" },
     });
