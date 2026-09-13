@@ -5,7 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireOrg } from "@/lib/auth";
+import { requireOrgAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { orgs } from "@/lib/db/schema";
 import { createSubscriptionTransaction } from "@/lib/midtrans";
@@ -34,7 +34,7 @@ export async function createPayment(
   _prev: BillingActionResult | null,
   formData: FormData,
 ): Promise<BillingActionResult> {
-  const { orgId } = await requireOrg();
+  const { orgId } = await requireOrgAdmin();
 
   const rawPromoCode = formData.get("promoCode");
   const result = upgradeSchema.safeParse({
@@ -162,7 +162,7 @@ export async function cancelPendingPaymentAction(): Promise<{
   error?: string;
 }> {
   try {
-    const { orgId } = await requireOrg();
+    const { orgId } = await requireOrgAdmin();
     await cancelPendingPayment(orgId);
     revalidatePath("/dashboard/billing");
     return { success: true };
@@ -177,7 +177,7 @@ export async function cancelSubscriptionAction(
   _prev: { success: boolean; error?: string } | null,
   _formData: FormData,
 ): Promise<{ success: boolean; error?: string }> {
-  const { orgId } = await requireOrg();
+  const { orgId } = await requireOrgAdmin();
 
   try {
     await cancelSubscription(orgId);

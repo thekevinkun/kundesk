@@ -15,12 +15,16 @@ import type { SubscriptionStatus } from "@/types/billing";
 interface SidebarContentProps {
   onNavClick?: () => void;
   subscriptionStatus: SubscriptionStatus;
+  orgRole: string;
 }
 
 const SidebarContent = ({
   onNavClick,
   subscriptionStatus,
+  orgRole,
 }: SidebarContentProps) => {
+  const isAdmin = orgRole === "org:admin";
+
   const { resolvedTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
@@ -28,6 +32,15 @@ const SidebarContent = ({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Filter out admin-only items for members — done here, server-adjacent enough
+  // that a member's rendered HTML never contains the link at all, not just
+  // hidden via CSS. Sections with zero remaining items after filtering are
+  // dropped entirely so we don't render an empty section header.
+  const visibleSections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => isAdmin || !item.adminOnly),
+  })).filter((section) => section.items.length > 0);
 
   if (!mounted) return null;
 
@@ -78,7 +91,7 @@ const SidebarContent = ({
         animate="visible"
         aria-label="Dashboard navigation"
       >
-        {NAV_SECTIONS.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.label} className="mb-4">
             {/* Section label */}
             <p

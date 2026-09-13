@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { SettingsPage } from "@/components/dashboard";
+import { auth } from "@clerk/nextjs/server";
+import { SettingsPage, AccessRestricted } from "@/components/dashboard";
 import { getOrgSettings } from "@/lib/actions/settings";
 
 export const metadata: Metadata = {
@@ -8,6 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsRoute() {
+  // Settings is admin-only (Phase 16 decision) — check before fetching
+  const { orgRole } = await auth();
+  if (orgRole !== "org:admin") {
+    return <AccessRestricted featureName="Pengaturan" />;
+  }
+
   const settings = await getOrgSettings();
 
   // Org row missing — shouldn't happen, but safe fallback

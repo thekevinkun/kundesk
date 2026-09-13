@@ -10,9 +10,10 @@ import type { SubscriptionStatus } from "@/types/billing";
 
 interface SidebarProps {
   subscriptionStatus: SubscriptionStatus;
+  orgRole: string;
 }
 
-const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
+const Sidebar = ({ subscriptionStatus, orgRole }: SidebarProps) => {
   const { mobileOpen, closeMobile } = useSidebarStore();
 
   useEffect(() => {
@@ -36,7 +37,10 @@ const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
         initial="hidden"
         animate="visible"
       >
-        <SidebarContent subscriptionStatus={subscriptionStatus} />
+        <SidebarContent
+          subscriptionStatus={subscriptionStatus}
+          orgRole={orgRole}
+        />
       </motion.aside>
 
       <AnimatePresence>
@@ -71,6 +75,7 @@ const Sidebar = ({ subscriptionStatus }: SidebarProps) => {
                 <SidebarContent
                   onNavClick={closeMobile}
                   subscriptionStatus={subscriptionStatus}
+                  orgRole={orgRole}
                 />
               </motion.aside>
             </div>

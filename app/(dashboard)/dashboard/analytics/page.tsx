@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { AnalyticsPage } from "@/components/dashboard";
+import { auth } from "@clerk/nextjs/server";
+import { AnalyticsPage, AccessRestricted } from "@/components/dashboard";
 import { requireOrg } from "@/lib/auth";
 import {
   getTotalConversations,
@@ -27,6 +28,15 @@ export const dynamic = "force-dynamic";
 export default async function AnalyticsRoute() {
   // requireOrg — throws if no session, caught by dashboard layout error boundary
   const { orgId } = await requireOrg();
+
+  // Analytics is admin-only (Phase 16 decision) — check before running any of
+  // the queries below, so a member hitting this URL costs zero DB round-trips
+  const { orgRole } = await auth();
+
+  if (orgRole !== "org:admin") {
+    return <AccessRestricted featureName="Analytics" />;
+  }
+
   const clusteredQuestionsPromise = getTopQuestions(orgId).then((rows) =>
     clusterTopQuestions(rows),
   );

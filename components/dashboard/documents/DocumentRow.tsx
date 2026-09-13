@@ -71,9 +71,15 @@ interface DocumentRowProps {
   doc: DocumentSelect;
   onDelete: (id: number) => void;
   isDeleting: boolean;
+  canDelete: boolean;
 }
 
-const DocumentRow = ({ doc, onDelete, isDeleting }: DocumentRowProps) => {
+const DocumentRow = ({
+  doc,
+  onDelete,
+  isDeleting,
+  canDelete,
+}: DocumentRowProps) => {
   // Warn when a ready document has suspiciously few chunks
   // ≤3 chunks from a file that should have more = poor document structure
   const showChunkWarning =
@@ -112,16 +118,18 @@ const DocumentRow = ({ doc, onDelete, isDeleting }: DocumentRowProps) => {
 
       <StatusBadge status={doc.status} />
 
-      {/* Delete button — only visible on row hover */}
-      <button
-        onClick={() => onDelete(doc.id)}
-        disabled={isDeleting}
-        aria-label={`Hapus dokumen ${doc.name}`}
-        className="w-6 h-6 sm:w-7 sm:h-7 rounded-[6px] flex items-center justify-center text-[11px] sm:text-[13px]
-          transition-all hover:bg-(--color-danger-bg) hover:text-(--color-danger) disabled:opacity-40"
-      >
-        {isDeleting ? "⏳" : "🗑️"}
-      </button>
+      {/* Delete button — admin only (Phase 16: org:member is view-only on Documents) */}
+      {canDelete && (
+        <button
+          onClick={() => onDelete(doc.id)}
+          disabled={isDeleting}
+          aria-label={`Hapus dokumen ${doc.name}`}
+          className="w-6 h-6 sm:w-7 sm:h-7 rounded-[6px] flex items-center justify-center text-[11px] sm:text-[13px]
+            transition-all hover:bg-(--color-danger-bg) hover:text-(--color-danger) disabled:opacity-40"
+        >
+          {isDeleting ? "⏳" : "🗑️"}
+        </button>
+      )}
     </motion.div>
   );
 };

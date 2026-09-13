@@ -5,7 +5,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireOrg } from "@/lib/auth";
+import { requireOrgAdmin } from "@/lib/auth";
 import { documents, orgs } from "@/lib/db/schema";
 import { checkUploadRateLimit } from "@/lib/redis";
 import { generatePresignedUploadUrl } from "@/lib/aws/s3";
@@ -22,8 +22,8 @@ interface UploadUrlData {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // Guard — requires both userId and orgId from Clerk session
-  const { orgId } = await requireOrg();
+  // Upload is a mutation — Phase 16 decision: org:member is view-only on Documents
+  const { orgId } = await requireOrgAdmin();
 
   // Check upload rate limit — 10 uploads per hour per org
   // Prevents bulk upload abuse and runaway S3 + processing costs

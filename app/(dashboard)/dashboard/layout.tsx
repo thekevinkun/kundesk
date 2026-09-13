@@ -21,10 +21,15 @@ interface DashboardLayoutProps {
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  const { userId, orgId } = await auth();
+  const { userId, orgId, orgRole } = await auth();
 
   if (!userId) redirect("/sign-in");
   if (!orgId) redirect("/select-organization");
+
+  // Sidebar uses this to hide admin-only nav items from org:member.
+  // Fallback to "org:member" (most restrictive) if somehow undefined —
+  // never default to admin-level visibility on an unexpected auth shape.
+  const currentOrgRole = orgRole ?? "org:member";
 
   // Fetch subscription status at layout level — passed to Sidebar as prop
   // Billing status changes infrequently — server fetch is correct, no polling needed
@@ -71,7 +76,11 @@ export default async function DashboardLayout({
 
           <div className="min-h-screen bg-(--color-bg-page) flex">
             {/* Pass subscriptionStatus so Sidebar can show billing warning badge */}
-            <Sidebar subscriptionStatus={subscriptionStatus} />
+            {/* Pass orgRole so Sidebar can hide admin-only nav items from members */}
+            <Sidebar
+              subscriptionStatus={subscriptionStatus}
+              orgRole={currentOrgRole}
+            />
 
             <div className="flex-1 flex flex-col min-h-screen lg:ml-[230px]">
               <Topbar initialAccentColor={accentColor} />

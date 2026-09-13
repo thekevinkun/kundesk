@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ChatbotConfigPage } from "@/components/dashboard";
+import { auth } from "@clerk/nextjs/server";
+import { ChatbotConfigPage, AccessRestricted } from "@/components/dashboard";
 import { getChatbotConfig } from "@/lib/actions/chatbot";
 
 export const metadata: Metadata = {
@@ -8,6 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default async function ChatbotConfigRoute() {
+  // Chatbot config is admin-only (Phase 16 decision) — check before fetching
+  const { orgRole } = await auth();
+  if (orgRole !== "org:admin") {
+    return <AccessRestricted featureName="Konfigurasi KUN" />;
+  }
+
   const config = await getChatbotConfig();
 
   // No chatbot found — shouldn't happen after Phase 4 auto-seed

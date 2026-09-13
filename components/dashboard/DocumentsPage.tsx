@@ -20,7 +20,11 @@ import {
   UploadZone,
 } from "@/components/dashboard/documents";
 
-const DocumentsPage = () => {
+interface DocumentsPageProps {
+  isAdmin: boolean;
+}
+
+const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
   const queryClient = useQueryClient();
   const { uploadingFiles } = useDocumentStore();
   const { uploadFile } = useDocumentUpload();
@@ -220,6 +224,7 @@ const DocumentsPage = () => {
                     deleteMutation.isPending &&
                     deleteMutation.variables === doc.id
                   }
+                  canDelete={isAdmin}
                 />
               ))}
 
@@ -238,14 +243,17 @@ const DocumentsPage = () => {
           </motion.div>
 
           {/* Document limit warning — shown only when at capacity */}
-          {isAtDocumentLimit && (
-            <div className="mx-5 mb-4 px-4 py-3 rounded-(--radius-sm) bg-(--color-brand-light) border border-(--color-brand-mid) text-[12.5px] text-(--color-brand-dark)">
+          {isAdmin && isAtDocumentLimit && (
+            <div className="mx-5 my-4 px-4 py-3 rounded-(--radius-sm) bg-(--color-brand-light) border border-(--color-brand-mid) text-[12.5px] text-(--color-brand-dark)">
               Batas dokumen tercapai. Upgrade plan untuk upload lebih banyak.
             </div>
           )}
 
           {/* Upload zone */}
-          <UploadZone onFiles={handleFiles} disabled={isAtDocumentLimit} />
+          {/* Upload zone — members can't upload at all (Option B: view-only) */}
+          {isAdmin && (
+            <UploadZone onFiles={handleFiles} disabled={isAtDocumentLimit} />
+          )}
         </div>
       </div>
     </motion.div>

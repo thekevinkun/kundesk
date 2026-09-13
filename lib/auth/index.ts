@@ -15,6 +15,9 @@ export interface OrgSession {
 export async function requireOrg(): Promise<OrgSession> {
   const { userId, orgId } = await auth();
 
+  // TEMPORARY checking
+  // console.log("[DEBUG auth()] orgRole:", orgRole);
+
   // Not signed in at all
   if (!userId) throw new Error("Unauthenticated");
 
@@ -28,5 +31,24 @@ export async function requireOrg(): Promise<OrgSession> {
 export async function getSession(): Promise<OrgSession | null> {
   const { userId, orgId } = await auth();
   if (!userId || !orgId) return null;
+  return { userId, orgId };
+}
+
+// Guards any Server Action or Route Handler that requires org:admin specifically.
+// Built on the same auth() call as requireOrg() — orgRole comes directly from
+// the Clerk session token, no extra API round-trip needed (unlike team.ts's
+// pattern of re-fetching membership from Clerk on every call, which is
+// necessary there because those actions mutate membership itself).
+// Phase 16 decision: org:member is conversations-only — billing, settings,
+// chatbot config, documents, and team management all require org:admin.
+export async function requireOrgAdmin(): Promise<OrgSession> {
+  const { userId, orgId, orgRole } = await auth();
+
+  if (!userId) throw new Error("Unauthenticated");
+  if (!orgId) throw new Error("No active organization");
+  if (orgRole !== "org:admin") {
+    throw new Error("Hanya admin yang dapat melakukan tindakan ini.");
+  }
+
   return { userId, orgId };
 }

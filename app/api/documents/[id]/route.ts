@@ -2,17 +2,18 @@
 // IDOR protection: AND org_id = $orgId on every query
 
 import { type NextRequest, NextResponse } from "next/server";
-import { requireOrg } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { documents, chunks } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { requireOrgAdmin } from "@/lib/auth";
+import { documents, chunks } from "@/lib/db/schema";
 import type { ApiResponse } from "@/types/api";
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
-  const { orgId } = await requireOrg();
+  // Delete is a mutation — Phase 16 decision: org:member is view-only on Documents
+  const { orgId } = await requireOrgAdmin();
 
   // Await params — Next.js 16 requires async params
   const { id } = await params;

@@ -14,3 +14,4 @@ export { default as StatCard } from "./StatCard";
 export { StatCardSkeleton } from "./StatCard";
 export { default as NotificationPanel } from "./NotificationPanel";
 export { default as RecentConversationsPanel } from "./RecentConversationsPanel";
+export { default as AccessRestricted } from "./AccessRestricted";
