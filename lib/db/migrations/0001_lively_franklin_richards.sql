@@ -1,0 +1,1 @@
+CREATE INDEX "payments_org_status_created_idx" ON "payments" USING btree ("org_id","status","created_at");

@@ -400,10 +400,16 @@ export const payments = pgTable(
     uniqueIndex("payments_org_pending_unique_idx")
       .on(table.orgId)
       .where(sql`status = 'pending'`),
-    // NOTE: payments_org_status_created_idx (org_id, status, created_at) was
-    // documented as applied in the Phase 15 handoff but does NOT exist live.
-    // getPendingPayment currently runs unindexed on this shape. Add for real
-    // in a follow-up migration — not declared here since it isn't live yet.
+    // Composite index backing getPendingPayment's (org_id, status, created_at)
+    // lookup. Previously documented as applied in Phase 15 but was never
+    // actually live — confirmed missing during Phase 16 introspection, applied
+    // for real via CREATE INDEX in Neon in this session (see follow-up
+    // migration file for the historical record of this change).
+    index("payments_org_status_created_idx").on(
+      table.orgId,
+      table.status,
+      table.createdAt,
+    ),
   ],
 );
 
