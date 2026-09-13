@@ -4,14 +4,14 @@
 
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { orgs } from "@/lib/db/schema";
-import { requireOrg } from "@/lib/auth";
+import { requireOrg, requireOrgAdmin } from "@/lib/auth";
 import { sendOrgDeletionEmail } from "@/lib/email";
 import type { ActionResult } from "@/types/api";
 
@@ -65,7 +65,8 @@ export async function getOrgSettings(): Promise<{
 export async function updateOrgProfile(
   rawInput: unknown,
 ): Promise<ActionResult<{ slug: string }>> {
-  const { orgId } = await requireOrg();
+  // Mutation — admin only (Phase 16 decision)
+  const { orgId } = await requireOrgAdmin();
 
   // Validate input before touching DB
   const result = orgProfileSchema.safeParse(rawInput);

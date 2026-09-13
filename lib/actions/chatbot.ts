@@ -4,11 +4,11 @@
 
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
 import { eq, gt, and, count } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireOrg } from "@/lib/auth";
+import { requireOrg, requireOrgAdmin } from "@/lib/auth";
 import { trackEvent } from "@/lib/posthog";
 import { cacheDelete, CacheKeys } from "@/lib/redis";
 import {
@@ -42,7 +42,8 @@ export async function saveChatbotConfig(
   rawInput: unknown,
 ): Promise<ActionResult> {
   // Always get orgId from server session — never from client
-  const { orgId } = await requireOrg();
+  // Mutation — admin only (Phase 16 decision), regardless of what the page gate shows
+  const { orgId } = await requireOrgAdmin();
 
   // Validate all fields before touching DB
   const result = chatbotConfigSchema.safeParse(rawInput);
@@ -98,7 +99,8 @@ export async function saveChatbotConfig(
 export async function saveAccentColor(
   accentColor: string,
 ): Promise<ActionResult> {
-  const { orgId } = await requireOrg();
+  // Mutation — admin only (Phase 16 decision)
+  const { orgId } = await requireOrgAdmin();
 
   // Validate hex color format
   const result = z
@@ -135,7 +137,8 @@ export async function saveAccentColor(
 export async function saveQuickReplies(
   quickReplies: string[],
 ): Promise<ActionResult> {
-  const { orgId } = await requireOrg();
+  // Mutation — admin only (Phase 16 decision)
+  const { orgId } = await requireOrgAdmin();
 
   // Validate array shape — same rules as full config
   const result = z

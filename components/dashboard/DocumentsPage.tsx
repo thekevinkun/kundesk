@@ -236,7 +236,9 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
                   Belum ada dokumen
                 </div>
                 <div className="text-[12px] text-(--color-text-400) mt-1">
-                  Upload dokumen pertama kamu di bawah
+                  {isAdmin
+                    ? "Upload dokumen pertama kamu di bawah"
+                    : "Hubungi admin untuk menambahkan dokumen"}
                 </div>
               </div>
             )}

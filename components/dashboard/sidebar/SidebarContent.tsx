@@ -123,38 +123,40 @@ const SidebarContent = ({
 
       <Separator className="bg-(--color-border)" />
 
-      {/* ── CTA card — upgrade prompt ── */}
-      <div className="p-3 flex-shrink-0">
-        <div
-          className="relative overflow-hidden rounded-[14px] p-[18px]"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-dark) 100%)",
-          }}
-        >
-          {/* Decorative circles */}
-          <div className="absolute -right-5 -top-5 w-[90px] h-[90px] rounded-full bg-white/10" />
-          <div className="absolute right-2.5 -bottom-8 w-[70px] h-[70px] rounded-full bg-white/7" />
-
-          <span className="text-[28px] mb-2 block" aria-hidden="true">
-            🚀
-          </span>
-          <div className="text-[13px] font-bold text-white mb-1">
-            Upgrade ke Pro
-          </div>
-          <div className="text-[11.5px] text-white/80 mb-3.5 leading-relaxed">
-            Unlimited dokumen & 10,000 pesan per bulan
-          </div>
-          <Link
-            href="/dashboard/billing"
-            className="inline-block bg-white text-[12px] font-bold px-4 py-2 rounded-full 
-              transition-all hover:-translate-y-0.5 hover:shadow-lg"
-            style={{ color: "var(--color-brand-dark)" }}
+      {/* ── CTA card — upgrade prompt, admin only (links to admin-only billing page) ── */}
+      {isAdmin && (
+        <div className="p-3 flex-shrink-0">
+          <div
+            className="relative overflow-hidden rounded-[14px] p-[18px]"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-dark) 100%)",
+            }}
           >
-            Lihat Plan
-          </Link>
+            {/* Decorative circles */}
+            <div className="absolute -right-5 -top-5 w-[90px] h-[90px] rounded-full bg-white/10" />
+            <div className="absolute right-2.5 -bottom-8 w-[70px] h-[70px] rounded-full bg-white/7" />
+
+            <span className="text-[28px] mb-2 block" aria-hidden="true">
+              🚀
+            </span>
+            <div className="text-[13px] font-bold text-white mb-1">
+              Upgrade ke Pro
+            </div>
+            <div className="text-[11.5px] text-white/80 mb-3.5 leading-relaxed">
+              Unlimited dokumen & 10,000 pesan per bulan
+            </div>
+            <Link
+              href="/dashboard/billing"
+              className="inline-block bg-white text-[12px] font-bold px-4 py-2 rounded-full 
+                transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              style={{ color: "var(--color-brand-dark)" }}
+            >
+              Lihat Plan
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
