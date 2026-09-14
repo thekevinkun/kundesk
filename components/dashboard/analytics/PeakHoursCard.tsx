@@ -66,6 +66,7 @@ const PeakHoursCard = ({ data, locked = false }: PeakHoursCardProps) => {
               ? "flex-1 min-h-0 flex flex-col blur-sm pointer-events-none select-none"
               : "flex-1 min-h-0 flex flex-col"
           }
+          aria-hidden={locked}
         >
           {total === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">

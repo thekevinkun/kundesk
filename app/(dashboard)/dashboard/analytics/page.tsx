@@ -48,7 +48,14 @@ export default async function AnalyticsRoute() {
     .from(orgs)
     .where(eq(orgs.id, orgId))
     .limit(1);
-  const plan = (orgRow?.plan as PlanName) ?? "free";
+    
+  // Defensive normalization — orgs.plan is unconstrained text in the DB, so
+  // an unexpected/corrupted value (manual Neon edit, webhook bug, etc.) must
+  // degrade to Free-tier behavior rather than crash the whole page on an
+  // undefined PLAN_LIMITS lookup.
+  const rawPlan = orgRow?.plan;
+  const plan: PlanName =
+    rawPlan === "starter" || rawPlan === "pro" ? rawPlan : "free";
   const hasFullAnalytics = PLAN_LIMITS[plan].analytics;
 
   // Skip AI clustering entirely when locked — no reason to spend OpenAI cost

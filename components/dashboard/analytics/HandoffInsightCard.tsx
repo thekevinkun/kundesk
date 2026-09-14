@@ -158,6 +158,7 @@ const HandoffInsightCard = ({
           className={
             locked ? "blur-sm pointer-events-none select-none" : undefined
           }
+          aria-hidden={locked}
         >
           {/* Two visuals side by side */}
           <div className="flex items-center gap-6 mb-5">
