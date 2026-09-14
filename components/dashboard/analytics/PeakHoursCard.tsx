@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
+import LockedFeatureOverlay from "./LockedFeatureOverlay";
 import { staggerItem } from "@/lib/animations";
 import { HOUR_LABELS, DAY_PERIODS } from "./constants";
 
@@ -14,9 +15,10 @@ const HourlyBarChart = dynamic(
 interface PeakHoursCardProps {
   // 24-element array — index = hour (0=midnight)
   data: number[];
+  locked?: boolean;
 }
 
-const PeakHoursCard = ({ data }: PeakHoursCardProps) => {
+const PeakHoursCard = ({ data, locked = false }: PeakHoursCardProps) => {
   const total = data.reduce((sum, n) => sum + n, 0);
   const peakIndex = data.indexOf(Math.max(...data));
   const peakLabel = HOUR_LABELS[peakIndex] ?? "—";
@@ -43,8 +45,8 @@ const PeakHoursCard = ({ data }: PeakHoursCardProps) => {
           </p>
         </div>
 
-        {/* Peak hour callout */}
-        {total > 0 && (
+        {/* Peak hour callout — hidden when locked, revealing this defeats the blur below */}
+        {!locked && total > 0 && (
           <div className="text-right">
             <div className="text-[20px] font-extrabold tracking-[-0.04em] text-(--color-text-900) leading-none">
               {peakLabel}
@@ -56,43 +58,55 @@ const PeakHoursCard = ({ data }: PeakHoursCardProps) => {
         )}
       </div>
 
-      {/* Chart */}
-      {total === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <span className="text-[32px] mb-3">🕐</span>
-          <p className="text-[13px] text-(--color-text-500) font-medium">
-            Belum ada data aktivitas
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 min-h-0">
-            <HourlyBarChart data={data} />
-          </div>
+      {/* Chart — blurred + overlaid when locked */}
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        <div
+          className={
+            locked
+              ? "flex-1 min-h-0 flex flex-col blur-sm pointer-events-none select-none"
+              : "flex-1 min-h-0 flex flex-col"
+          }
+        >
+          {total === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <span className="text-[32px] mb-3">🕐</span>
+              <p className="text-[13px] text-(--color-text-500) font-medium">
+                Belum ada data aktivitas
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 min-h-0">
+                <HourlyBarChart data={data} />
+              </div>
 
-          {/* Period breakdown — 4 summary chips below chart — pinned to bottom */}
-          <div className="grid grid-cols-4 gap-2 mt-4">
-            {periodVolumes.map((period) => {
-              const pct =
-                total > 0 ? Math.round((period.count / total) * 100) : 0;
+              {/* Period breakdown — 4 summary chips below chart — pinned to bottom */}
+              <div className="grid grid-cols-4 gap-2 mt-4">
+                {periodVolumes.map((period) => {
+                  const pct =
+                    total > 0 ? Math.round((period.count / total) * 100) : 0;
 
-              return (
-                <div
-                  key={period.label}
-                  className="rounded-[8px] bg-(--color-bg-page) border border-(--color-border) px-3 py-2 text-center"
-                >
-                  <div className="text-[13px] font-bold text-(--color-text-900)">
-                    {pct}%
-                  </div>
-                  <div className="text-[10.5px] text-(--color-text-400) font-medium mt-0.5">
-                    {period.label}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  return (
+                    <div
+                      key={period.label}
+                      className="rounded-[8px] bg-(--color-bg-page) border border-(--color-border) px-3 py-2 text-center"
+                    >
+                      <div className="text-[13px] font-bold text-(--color-text-900)">
+                        {pct}%
+                      </div>
+                      <div className="text-[10.5px] text-(--color-text-400) font-medium mt-0.5">
+                        {period.label}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {locked && <LockedFeatureOverlay />}
+      </div>
     </motion.div>
   );
 };

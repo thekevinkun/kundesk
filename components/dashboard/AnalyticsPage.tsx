@@ -91,6 +91,8 @@ interface AnalyticsPageProps {
   dailyTrend: { date: string; count: number }[];
   // Response time trend
   responseTrend: { date: string; avgMs: number }[];
+  // Free plan — blurs/locks HandoffInsightCard, TopQuestionsCard, PeakHoursCard
+  isAnalyticsLocked: boolean;
 }
 
 const AnalyticsPage = ({
@@ -106,6 +108,7 @@ const AnalyticsPage = ({
   peakHours,
   dailyTrend,
   responseTrend,
+  isAnalyticsLocked,
 }: AnalyticsPageProps) => {
   return (
     <motion.div variants={fadeUp} initial="hidden" animate="visible">
@@ -115,7 +118,8 @@ const AnalyticsPage = ({
           Analytics
         </h1>
         <p className="text-[13px] max-w-sm sm:max-w-full text-(--color-text-500) mt-1">
-          Pahami bagaimana pelanggan berinteraksi dengan bisnis kamu melalui KUN.
+          Pahami bagaimana pelanggan berinteraksi dengan bisnis kamu melalui
+          KUN.
         </p>
       </div>
 
@@ -141,6 +145,7 @@ const AnalyticsPage = ({
               handoffCount={handoffCount}
               handoffRate={handoffRate}
               trend={handoffTrend}
+              locked={isAnalyticsLocked}
             />
           </div>
           <ChannelBreakdownCard data={channelBreakdown} />
@@ -148,8 +153,11 @@ const AnalyticsPage = ({
 
         {/* ── Row 3: Top questions + Peak hours ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <TopQuestionsCard questions={topQuestions} />
-          <PeakHoursCard data={peakHours} />
+          <TopQuestionsCard
+            questions={topQuestions}
+            locked={isAnalyticsLocked}
+          />
+          <PeakHoursCard data={peakHours} locked={isAnalyticsLocked} />
         </div>
 
         {/* ── Row 4: Message volume trend + Response time trend ── */}

@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import LockedFeatureOverlay from "./LockedFeatureOverlay";
 import { staggerItem } from "@/lib/animations";
 import type { QuestionCluster } from "@/lib/ai/cluster";
 
 interface TopQuestionsCardProps {
   questions: QuestionCluster[];
+  locked?: boolean;
 }
 
-const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
+const TopQuestionsCard = ({
+  questions,
+  locked = false,
+}: TopQuestionsCardProps) => {
   // Track which cluster is expanded to show example questions
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
@@ -34,7 +39,42 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
         </span>
       </div>
 
-      {questions.length === 0 ? (
+      {locked ? (
+        // No real data fetched at all when locked (page.tsx skips the AI
+        // clustering call entirely to avoid spending OpenAI cost on a result
+        // that's hidden anyway) — these rows are static placeholders, not
+        // real questions from this org.
+        <div className="relative">
+          <div
+            className="space-y-2 blur-sm pointer-events-none select-none"
+            aria-hidden="true"
+          >
+            {[72, 54, 38].map((pct, i) => (
+              <div key={i} className="relative rounded-[10px] overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-[10px]"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: "var(--color-brand-light)",
+                  }}
+                />
+                <div className="relative flex items-center gap-3 px-3 py-2.5">
+                  <span className="text-[11px] font-extrabold text-(--color-text-400) w-5 text-center flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 text-[13px] text-(--color-text-700) font-semibold truncate">
+                    Contoh topik pertanyaan
+                  </span>
+                  <span className="text-[11.5px] font-bold text-(--color-brand) bg-(--color-brand-light) px-2 py-0.5 rounded-full">
+                    -- x
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <LockedFeatureOverlay />
+        </div>
+      ) : questions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <span className="text-[32px] mb-3">💬</span>
           <p className="text-[13px] text-(--color-text-500) font-medium">
@@ -87,8 +127,10 @@ const TopQuestionsCard = ({ questions }: TopQuestionsCardProps) => {
                     </span>
 
                     {/* Topic label */}
-                    <span className="flex-1 text-[13px] text-(--color-text-700)
-                      font-semibold truncate">
+                    <span
+                      className="flex-1 text-[13px] text-(--color-text-700)
+                      font-semibold truncate"
+                    >
                       {item.topic}
                     </span>
 

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { AnalyticsPage, AccessRestricted } from "@/components/dashboard";
 import { requireOrg } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { orgs } from "@/lib/db/schema";
+import { PLAN_LIMITS, type PlanName } from "@/types/billing";
 import {
   getTotalConversations,
   getHandoffRate,
@@ -37,9 +41,21 @@ export default async function AnalyticsRoute() {
     return <AccessRestricted featureName="Analytics" />;
   }
 
-  const clusteredQuestionsPromise = getTopQuestions(orgId).then((rows) =>
-    clusterTopQuestions(rows),
-  );
+  // Plan gate — Free doesn't lose the page entirely, just 3 specific cards
+  // (Handoff insight, Top Questions, Peak Hours). Starter/Pro see everything.
+  const [orgRow] = await db
+    .select({ plan: orgs.plan })
+    .from(orgs)
+    .where(eq(orgs.id, orgId))
+    .limit(1);
+  const plan = (orgRow?.plan as PlanName) ?? "free";
+  const hasFullAnalytics = PLAN_LIMITS[plan].analytics;
+
+  // Skip AI clustering entirely when locked — no reason to spend OpenAI cost
+  // producing a result the person won't see unblurred anyway
+  const clusteredQuestionsPromise = hasFullAnalytics
+    ? getTopQuestions(orgId).then((rows) => clusterTopQuestions(rows))
+    : Promise.resolve([]);
 
   // Owner's timezone — used for all time-grouped queries to show local times in charts
   const timezone = await getOwnerTimezone();
@@ -85,6 +101,7 @@ export default async function AnalyticsRoute() {
       peakHours={peakHours}
       dailyTrend={dailyTrend}
       responseTrend={responseTrend}
+      isAnalyticsLocked={!hasFullAnalytics}
     />
   );
 }
