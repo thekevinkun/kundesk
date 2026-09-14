@@ -61,14 +61,15 @@ export async function triggerOrgEvent(
 
 // Fires on a per-conversation public channel — customer widget subscribes here
 // Using channelToken (UUID) instead of orgId prevents cross-session data leakage
-// The channel name uses an unguessable UUID token — prevents enumeration attacks
+// private- prefix requires the client to auth via /api/pusher/conversation-auth,
+// which checks sessionId against the conversation row — a leaked channelToken
+// alone is no longer enough to subscribe
 export async function triggerPublicConversationEvent(
   channelToken: string,
   event: string,
   payload: unknown,
 ): Promise<void> {
-  // Channel scoped to one conversation — no cross-session leakage possible
-  const channel = `conversation-${channelToken}`;
+  const channel = `private-conversation-${channelToken}`;
 
   if (env.realtimeMode === "mock") {
     console.log(`[Pusher Mock] channel=${channel} event=${event}`, payload);

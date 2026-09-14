@@ -135,10 +135,17 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       const pusher = new PusherClient(key, {
         cluster,
         forceTLS: true,
+        // Private channel — Pusher calls our auth endpoint before subscribing.
+        // sessionId is the second factor alongside the channelToken.
+        channelAuthorization: {
+          endpoint: "/api/pusher/conversation-auth",
+          transport: "ajax", // same proven transport as the dashboard's private channel
+          paramsProvider: () => ({ sessionId }),
+        },
       });
 
-      // UUID-based channel — unguessable, prevents enumeration
-      const channelName = `conversation-${channelToken}`;
+      // private- prefix required so Pusher authorizes via our endpoint
+      const channelName = `private-conversation-${channelToken}`;
       const channel = pusher.subscribe(channelName);
 
       channel.bind("conversation:message", (payload: PusherMessagePayload) => {
@@ -190,7 +197,14 @@ const ChatPage = ({ config, orgSlug, orgName, orgId }: ChatPageProps) => {
       cancelled = true;
       cleanup?.();
     };
-  }, [orgId, addHumanAgentMessage, addAssistantMessage, conversationId, channelToken]);
+  }, [
+    orgId,
+    addHumanAgentMessage,
+    addAssistantMessage,
+    conversationId,
+    channelToken,
+    sessionId,
+  ]);
 
   // Notify parent window (widget iframe) when a new bot/staff message arrives
   // Widget uses this to increment the unread badge when the panel is closed
