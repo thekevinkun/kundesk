@@ -6,6 +6,21 @@ import { test, expect } from "@playwright/test";
 import { setupClerkTestingToken } from "@clerk/testing/playwright";
 
 test.describe("Document upload", () => {
+  // Scoped outside the test so afterEach can reach it even if an assertion
+  // above throws mid-test — cleanup must run regardless of pass/fail, or
+  // leftover rows silently accumulate until they cross the plan's document
+  // limit and start failing unrelated future runs with a 403.
+  let createdDocumentId: number | null = null;
+
+  test.afterEach(async ({ page }) => {
+    if (createdDocumentId !== null) {
+      await page.evaluate(async (id) => {
+        await fetch(`/api/documents/${id}`, { method: "DELETE" });
+      }, createdDocumentId);
+      createdDocumentId = null;
+    }
+  });
+
   test("uploads a document and shows it in the list", async ({ page }) => {
     test.setTimeout(60_000);
 
@@ -43,6 +58,10 @@ test.describe("Document upload", () => {
     expect(uploadRes.data?.s3Key).toBeDefined();
 
     const { uploadUrl, s3Key, documentId } = uploadRes.data!;
+
+    // Capture immediately — afterEach needs this even if a later assertion
+    // in this test throws before reaching the end
+    createdDocumentId = documentId;
 
     // Step 2 — PUT file content
     await page.evaluate(
