@@ -30,28 +30,37 @@ async function sendChatMessage(
       const decoder = new TextDecoder();
       let channelToken: string | null = null;
 
+      let buffer = "";
+
+      const parseLines = (text: string) => {
+        buffer += text;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6)) as {
+              done?: boolean;
+              channelToken?: string;
+            };
+            if (data.done && data.channelToken) {
+              channelToken = data.channelToken;
+            }
+          } catch {
+            // Skip malformed chunks
+          }
+        }
+      };
+
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-
-          for (const line of lines) {
-            try {
-              const data = JSON.parse(line.slice(6)) as {
-                done?: boolean;
-                channelToken?: string;
-              };
-              if (data.done && data.channelToken) {
-                channelToken = data.channelToken;
-              }
-            } catch {
-              // Skip malformed chunks
-            }
-          }
+          parseLines(decoder.decode(value, { stream: true }));
         }
+        parseLines(decoder.decode());
       } finally {
         reader.releaseLock();
       }
