@@ -70,6 +70,16 @@ export const orgs = pgTable("orgs", {
   // Message limit — set based on plan, updated on plan change
   messagesLimit: integer("messages_limit").notNull().default(100),
 
+  // Stamped the moment suspendSubscription() fires — starts the 90-day
+  // abandonment clock for org-deletion cron. Null while never suspended.
+  suspendedAt: timestamp("suspended_at"),
+
+  // Stamped when an admin requests account deletion (explicit path) OR
+  // set by the org-purge cron after 90 days suspended (abandonment path).
+  // Org keeps full access during the 30-day grace period that follows.
+  // Set back to null if the admin cancels deletion.
+  deletionRequestedAt: timestamp("deletion_requested_at"),
+
   // Tracks whether this org has ever completed a paid purchase
   // false = first-time discount still applies to both plans
   // true = discount consumed forever, regardless of which plan was bought first
@@ -378,9 +388,11 @@ export const payments = pgTable(
   "payments",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    orgId: text("org_id")
-      .notNull()
-      .references(() => orgs.id, { onDelete: "cascade" }),
+    // Nullable + onDelete: "set null" — payments must survive org deletion
+    // for accounting retention (see comment above this table). The org-purge
+    // cron anonymizes these rows before deleting the org, at which point
+    // orgId becomes null rather than the row disappearing.
+    orgId: text("org_id").references(() => orgs.id, { onDelete: "set null" }),
     orderId: text("order_id").notNull().unique(),
     plan: text("plan").notNull(),
     amount: integer("amount").notNull(),

@@ -124,7 +124,7 @@ export async function suspendSubscription(orgId: string): Promise<void> {
 
   await db
     .update(orgs)
-    .set({ subscriptionStatus: "suspended" })
+    .set({ subscriptionStatus: "suspended", suspendedAt: new Date() })
     .where(eq(orgs.id, orgId));
 
   // Invalidate org cache

@@ -41,6 +41,7 @@ export async function getOrgSettings(): Promise<{
   ownerEmail: string | null;
   plan: string;
   subscriptionStatus: string;
+  deletionRequestedAt: Date | null;
 } | null> {
   const { orgId } = await requireOrg();
 
@@ -51,6 +52,7 @@ export async function getOrgSettings(): Promise<{
       ownerEmail: orgs.ownerEmail,
       plan: orgs.plan,
       subscriptionStatus: orgs.subscriptionStatus,
+      deletionRequestedAt: orgs.deletionRequestedAt,
     })
     .from(orgs)
     .where(eq(orgs.id, orgId))
@@ -122,38 +124,16 @@ export async function updateOrgProfile(
   return { success: true, data: { slug } };
 }
 
-// ── Delete org ──
-// Deletes Clerk organization → triggers Clerk webhook → our webhook handler
-// deletes the orgs row → cascade deletes all tenant data (chatbots, docs, chunks, etc.)
-// Client signs out after this returns success
+// ── Delete org (soft — starts 30-day grace period) ──
+// No longer touches Clerk. Just stamps deletionRequestedAt — org keeps full
+// access. The org-purge cron does the actual deletion after 30 days if this
+// isn't reversed via cancelOrgDeletion().
 export async function deleteOrg(): Promise<ActionResult> {
-  const { orgId, userId } = await requireOrg();
+  // Mutation — admin only, same as every other Settings action (rule 129)
+  const { orgId } = await requireOrgAdmin();
 
-  // Verify the user is an admin or owner — requireOrg() only checks membership
-  // Any member could otherwise delete the entire org and all its data
-  const client = await clerkClient();
-  const { data } = await client.organizations.getOrganizationMembershipList({
-    organizationId: orgId,
-    userId: [userId],
-    limit: 1,
-  });
-
-  const membership = data[0];
-
-  // Clerk roles: "org:admin" or "org:member" — only admins can delete
-  if (!membership || membership.role !== "org:admin") {
-    return {
-      success: false,
-      error: "Hanya admin organisasi yang dapat menghapus akun bisnis.",
-    };
-  }
-
-  // Fetch org details before deletion — needed for the farewell email
   const [org] = await db
-    .select({
-      name: orgs.name,
-      ownerEmail: orgs.ownerEmail,
-    })
+    .select({ name: orgs.name, ownerEmail: orgs.ownerEmail })
     .from(orgs)
     .where(eq(orgs.id, orgId))
     .limit(1);
@@ -162,23 +142,45 @@ export async function deleteOrg(): Promise<ActionResult> {
     return { success: false, error: "Organisasi tidak ditemukan" };
   }
 
-  // Delete from Clerk first — this fires the org.deleted webhook
-  // Our webhook handler will delete the orgs row and all cascaded data
-  await client.organizations.deleteOrganization(orgId);
+  await db
+    .update(orgs)
+    .set({ deletionRequestedAt: new Date() })
+    .where(eq(orgs.id, orgId));
 
-  // Send farewell email — best-effort, don't fail the action if email fails
+  // Email explains the 30-day window and how to cancel — replaces the old
+  // farewell email, which no longer makes sense since nothing is deleted yet
   if (org.ownerEmail) {
     try {
+      const purgeDate = new Date();
+      purgeDate.setDate(purgeDate.getDate() + 30);
+
       await sendOrgDeletionEmail(
         org.ownerEmail,
         org.name,
+        purgeDate,
         `${env.appUrl}/images/logo_kundesk.png`,
       );
     } catch {
-      // Email failure is non-fatal — org is already deleted
-      console.error("[deleteOrg] Failed to send deletion email");
+      console.error("[deleteOrg] Failed to send deletion scheduled email");
     }
   }
+
+  revalidatePath("/dashboard/settings");
+
+  return { success: true, data: undefined };
+}
+
+// ── Cancel a pending org deletion ──
+// Any point during the 30-day grace period. Admin only, same as deleteOrg.
+export async function cancelOrgDeletion(): Promise<ActionResult> {
+  const { orgId } = await requireOrgAdmin();
+
+  await db
+    .update(orgs)
+    .set({ deletionRequestedAt: null })
+    .where(eq(orgs.id, orgId));
+
+  revalidatePath("/dashboard/settings");
 
   return { success: true, data: undefined };
 }
