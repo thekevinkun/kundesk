@@ -80,6 +80,12 @@ export const orgs = pgTable("orgs", {
   // Set back to null if the admin cancels deletion.
   deletionRequestedAt: timestamp("deletion_requested_at"),
 
+  // Atomic claim marker for the purge cron. Set only inside a conditional
+  // UPDATE that also checks deletionRequestedAt/purgingAt are in the right
+  // state, so a cancel-request racing against an in-flight purge can never
+  // un-cancel an org that's already being deleted, or vice versa.
+  purgingAt: timestamp("purging_at"),
+
   // Tracks whether this org has ever completed a paid purchase
   // false = first-time discount still applies to both plans
   // true = discount consumed forever, regardless of which plan was bought first

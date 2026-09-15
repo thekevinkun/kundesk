@@ -50,24 +50,29 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   for (const org of staleOrgs) {
     try {
-      // Stamp deletionRequestedAt now — starts the same 30-day grace period
-      // as the explicit-request path. org-purge will pick this up from here.
+      if (!org.ownerEmail) {
+        console.warn(
+          `[cron/suspended-warning] Org ${org.id} has no owner email — skipped, not started`,
+        );
+        continue;
+      }
+
+      const deletionRequestedAt = new Date();
+      const purgeDate = new Date(deletionRequestedAt);
+      purgeDate.setDate(purgeDate.getDate() + 30);
+
+      // Send first — only start the clock if the warning actually went out
+      await sendSuspendedWarningEmail(
+        org.ownerEmail,
+        org.name,
+        purgeDate,
+        env.logoUrl,
+      );
+
       await db
         .update(orgs)
-        .set({ deletionRequestedAt: new Date() })
+        .set({ deletionRequestedAt })
         .where(eq(orgs.id, org.id));
-
-      if (org.ownerEmail) {
-        const purgeDate = new Date();
-        purgeDate.setDate(purgeDate.getDate() + 30);
-
-        await sendSuspendedWarningEmail(
-          org.ownerEmail,
-          org.name,
-          purgeDate,
-          env.logoUrl,
-        );
-      }
 
       warned++;
     } catch (err) {

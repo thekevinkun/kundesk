@@ -70,8 +70,8 @@ export default function OrgDeletionEmail({
           </Section>
 
           <Text style={styles.text}>
-            Jika kamu tidak melakukan permintaan ini, segera hubungi tim kami
-            dengan membalas email ini.
+            Jika kamu tidak melakukan permintaan ini, kamu masih dapat masuk ke
+            dashboard dan membatalkan penghapusan kapan saja sebelum{" "}{purgeDate}.
           </Text>
 
           <Text style={styles.text}>

@@ -81,6 +81,9 @@ export async function activateSubscription(
       nextBillingDate: nextBilling,
       lastPaymentMethod: paymentMethod,
       hasUsedFirstPurchase: true,
+      // Reactivating clears any abandonment-triggered deletion clock —
+      // a paying customer should never get purged
+      deletionRequestedAt: null,
     })
     .where(eq(orgs.id, orgId));
 
@@ -125,9 +128,8 @@ export async function suspendSubscription(orgId: string): Promise<void> {
   await db
     .update(orgs)
     .set({ subscriptionStatus: "suspended", suspendedAt: new Date() })
-    .where(eq(orgs.id, orgId));
+    .where(and(eq(orgs.id, orgId), eq(orgs.subscriptionStatus, "past_due")));
 
-  // Invalidate org cache
   await invalidateOrgCache(orgId);
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ADD COLUMN "purging_at" timestamp;

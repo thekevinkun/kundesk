@@ -6,7 +6,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -175,10 +175,20 @@ export async function deleteOrg(): Promise<ActionResult> {
 export async function cancelOrgDeletion(): Promise<ActionResult> {
   const { orgId } = await requireOrgAdmin();
 
-  await db
+  // Only succeeds if a purge hasn't already claimed this org. If purgingAt
+  // is set, the cron is already mid-deletion — too late to cancel.
+  const result = await db
     .update(orgs)
     .set({ deletionRequestedAt: null })
-    .where(eq(orgs.id, orgId));
+    .where(and(eq(orgs.id, orgId), isNull(orgs.purgingAt)))
+    .returning({ id: orgs.id });
+
+  if (result.length === 0) {
+    return {
+      success: false,
+      error: "Penghapusan sudah diproses dan tidak dapat dibatalkan lagi.",
+    };
+  }
 
   revalidatePath("/dashboard/settings");
 
