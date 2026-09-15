@@ -13,6 +13,14 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/suspended-warning",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/org-purge",
+      "schedule": "0 4 * * *"
+    },
+    {
       "path": "/api/cron/retention",
       "schedule": "0 20 * * *"
     }

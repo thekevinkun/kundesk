@@ -9,6 +9,7 @@ import {
   UsageWarningEmail,
   PastDueEmail,
   OrgDeletionEmail,
+  SuspendedWarningEmail,
   HandoffEmail,
   PaymentPendingEmail,
   PlanUpgradedEmail,
@@ -222,20 +223,56 @@ export async function sendHandoffEmail(
 export async function sendOrgDeletionEmail(
   to: string,
   orgName: string,
+  purgeDate: Date,
   logoUrl: string,
 ): Promise<void> {
+  const formattedPurgeDate = purgeDate.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   const html = await render(
     OrgDeletionEmail({
       orgName,
       logoUrl,
-      // Links to sign-up — org is deleted, dashboard is inaccessible
-      signUpUrl: `${env.appUrl}/sign-up`,
+      // Links back to Settings — org still exists, owner can cancel here
+      settingsUrl: `${env.appUrl}/dashboard/settings`,
+      purgeDate: formattedPurgeDate,
     }),
   );
 
   await sendEmail({
     to,
-    subject: `Akun ${orgName} telah dihapus dari Kundesk`,
+    subject: `Penghapusan akun ${orgName} dijadwalkan pada ${formattedPurgeDate}`,
+    html,
+  });
+}
+
+export async function sendSuspendedWarningEmail(
+  to: string,
+  orgName: string,
+  purgeDate: Date,
+  logoUrl: string,
+): Promise<void> {
+  const formattedPurgeDate = purgeDate.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const html = await render(
+    SuspendedWarningEmail({
+      orgName,
+      logoUrl,
+      billingUrl: `${env.appUrl}/dashboard/billing`,
+      purgeDate: formattedPurgeDate,
+    }),
+  );
+
+  await sendEmail({
+    to,
+    subject: `Akun ${orgName} akan dihapus pada ${formattedPurgeDate}`,
     html,
   });
 }

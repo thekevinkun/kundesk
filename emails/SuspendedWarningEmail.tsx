@@ -13,26 +13,24 @@ import {
 } from "@react-email/components";
 import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 
-interface OrgDeletionEmailProps {
+interface SuspendedWarningEmailProps {
   orgName: string;
   logoUrl: string;
-  // Replaces signUpUrl — points back to Settings so the owner can cancel
-  settingsUrl: string;
-  // Human-readable purge date, e.g. "15 Oktober 2026" — formatted by the caller
+  billingUrl: string;
   purgeDate: string;
 }
 
-export default function OrgDeletionEmail({
+export default function SuspendedWarningEmail({
   orgName,
   logoUrl,
-  settingsUrl,
+  billingUrl,
   purgeDate,
-}: OrgDeletionEmailProps) {
+}: SuspendedWarningEmailProps) {
   return (
     <Html>
       <Head />
       <Preview>
-        Penghapusan akun {orgName} dijadwalkan pada {purgeDate}.
+        Akun {orgName} akan dihapus pada {purgeDate} karena tidak aktif.
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
@@ -44,34 +42,32 @@ export default function OrgDeletionEmail({
             style={{ marginBottom: "32px", display: "block" }}
           />
 
-          <Heading style={styles.heading}>Penghapusan akun dijadwalkan</Heading>
+          <Heading style={styles.heading}>
+            Akun kamu akan segera dihapus
+          </Heading>
 
           <Text style={styles.text}>
-            Kami menerima permintaan untuk menghapus akun bisnis{" "}
-            <strong>{orgName}</strong> dari <strong>Kundesk</strong>. Akun kamu
-            masih dapat digunakan seperti biasa selama masa tenggang ini.
+            Akun bisnis <strong>{orgName}</strong> telah nonaktif selama 90 hari
+            karena pembayaran yang belum diselesaikan. Untuk menjaga privasi
+            data, seluruh data — dokumen, percakapan, dan konfigurasi KUN — akan
+            dihapus permanen pada <strong>{purgeDate}</strong>.
           </Text>
 
           <Text style={styles.text}>
-            Seluruh data — dokumen, percakapan, dan konfigurasi KUN — akan
-            dihapus permanen pada <strong>{purgeDate}</strong>, kecuali kamu
-            membatalkan penghapusan sebelum tanggal tersebut.
-          </Text>
-
-          <Text style={styles.text}>
-            Berubah pikiran? Kamu bisa membatalkan permintaan ini kapan saja
-            sebelum tanggal di atas.
+            Ingin menyimpan data kamu? Selesaikan pembayaran sebelum tanggal di
+            atas untuk mengaktifkan kembali akun kamu sepenuhnya.
           </Text>
 
           <Section style={styles.btnSection}>
-            <Button style={styles.button} href={settingsUrl}>
-              Batalkan Penghapusan →
+            <Button style={styles.button} href={billingUrl}>
+              Selesaikan Pembayaran →
             </Button>
           </Section>
 
           <Text style={styles.text}>
-            Jika kamu tidak melakukan permintaan ini, segera hubungi tim kami
-            dengan membalas email ini.
+            Jika kamu tidak berencana melanjutkan penggunaan Kundesk, tidak ada
+            tindakan lebih lanjut yang diperlukan — data akan dihapus secara
+            otomatis pada tanggal tersebut.
           </Text>
 
           <Text style={styles.text}>
@@ -146,9 +142,9 @@ const styles = {
   },
 } as const;
 
-OrgDeletionEmail.PreviewProps = {
+SuspendedWarningEmail.PreviewProps = {
   orgName: "Kun Borneo",
   logoUrl: EMAIL_PREVIEW_LOGO_URL,
-  settingsUrl: "http://localhost:3000/dashboard/settings",
+  billingUrl: "http://localhost:3000/dashboard/billing",
   purgeDate: "15 Oktober 2026",
 };
