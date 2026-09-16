@@ -126,9 +126,12 @@ export async function markPastDue(orgId: string): Promise<void> {
 // messagesLimit, and subscriptionStatus all flip to Free's actual values.
 // This makes every existing plan-based check (documents, embed widget,
 // analytics, chat quota) correct automatically — none of them need any
-// separate awareness of billing status, since org.plan itself now
-// reflects reality.
-export async function downgradeToFree(orgId: string): Promise<void> {
+// separate awareness of billing status, since org.plan itself now reflects reality.
+// Returns true only when a row was actually updated — the WHERE clause
+// requires subscriptionStatus = "past_due", so a concurrent renewal
+// payment (org pays while this cron is mid-loop) can make this a no-op.
+// Callers must check the return value rather than assume success.
+export async function downgradeToFree(orgId: string): Promise<boolean> {
   const [org] = await db
     .select({ slug: orgs.slug })
     .from(orgs)
@@ -136,7 +139,7 @@ export async function downgradeToFree(orgId: string): Promise<void> {
 
   if (!org) throw new Error("Organization not found");
 
-  await db
+  const updated = await db
     .update(orgs)
     .set({
       plan: "free",
@@ -144,9 +147,15 @@ export async function downgradeToFree(orgId: string): Promise<void> {
       messagesLimit: PLAN_LIMITS.free.messagesPerMonth,
       nextBillingDate: null,
     })
-    .where(and(eq(orgs.id, orgId), eq(orgs.subscriptionStatus, "past_due")));
+    .where(and(eq(orgs.id, orgId), eq(orgs.subscriptionStatus, "past_due")))
+    .returning({ id: orgs.id });
+
+  if (updated.length === 0) {
+    return false;
+  }
 
   await invalidateOrgCache(orgId);
+  return true;
 }
 
 // Cancels a subscription — called when owner explicitly cancels

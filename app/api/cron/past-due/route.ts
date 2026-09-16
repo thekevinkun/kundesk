@@ -67,11 +67,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     try {
       if (daysOverdue >= 7) {
         // ── Day 7+: real downgrade to Free ──
-        await downgradeToFree(org.id);
-        console.log(
-          `[cron/past-due] Downgraded org ${org.id} to Free — ${daysOverdue} days overdue`,
-        );
-        results.push({ orgId: org.id, status: "downgraded" });
+        // downgradeToFree returns false if the org is no longer past_due
+        // (e.g. paid via renewal concurrently while this cron was running) —
+        // don't report success when nothing actually changed.
+        const wasDowngraded = await downgradeToFree(org.id);
+        if (wasDowngraded) {
+          console.log(
+            `[cron/past-due] Downgraded org ${org.id} to Free — ${daysOverdue} days overdue`,
+          );
+          results.push({ orgId: org.id, status: "downgraded" });
+        } else {
+          console.log(
+            `[cron/past-due] Org ${org.id} no longer past_due — skipping downgrade`,
+          );
+          results.push({ orgId: org.id, status: "skipped" });
+        }
       } else if (daysOverdue >= 3) {
         // ── Day 3 only — use idempotency key to prevent repeat emails ──
         // Key format: PASTDUE-{orgId}-{billingDate} — unique per billing cycle
