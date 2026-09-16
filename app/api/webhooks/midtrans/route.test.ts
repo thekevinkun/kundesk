@@ -410,13 +410,14 @@ describe("POST /api/webhooks/midtrans", () => {
     const body = await res.json();
     expect(body.message).toBe("OK");
 
-    // Subscription activated with correct org and plan
+    // Subscription activated with correct org and plan, tx handle passed through
+    // for real transactional atomicity (see activateSubscription's dbOrTx param)
     expect(activateSubscription).toHaveBeenCalledWith(
       "org_3DZHfake123",
       "starter",
       "bank_transfer",
+      expect.anything(),
     );
-
     // Pending payment row marked as success
     expect(markPaymentSuccess).toHaveBeenCalledWith(
       "org_3DZHfake123",
@@ -464,6 +465,7 @@ describe("POST /api/webhooks/midtrans", () => {
       "org_3DZHfake123",
       "pro",
       "bank_transfer",
+      expect.anything(),
     );
   });
 
