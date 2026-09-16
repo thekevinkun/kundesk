@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { useClerk } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,11 @@ import {
 } from "@/components/dashboard/settings";
 import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
 import { fadeUp, staggerContainer } from "@/lib/animations";
-import { updateOrgProfile, deleteOrg } from "@/lib/actions/settings";
+import {
+  updateOrgProfile,
+  deleteOrg,
+  cancelOrgDeletion,
+} from "@/lib/actions/settings";
 import type { ActionResult } from "@/types/api";
 
 export interface OrgSettings {
@@ -23,6 +26,8 @@ export interface OrgSettings {
   ownerEmail: string | null;
   plan: string;
   subscriptionStatus: string;
+  // Null = no deletion pending. Set = grace period in progress.
+  deletionRequestedAt: Date | null;
 }
 
 const profileAction = async (
@@ -41,10 +46,16 @@ const deleteAction = async (
   return deleteOrg();
 };
 
-const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
-  // Clerk client used for signing user out after deletion
-  const { signOut } = useClerk();
+const cancelDeleteAction = async (
+  _prev: ActionResult | null,
+): Promise<ActionResult> => {
+  return cancelOrgDeletion();
+};
 
+// 30-day grace period — matches GRACE_PERIOD_DAYS in the org-purge cron
+const GRACE_PERIOD_DAYS = 30;
+
+const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
   // Controlled form state
   const [name, setName] = useState(settings.name);
   const [slug, setSlug] = useState(settings.slug);
@@ -64,6 +75,15 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
   // Prevents duplicate delete requests + locks modal UI
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Prevents duplicate cancel requests
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Local mirror of deletionRequestedAt — updated optimistically after
+  // delete/cancel actions succeed, without needing a full page refetch
+  const [deletionRequestedAt, setDeletionRequestedAt] = useState(
+    settings.deletionRequestedAt,
+  );
+
   // Handles profile update server action state
   const [profileState, profileDispatch, isProfilePending] = useActionState(
     profileAction,
@@ -72,6 +92,12 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
 
   // Handles organization deletion server action state
   const [deleteState, deleteDispatch] = useActionState(deleteAction, null);
+
+  // Handles cancel-deletion server action state
+  const [cancelState, cancelDispatch] = useActionState(
+    cancelDeleteAction,
+    null,
+  );
 
   // Intercepts form submit to confirm slug changes first
   const handleProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -99,12 +125,20 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
     }
   };
 
-  // Trigger permanent organization deletion
+  // Schedule organization deletion (30-day grace period, not instant)
   const handleDeleteConfirm = () => {
     if (isDeleting || !isDeletionConfirmed) return;
     setIsDeleting(true);
 
     deleteDispatch();
+  };
+
+  // Cancel a pending deletion
+  const handleCancelDeletion = () => {
+    if (isCancelling) return;
+    setIsCancelling(true);
+
+    cancelDispatch();
   };
 
   // Auto-format slug into URL-safe format
@@ -126,43 +160,76 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
         description: "Profil bisnis kamu sudah diperbarui.",
       });
 
-      // Close modal even if request failed
       setSlugModalOpen(false);
     } else {
       toast.error("Gagal menyimpan", {
         description: profileState.error,
       });
 
-      // Close confirmation modal after successful save
       setSlugModalOpen(false);
     }
   }, [profileState]);
 
-  // Handle post-deletion flow
+  // Handle post-deletion-request flow — org is NOT deleted here, just
+  // scheduled. No sign-out. Just close the modal and show the banner.
   useEffect(() => {
     if (!deleteState) return;
 
     if (deleteState.success) {
-      // Organization already deleted → sign user out
-      signOut({
-        redirectUrl: "/sign-in",
+      setDeletionRequestedAt(new Date());
+      setDeleteModalOpen(false);
+      setDeleteConfirmText("");
+
+      toast.success("Penghapusan dijadwalkan", {
+        description:
+          "Akun kamu akan dihapus dalam 30 hari. Kamu bisa membatalkannya kapan saja sebelum itu.",
       });
     } else {
       toast.error("Gagal menghapus akun", {
         description: deleteState.error,
       });
-
-      setIsDeleting(false);
-
-      setDeleteModalOpen(false);
     }
-  }, [deleteState, signOut]);
+
+    setIsDeleting(false);
+  }, [deleteState]);
+
+  // Handle cancel-deletion flow
+  useEffect(() => {
+    if (!cancelState) return;
+
+    if (cancelState.success) {
+      setDeletionRequestedAt(null);
+
+      toast.success("Penghapusan dibatalkan", {
+        description: "Akun bisnis kamu tetap aktif seperti biasa.",
+      });
+    } else {
+      toast.error("Gagal membatalkan penghapusan", {
+        description: cancelState.error,
+      });
+    }
+
+    setIsCancelling(false);
+  }, [cancelState]);
 
   // Resolve plan badge UI with fallback
   const planBadge = PLAN_BADGE[settings.plan] ?? PLAN_BADGE["free"]!;
 
   // Delete button enabled only if org name matches exactly
   const isDeletionConfirmed = deleteConfirmText === settings.name;
+
+  // Formatted purge date for the banner — null when no deletion pending
+  const pendingPurgeDate = deletionRequestedAt
+    ? (() => {
+        const d = new Date(deletionRequestedAt);
+        d.setDate(d.getDate() + GRACE_PERIOD_DAYS);
+        return d.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+      })()
+    : null;
 
   return (
     <>
@@ -201,7 +268,7 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
                 setName={setName}
                 handleSlugChange={handleSlugChange}
               />
-            
+
               {/* Account + billing information */}
               <AccountSection
                 ownerEmail={settings.ownerEmail}
@@ -228,6 +295,9 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
               {/* Destructive actions */}
               <DangerZoneSection
                 onDeleteClick={() => setDeleteModalOpen(true)}
+                onCancelClick={handleCancelDeletion}
+                isCancelling={isCancelling}
+                pendingPurgeDate={pendingPurgeDate}
               />
             </motion.div>
           </form>
@@ -244,7 +314,7 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
         onConfirm={handleSlugConfirm}
       />
 
-      {/* Permanent organization deletion modal */}
+      {/* Deletion request modal — schedules deletion, doesn't delete instantly */}
       <DeleteOrgDialog
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}

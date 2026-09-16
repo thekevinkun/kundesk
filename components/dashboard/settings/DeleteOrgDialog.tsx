@@ -55,8 +55,8 @@ const DeleteOrgDialog = ({
           </DialogTitle>
 
           <DialogDescription className="text-[13px] text-(--color-text-500) mt-1">
-            Tindakan ini permanen dan tidak dapat dibatalkan. Seluruh data
-            bisnis kamu akan dihapus selamanya.
+            Kamu akan memiliki 30 hari untuk membatalkan sebelum data bisnis
+            kamu dihapus permanen.
           </DialogDescription>
         </DialogHeader>
 

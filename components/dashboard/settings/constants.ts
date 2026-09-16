@@ -26,6 +26,5 @@ export const DELETE_ITEMS = [
   "Semua dokumen yang diupload",
   "Seluruh riwayat percakapan",
   "Konfigurasi KUN",
-  "Data billing dan langganan",
   "Akses ke dashboard ini",
 ];
