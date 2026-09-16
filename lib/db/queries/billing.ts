@@ -54,12 +54,19 @@ export async function getBillingData(orgId: string): Promise<BillingPageData> {
 
 // Activates a subscription after successful Midtrans payment
 // Called exclusively from the webhook handler — never from client code
+// Activates a subscription after successful Midtrans payment
+// Called exclusively from the webhook handler — never from client code
+// Accepts an optional transaction handle so callers running this inside
+// their own db.transaction() get real atomicity — previously this always
+// used the top-level db client even when called from inside a transaction,
+// silently breaking the rollback guarantee the caller thought it had.
 export async function activateSubscription(
   orgId: string,
   plan: PlanName,
   paymentMethod: string,
+  dbOrTx: Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db = db,
 ): Promise<{ periodEnd: Date }> {
-  const [org] = await db
+  const [org] = await dbOrTx
     .select({ slug: orgs.slug })
     .from(orgs)
     .where(eq(orgs.id, orgId));
@@ -71,7 +78,7 @@ export async function activateSubscription(
   periodEnd.setDate(periodEnd.getDate() + 30);
   const nextBilling = new Date(periodEnd);
 
-  await db
+  const [updated] = await dbOrTx
     .update(orgs)
     .set({
       plan,
@@ -81,20 +88,19 @@ export async function activateSubscription(
       nextBillingDate: nextBilling,
       lastPaymentMethod: paymentMethod,
       hasUsedFirstPurchase: true,
-      // Reactivating clears any abandonment-triggered deletion clock —
-      // a paying customer should never get purged
       deletionRequestedAt: null,
     })
-    .where(eq(orgs.id, orgId));
+    .where(and(eq(orgs.id, orgId), isNull(orgs.purgingAt)))
+    .returning({ id: orgs.id });
+
+  if (!updated) {
+    throw new Error("Organization is already being purged");
+  }
 
   await invalidateOrgCache(orgId);
 
-  // Returned so the webhook handler can build the "berlaku hingga" date
-  // in PlanUpgradedEmail without a second query
   return { periodEnd };
 }
-
-// Marks a subscription as past_due
 
 // Marks a subscription as past_due — called by cron when payment link is ignored
 // Business owner has 3 days to pay before moving to suspended

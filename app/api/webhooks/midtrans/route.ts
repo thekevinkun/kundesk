@@ -305,34 +305,67 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // promoCode increment is inside tx — rolled back on failure.
   let periodEnd!: Date;
 
-  await db.transaction(async (tx) => {
-    const result = await activateSubscription(org.id, plan, payment_type);
-    periodEnd = result.periodEnd;
+  try {
+    await db.transaction(async (tx) => {
+      const result = await activateSubscription(org.id, plan, payment_type, tx);
+      periodEnd = result.periodEnd;
 
-    await markPaymentSuccess(
-      org.id,
-      order_id,
-      plan,
-      parseInt(notification.gross_amount, 10),
-      payment_type,
+      await markPaymentSuccess(
+        org.id,
+        order_id,
+        plan,
+        parseInt(notification.gross_amount, 10),
+        payment_type,
+      );
+
+      if (promoId !== null) {
+        await tx
+          .update(promoCodes)
+          .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
+          .where(eq(promoCodes.id, promoId));
+      }
+
+      await tx.insert(processedWebhooks).values({
+        externalId: order_id,
+        source: "midtrans",
+      });
+    });
+  } catch (err) {
+    // Org was purged (or claimed for purging) in the moment this webhook was
+    // processing — extremely rare race, but must not surface as a 500 and
+    // trigger endless Midtrans retries. Log for manual review; the payment
+    // itself is real and the customer may need a manual refund since their
+    // org no longer exists.
+    console.error(
+      "[midtrans webhook] Activation failed — possible org purge race",
+      { order_id, orgId: org.id, err },
     );
 
-    if (promoId !== null) {
-      // Increment promo usedCount atomically — inside tx so it rolls back on failure
-      await tx
-        .update(promoCodes)
-        .set({ usedCount: sql`${promoCodes.usedCount} + 1` })
-        .where(eq(promoCodes.id, promoId));
-    }
+    Sentry.captureMessage(
+      "midtrans webhook: activation failed post-purge-guard",
+      {
+        level: "error",
+        extra: { orderId: order_id, orgId: org.id },
+      },
+    );
 
-    // Mark processed INSIDE transaction — if tx rolls back, this rolls back too.
-    // Idempotency is guaranteed: only when all state changes succeed is the
-    // webhook marked processed. Midtrans will retry if we don't return 200.
-    await tx.insert(processedWebhooks).values({
-      externalId: order_id,
-      source: "midtrans",
-    });
-  });
+    // processedWebhooks was inside the rolled-back transaction, so it's NOT
+    // marked processed — Midtrans will retry. That's fine for ordinary
+    // transient failures, but for this specific race the org is gone, so
+    // retrying forever accomplishes nothing. Mark it processed here,
+    // separately, so retries stop — support handles it manually from Sentry.
+    await db
+      .insert(processedWebhooks)
+      .values({ externalId: order_id, source: "midtrans" })
+      .catch(() => {
+        // Already marked by a concurrent retry — ignore
+      });
+
+    return NextResponse.json(
+      { message: "Activation failed — flagged for review" },
+      { status: 200 },
+    );
+  }
 
   console.log("[midtrans webhook] Subscription activated", {
     orgId: org.id,
