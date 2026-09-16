@@ -1,6 +1,6 @@
 // Daily cron — finds orgs that are past_due and handles escalation
 // Day 3: send past due email warning
-// Day 7: suspend the subscription — Pro features blocked
+// Day 7: downgrade to Free — plan, quota, and features all revert for real
 // Vercel calls this every day at 09:00 WIB (02:00 UTC)
 // Protected by CRON_SECRET header
 
@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
 import { sendPastDueEmail } from "@/lib/email";
 import { processedWebhooks } from "@/lib/db/schema";
-import { suspendSubscription } from "@/lib/db/queries/billing";
+import { downgradeToFree } from "@/lib/db/queries/billing";
 import { PLAN_PRICE, type PlanName } from "@/types/billing";
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const results: Array<{
     orgId: string;
-    status: "warned" | "suspended" | "skipped";
+    status: "warned" | "downgraded" | "skipped";
   }> = [];
 
   for (const org of pastDueOrgs) {
@@ -66,12 +66,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     try {
       if (daysOverdue >= 7) {
-        // ── Day 7+: suspend ──
-        await suspendSubscription(org.id);
+        // ── Day 7+: real downgrade to Free ──
+        await downgradeToFree(org.id);
         console.log(
-          `[cron/past-due] Suspended org ${org.id} — ${daysOverdue} days overdue`,
+          `[cron/past-due] Downgraded org ${org.id} to Free — ${daysOverdue} days overdue`,
         );
-        results.push({ orgId: org.id, status: "suspended" });
+        results.push({ orgId: org.id, status: "downgraded" });
       } else if (daysOverdue >= 3) {
         // ── Day 3 only — use idempotency key to prevent repeat emails ──
         // Key format: PASTDUE-{orgId}-{billingDate} — unique per billing cycle

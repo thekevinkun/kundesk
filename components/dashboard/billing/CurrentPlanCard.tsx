@@ -134,7 +134,7 @@ const CurrentPlanCard = ({ data }: CurrentPlanCardProps) => {
             ⚠ Tagihan jatuh tempo
           </p>
           <p className="text-xs text-(--color-warning) mt-1 opacity-80">
-            Selesaikan pembayaran sebelum akses Pro dibatasi.
+            Selesaikan pembayaran sebelum akses ${config.label} dibatasi.
           </p>
         </div>
       )}

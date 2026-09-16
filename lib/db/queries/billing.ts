@@ -121,9 +121,14 @@ export async function markPastDue(orgId: string): Promise<void> {
   await invalidateOrgCache(orgId);
 }
 
-// Suspends a subscription — called by cron after 7 days unpaid
-// Pro features blocked, dashboard still accessible
-export async function suspendSubscription(orgId: string): Promise<void> {
+// Downgrades a subscription to Free — called by cron after 7 days unpaid.
+// This is a real downgrade, not a soft "suspended" limbo: plan,
+// messagesLimit, and subscriptionStatus all flip to Free's actual values.
+// This makes every existing plan-based check (documents, embed widget,
+// analytics, chat quota) correct automatically — none of them need any
+// separate awareness of billing status, since org.plan itself now
+// reflects reality.
+export async function downgradeToFree(orgId: string): Promise<void> {
   const [org] = await db
     .select({ slug: orgs.slug })
     .from(orgs)
@@ -133,7 +138,12 @@ export async function suspendSubscription(orgId: string): Promise<void> {
 
   await db
     .update(orgs)
-    .set({ subscriptionStatus: "suspended", suspendedAt: new Date() })
+    .set({
+      plan: "free",
+      subscriptionStatus: "free",
+      messagesLimit: PLAN_LIMITS.free.messagesPerMonth,
+      nextBillingDate: null,
+    })
     .where(and(eq(orgs.id, orgId), eq(orgs.subscriptionStatus, "past_due")));
 
   await invalidateOrgCache(orgId);
