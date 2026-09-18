@@ -56,7 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
   } catch {
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Invalid JSON body", status: 400 },
+      { ok: false, error: "Format JSON tidak valid", status: 400 },
       { status: 400 },
     );
   }
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (message === "ORG_NOT_FOUND") {
       return NextResponse.json<ApiResponse>(
-        { ok: false, error: "Organization not found", status: 404 },
+        { ok: false, error: "Organisasi tidak ditemukan", status: 404 },
         { status: 404 },
       );
     }
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     console.error("[documents/upload] Transaction failed:", err);
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Failed to create document record", status: 500 },
+      { ok: false, error: "Gagal membuat data dokumen", status: 500 },
       { status: 500 },
     );
   }

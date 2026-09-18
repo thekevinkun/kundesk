@@ -80,7 +80,7 @@ async function runProcessingPipeline(
   const rawText = await parseFile(fileBuffer, document.name);
 
   if (!rawText.trim()) {
-    throw new Error("Document appears to be empty");
+    throw new Error("Dokumen ini kosong — tidak ada konten yang bisa diproses");
   }
 
   if (signal.aborted) throw new Error("Processing timed out after 55000ms");
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Validate inputs
   if (typeof documentId !== "number" || typeof s3Key !== "string" || !s3Key) {
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "documentId and s3Key are required", status: 400 },
+      { ok: false, error: "documentId dan s3Key wajib diisi", status: 400 },
       { status: 400 },
     );
   }
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // validated s3Key for length or path traversal
   if (s3Key.length > 500 || s3Key.includes("..")) {
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Invalid s3Key", status: 400 },
+      { ok: false, error: "s3Key tidak valid", status: 400 },
       { status: 400 },
     );
   }
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!document) {
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Document not found", status: 404 },
+      { ok: false, error: "Dokumen tidak ditemukan", status: 404 },
       { status: 404 },
     );
   }
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
     return NextResponse.json<ApiResponse>(
-      { ok: false, error: "Invalid s3Key", status: 400 },
+      { ok: false, error: "s3Key tidak valid", status: 400 },
       { status: 400 },
     );
   }
@@ -313,21 +313,45 @@ async function parseFile(buffer: Buffer, filename: string): Promise<string> {
   const ext = filename.split(".").pop()?.toLowerCase();
 
   if (ext === "pdf") {
-    // Parse the normal PDF text layer first to preserve the current behavior.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
       buffer: Buffer,
     ) => Promise<{ text: string }>;
 
-    const result = await pdfParse(buffer);
-    const text = result.text.trim();
+    let text = "";
+    try {
+      const result = await pdfParse(buffer);
+      text = result.text.trim();
+    } catch (err) {
+      // pdf-parse throws on structurally malformed PDFs ("bad XRef entry"
+      // and similar) instead of returning empty text. This used to bubble
+      // straight to the client as a raw internal error and skip OCR
+      // entirely — even though pdfjs-dist (below) is often tolerant of
+      // the same malformed structure. Treat a parse exception the same
+      // as "no readable text layer".
+      console.error(
+        `[documents/process] pdf-parse failed for ${filename}, falling back to OCR:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
 
-    // Fall back to OCR only when the PDF has no readable text layer.
     if (text) {
       return text;
     }
 
-    return extractTextFromPdfWithOcr(buffer, filename);
+    try {
+      return await extractTextFromPdfWithOcr(buffer, filename);
+    } catch (err) {
+      // Both parsers failed — the PDF is genuinely unreadable. Surface a
+      // clear, actionable message instead of a raw pdfjs-dist/OpenAI error.
+      console.error(
+        `[documents/process] OCR fallback also failed for ${filename}:`,
+        err instanceof Error ? err.message : err,
+      );
+      throw new Error(
+        "PDF rusak dan tidak bisa dibaca. Coba upload ulang sebagai .txt atau .docx.",
+      );
+    }
   }
 
   if (ext === "txt") {
@@ -417,7 +441,7 @@ async function renderPdfPagesToImages(buffer: Buffer): Promise<Buffer[]> {
   if (pdfDocument.numPages > MAX_OCR_PAGES) {
     await pdfDocument.destroy();
     throw new Error(
-      `PDF has ${pdfDocument.numPages} pages, exceeding the OCR limit of ${MAX_OCR_PAGES} pages.`,
+      `PDF memiliki ${pdfDocument.numPages} halaman, melebihi batas OCR sebesar ${MAX_OCR_PAGES} halaman.`,
     );
   }
 

@@ -307,7 +307,7 @@ describe("validateUploadRequest", () => {
         contentType: "application/pdf",
         fileSize: 1024,
       }),
-    ).toBe("Invalid filename");
+    ).toBe("Nama file tidak valid");
   });
 
   it("rejects numeric filename", () => {
@@ -317,7 +317,7 @@ describe("validateUploadRequest", () => {
         contentType: "application/pdf",
         fileSize: 1024,
       }),
-    ).toBe("Invalid filename");
+    ).toBe("Nama file tidak valid");
   });
 
   it("rejects empty string filename", () => {
@@ -327,7 +327,7 @@ describe("validateUploadRequest", () => {
         contentType: "application/pdf",
         fileSize: 1024,
       }),
-    ).toBe("Invalid filename");
+    ).toBe("Nama file tidak valid");
   });
 
   it("rejects whitespace-only filename", () => {
@@ -337,19 +337,17 @@ describe("validateUploadRequest", () => {
         contentType: "application/pdf",
         fileSize: 1024,
       }),
-    ).toBe("Invalid filename");
+    ).toBe("Nama file tidak valid");
   });
-
-  // ── Invalid file type ──
 
   it("rejects disallowed extension with no valid MIME", () => {
     expect(
       validateUploadRequest({
-        filename: "virus.exe",
-        contentType: "application/octet-stream",
+        filename: "file.exe",
+        contentType: "",
         fileSize: 1024,
       }),
-    ).toBe("Only PDF, TXT, MD, and DOCX files are allowed");
+    ).toBe("Hanya file PDF, TXT, MD, dan DOCX yang diizinkan");
   });
 
   it("rejects image files", () => {
@@ -359,7 +357,7 @@ describe("validateUploadRequest", () => {
         contentType: "image/jpeg",
         fileSize: 1024,
       }),
-    ).toBe("Only PDF, TXT, MD, and DOCX files are allowed");
+    ).toBe("Hanya file PDF, TXT, MD, dan DOCX yang diizinkan");
   });
 
   it("rejects CSV files", () => {
@@ -369,78 +367,86 @@ describe("validateUploadRequest", () => {
         contentType: "text/csv",
         fileSize: 1024,
       }),
-    ).toBe("Only PDF, TXT, MD, and DOCX files are allowed");
+    ).toBe("Hanya file PDF, TXT, MD, dan DOCX yang diizinkan");
   });
-
-  // ── Invalid file size ──
 
   it("rejects file over 10MB", () => {
     expect(
       validateUploadRequest({
-        filename: "huge.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: MAX_FILE_SIZE_BYTES + 1,
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("Ukuran file maksimal 10MB");
   });
 
   it("rejects zero file size", () => {
     expect(
       validateUploadRequest({
-        filename: "empty.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: 0,
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("File kosong — tidak ada konten untuk diproses");
   });
 
   it("rejects negative file size", () => {
     expect(
       validateUploadRequest({
-        filename: "weird.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: -1,
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("File kosong — tidak ada konten untuk diproses");
   });
 
   it("rejects Infinity as file size", () => {
     expect(
       validateUploadRequest({
-        filename: "infinite.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: Infinity,
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("Ukuran file tidak valid");
+  });
+
+  it("accepts a small nonzero file size (does not falsely reject as empty)", () => {
+    expect(
+      validateUploadRequest({
+        filename: "doc.txt",
+        contentType: "text/plain",
+        fileSize: 172,
+      }),
+    ).toBeNull();
   });
 
   it("rejects NaN as file size", () => {
     expect(
       validateUploadRequest({
-        filename: "nan.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: NaN,
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("Ukuran file tidak valid");
   });
 
   it("rejects string file size", () => {
     expect(
       validateUploadRequest({
-        filename: "menu.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: "1024",
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("Ukuran file tidak valid");
   });
 
   it("rejects null file size", () => {
     expect(
       validateUploadRequest({
-        filename: "menu.pdf",
+        filename: "doc.pdf",
         contentType: "application/pdf",
         fileSize: null,
       }),
-    ).toBe("File size must be under 10MB");
+    ).toBe("Ukuran file tidak valid");
   });
 });

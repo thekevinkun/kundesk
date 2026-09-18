@@ -81,7 +81,7 @@ export function validateUploadRequest(
 
   // Filename must be a non-empty string
   if (typeof filename !== "string" || !filename.trim()) {
-    return "Invalid filename";
+    return "Nama file tidak valid";
   }
 
   const normalizedFilename = filename.trim().toLowerCase();
@@ -97,25 +97,26 @@ export function validateUploadRequest(
     normalizedContentType !== "" &&
     ALLOWED_MIME_TYPES.has(normalizedContentType);
 
-  // Always require an allowed extension. MIME is optional because some browsers
-  // omit it, but an explicit MIME must still match the allowlist.
   if (
     !hasAllowedExtension ||
     (normalizedContentType !== "" && !hasAllowedMimeType)
   ) {
-    return "Only PDF, TXT, MD, and DOCX files are allowed";
+    return "Hanya file PDF, TXT, MD, dan DOCX yang diizinkan";
   }
 
-  // File size must be a finite positive number under 10MB
-  if (
-    typeof fileSize !== "number" ||
-    !Number.isFinite(fileSize) ||
-    fileSize <= 0 ||
-    fileSize > MAX_FILE_SIZE_BYTES
-  ) {
-    return "File size must be under 10MB";
+  // File size must be a finite number
+  if (typeof fileSize !== "number" || !Number.isFinite(fileSize)) {
+    return "Ukuran file tidak valid";
   }
 
-  // All checks passed
+  // Empty files have no content to process — distinct from "too large"
+  if (fileSize <= 0) {
+    return "File kosong — tidak ada konten untuk diproses";
+  }
+
+  if (fileSize > MAX_FILE_SIZE_BYTES) {
+    return "Ukuran file maksimal 10MB";
+  }
+
   return null;
 }
