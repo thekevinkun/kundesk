@@ -15,10 +15,6 @@ describe("PLAN_LIMITS", () => {
       expect(PLAN_LIMITS.free.documents).toBe(3);
     });
 
-    it("allows 1 chatbot", () => {
-      expect(PLAN_LIMITS.free.chatbots).toBe(1);
-    });
-
     it("does not include embed widget", () => {
       expect(PLAN_LIMITS.free.embedWidget).toBe(false);
     });
@@ -30,14 +26,6 @@ describe("PLAN_LIMITS", () => {
     it("does not include analytics", () => {
       expect(PLAN_LIMITS.free.analytics).toBe(false);
     });
-
-    it("does not include custom branding", () => {
-      expect(PLAN_LIMITS.free.customBranding).toBe(false);
-    });
-
-    it("does not include API access", () => {
-      expect(PLAN_LIMITS.free.apiAccess).toBe(false);
-    });
   });
 
   describe("starter plan", () => {
@@ -47,10 +35,6 @@ describe("PLAN_LIMITS", () => {
 
     it("allows 20 documents", () => {
       expect(PLAN_LIMITS.starter.documents).toBe(20);
-    });
-
-    it("allows 1 chatbot", () => {
-      expect(PLAN_LIMITS.starter.chatbots).toBe(1);
     });
 
     it("includes embed widget", () => {
@@ -64,14 +48,6 @@ describe("PLAN_LIMITS", () => {
     it("does not include whatsapp", () => {
       expect(PLAN_LIMITS.starter.whatsapp).toBe(false);
     });
-
-    it("does not include custom branding", () => {
-      expect(PLAN_LIMITS.starter.customBranding).toBe(false);
-    });
-
-    it("does not include API access", () => {
-      expect(PLAN_LIMITS.starter.apiAccess).toBe(false);
-    });
   });
 
   describe("pro plan", () => {
@@ -81,10 +57,6 @@ describe("PLAN_LIMITS", () => {
 
     it("allows unlimited documents", () => {
       expect(PLAN_LIMITS.pro.documents).toBe(Infinity);
-    });
-
-    it("allows 3 chatbots", () => {
-      expect(PLAN_LIMITS.pro.chatbots).toBe(3);
     });
 
     it("includes embed widget", () => {
@@ -97,14 +69,6 @@ describe("PLAN_LIMITS", () => {
 
     it("includes analytics", () => {
       expect(PLAN_LIMITS.pro.analytics).toBe(true);
-    });
-
-    it("includes custom branding", () => {
-      expect(PLAN_LIMITS.pro.customBranding).toBe(true);
-    });
-
-    it("includes API access", () => {
-      expect(PLAN_LIMITS.pro.apiAccess).toBe(true);
     });
   });
 

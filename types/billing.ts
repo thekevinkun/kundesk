@@ -14,12 +14,9 @@ export type SubscriptionStatus =
 export interface PlanLimits {
   messagesPerMonth: number;
   documents: number;
-  chatbots: number;
   embedWidget: boolean;
   whatsapp: boolean;
   analytics: boolean;
-  customBranding: boolean;
-  apiAccess: boolean;
 }
 
 // Plan limits lookup — single source of truth
@@ -27,32 +24,23 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
   free: {
     messagesPerMonth: 100,
     documents: 3,
-    chatbots: 1,
     embedWidget: false,
     whatsapp: false,
     analytics: false,
-    customBranding: false,
-    apiAccess: false,
   },
   starter: {
     messagesPerMonth: 1000,
     documents: 20,
-    chatbots: 1,
     embedWidget: true,
     whatsapp: false,
     analytics: true,
-    customBranding: false,
-    apiAccess: false,
   },
   pro: {
     messagesPerMonth: 10000,
     documents: Infinity,
-    chatbots: 3,
     embedWidget: true,
     whatsapp: true,
     analytics: true,
-    customBranding: true,
-    apiAccess: true,
   },
 };
 
