@@ -48,6 +48,11 @@ export function useDocumentUpload() {
       const uploadId = crypto.randomUUID();
       addUploadingFile(uploadId, file.name);
 
+      // Declared outside the try so the catch block can see them even if
+      // failure happens before or during Step 2 (S3 PUT).
+      let documentId: number | undefined;
+      let putSucceeded = false;
+
       try {
         // ── Step 1: Get presigned URL ──
         const uploadRes = await fetch("/api/documents/upload", {
@@ -70,7 +75,8 @@ export function useDocumentUpload() {
           throw new Error(uploadJson.error ?? "Upload gagal");
         }
 
-        const { uploadUrl, s3Key, documentId } = uploadJson.data;
+        const { uploadUrl, s3Key, documentId: newDocumentId } = uploadJson.data;
+        documentId = newDocumentId;
 
         // ── Step 2: PUT file to presigned URL ──
         await new Promise<void>((resolve, reject) => {
@@ -84,8 +90,12 @@ export function useDocumentUpload() {
           });
 
           xhr.addEventListener("load", () => {
-            if (xhr.status === 200) resolve();
-            else reject(new Error(`Upload gagal: ${xhr.status}`));
+            if (xhr.status === 200) {
+              putSucceeded = true;
+              resolve();
+            } else {
+              reject(new Error(`Upload gagal: ${xhr.status}`));
+            }
           });
 
           xhr.addEventListener("error", () =>
@@ -128,10 +138,26 @@ export function useDocumentUpload() {
         const message = err instanceof Error ? err.message : "Upload gagal";
         setUploadError(uploadId, message);
 
-        // Keep the uploading row (with full error text) visible on its own for
-        // a beat, THEN swap to the server row — refetching immediately caused
-        // both rows to show at once for 3s (duplicate "failed" state), which
-        // read as the final status appearing before the error had settled
+        // If the S3 PUT itself never succeeded, the "processing" row created
+        // in Step 1 has no S3 object behind it and nothing will ever update
+        // its status — /api/documents/process is never reached. Delete it
+        // rather than leaving an orphaned row that silently consumes a
+        // document-limit slot forever. If the PUT DID succeed and the
+        // failure happened later (in /process), that route already marks
+        // the row "failed" itself — don't delete it in that case.
+        if (documentId !== undefined && !putSucceeded) {
+          try {
+            await fetch(`/api/documents/${documentId}`, {
+              method: "DELETE",
+            });
+          } catch (cleanupErr) {
+            console.error(
+              "[useDocumentUpload] Failed to clean up orphaned document record:",
+              cleanupErr,
+            );
+          }
+        }
+
         setTimeout(() => {
           removeUploadingFile(uploadId);
           void queryClient.invalidateQueries({ queryKey: ["documents"] });

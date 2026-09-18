@@ -18,6 +18,16 @@ import { documents, chunks } from "@/lib/db/schema";
 import { triggerDocumentUpdated } from "@/lib/pusher";
 import type { ApiResponse } from "@/types/api";
 
+// Marks an error message as safe to show directly to the client. Anything
+// NOT thrown as this class falls back to a generic message — this stops
+// internal S3/OpenAI/DB error text from ever reaching the browser.
+class DocumentUserError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DocumentUserError";
+  }
+}
+
 // Shape of the request body from the client
 interface ProcessRequestBody {
   documentId?: unknown;
@@ -77,10 +87,12 @@ async function runProcessingPipeline(
 
   // ── Stage 2: Parse ──
   // Errors bubble naturally — outer catch in POST owns markFailed()
-  const rawText = await parseFile(fileBuffer, document.name);
+  const rawText = await parseFile(fileBuffer, document.name, signal);
 
   if (!rawText.trim()) {
-    throw new Error("Dokumen ini kosong — tidak ada konten yang bisa diproses");
+    throw new DocumentUserError(
+      "Dokumen ini kosong — tidak ada konten yang bisa diproses",
+    );
   }
 
   if (signal.aborted) throw new Error("Processing timed out after 55000ms");
@@ -89,7 +101,9 @@ async function runProcessingPipeline(
   const textChunks = chunkText(rawText);
 
   if (textChunks.length === 0) {
-    throw new Error("No chunks produced from document");
+    throw new DocumentUserError(
+      "Tidak ada bagian konten yang bisa diproses dari dokumen ini.",
+    );
   }
 
   if (signal.aborted) throw new Error("Processing timed out after 55000ms");
@@ -257,12 +271,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    console.error(
+      `[documents/process] Pipeline failed for document ${documentId}:`,
+      err,
+    );
+    Sentry.captureException(err, { extra: { orgId, documentId } });
+
     await markFailed();
     return NextResponse.json<ApiResponse>(
       {
         ok: false,
         error:
-          err instanceof Error
+          err instanceof DocumentUserError
             ? err.message
             : "Terjadi kesalahan saat memproses dokumen.",
         status: 500,
@@ -309,7 +329,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // ── File parser ──
 
 // Parses a file buffer into plain text based on the document name extension
-async function parseFile(buffer: Buffer, filename: string): Promise<string> {
+async function parseFile(
+  buffer: Buffer,
+  filename: string,
+  signal: AbortSignal,
+): Promise<string> {
   const ext = filename.split(".").pop()?.toLowerCase();
 
   if (ext === "pdf") {
@@ -323,12 +347,6 @@ async function parseFile(buffer: Buffer, filename: string): Promise<string> {
       const result = await pdfParse(buffer);
       text = result.text.trim();
     } catch (err) {
-      // pdf-parse throws on structurally malformed PDFs ("bad XRef entry"
-      // and similar) instead of returning empty text. This used to bubble
-      // straight to the client as a raw internal error and skip OCR
-      // entirely — even though pdfjs-dist (below) is often tolerant of
-      // the same malformed structure. Treat a parse exception the same
-      // as "no readable text layer".
       console.error(
         `[documents/process] pdf-parse failed for ${filename}, falling back to OCR:`,
         err instanceof Error ? err.message : err,
@@ -340,15 +358,13 @@ async function parseFile(buffer: Buffer, filename: string): Promise<string> {
     }
 
     try {
-      return await extractTextFromPdfWithOcr(buffer, filename);
+      return await extractTextFromPdfWithOcr(buffer, filename, signal);
     } catch (err) {
-      // Both parsers failed — the PDF is genuinely unreadable. Surface a
-      // clear, actionable message instead of a raw pdfjs-dist/OpenAI error.
       console.error(
         `[documents/process] OCR fallback also failed for ${filename}:`,
         err instanceof Error ? err.message : err,
       );
-      throw new Error(
+      throw new DocumentUserError(
         "PDF rusak dan tidak bisa dibaca. Coba upload ulang sebagai .txt atau .docx.",
       );
     }
@@ -363,12 +379,25 @@ async function parseFile(buffer: Buffer, filename: string): Promise<string> {
   }
 
   if (ext === "docx") {
-    const mammoth = await import("mammoth");
-    const result = await mammoth.extractRawText({ buffer });
-    const text = result.value.trim();
+    let text = "";
+    try {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer });
+      text = result.value.trim();
+    } catch (err) {
+      console.error(
+        `[documents/process] mammoth failed for ${filename}:`,
+        err instanceof Error ? err.message : err,
+      );
+      throw new DocumentUserError(
+        "DOCX ini tidak bisa dibaca. Coba upload ulang sebagai .txt atau .pdf.",
+      );
+    }
 
     if (!text) {
-      throw new Error("DOCX tidak mengandung teks yang bisa diekstrak.");
+      throw new DocumentUserError(
+        "DOCX tidak mengandung teks yang bisa diekstrak.",
+      );
     }
 
     return text;
@@ -381,8 +410,11 @@ async function parseFile(buffer: Buffer, filename: string): Promise<string> {
 async function extractTextFromPdfWithOcr(
   buffer: Buffer,
   filename: string,
+  signal: AbortSignal,
 ): Promise<string> {
-  const pageImages = await renderPdfPagesToImages(buffer);
+  if (signal.aborted) throw new Error("Processing timed out after 55000ms");
+
+  const pageImages = await renderPdfPagesToImages(buffer, signal);
 
   // Mock mode keeps the upload pipeline testable without a real OCR provider.
   if (env.aiMode === "mock") {
@@ -396,19 +428,23 @@ async function extractTextFromPdfWithOcr(
 
   // Real OCR requires a vision-capable OpenAI request.
   if (!env.openaiApiKey) {
-    throw new Error(
+    throw new DocumentUserError(
       "PDF ini membutuhkan OCR, tetapi OPENAI_API_KEY belum dikonfigurasi.",
     );
   }
 
+  if (signal.aborted) throw new Error("Processing timed out after 55000ms");
+
   const pageTexts = await Promise.all(
-    pageImages.map((image, index) => ocrPdfPageWithOpenAI(image, index + 1)),
+    pageImages.map((image, index) =>
+      ocrPdfPageWithOpenAI(image, index + 1, signal),
+    ),
   );
   const text = pageTexts.join("\n\n").trim();
 
   // Reject PDFs that still produce no usable text after OCR.
   if (!text) {
-    throw new Error(
+    throw new DocumentUserError(
       "PDF tidak mengandung teks yang bisa diekstrak, bahkan setelah OCR.",
     );
   }
@@ -417,7 +453,10 @@ async function extractTextFromPdfWithOcr(
 }
 
 // Render each PDF page to a JPEG buffer for OCR.
-async function renderPdfPagesToImages(buffer: Buffer): Promise<Buffer[]> {
+async function renderPdfPagesToImages(
+  buffer: Buffer,
+  signal: AbortSignal,
+): Promise<Buffer[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const { createCanvas } = await import("@napi-rs/canvas");
   // Preload the worker module so pdf.js can use its in-process fake worker path.
@@ -453,6 +492,11 @@ async function renderPdfPagesToImages(buffer: Buffer): Promise<Buffer[]> {
       pageNumber <= pdfDocument.numPages;
       pageNumber += 1
     ) {
+      // Stop rendering further pages once the 55s deadline has fired.
+      if (signal.aborted) {
+        throw new Error("Processing timed out after 55000ms");
+      }
+
       // Render one page at a time to limit memory use during OCR fallback.
       const page = await pdfDocument.getPage(pageNumber);
       const viewport = page.getViewport({ scale: 2 });
@@ -482,6 +526,7 @@ async function renderPdfPagesToImages(buffer: Buffer): Promise<Buffer[]> {
 async function ocrPdfPageWithOpenAI(
   imageBuffer: Buffer,
   pageNumber: number,
+  signal: AbortSignal,
 ): Promise<string> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -489,7 +534,7 @@ async function ocrPdfPageWithOpenAI(
       Authorization: `Bearer ${env.openaiApiKey}`,
       "Content-Type": "application/json",
     },
-    signal: AbortSignal.timeout(60_000), // 60 second timeout
+    signal: AbortSignal.any([signal, AbortSignal.timeout(60_000)]),
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [
