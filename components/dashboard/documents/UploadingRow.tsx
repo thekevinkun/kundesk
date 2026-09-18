@@ -40,7 +40,12 @@ const UploadingRow = ({ filename, progress, error }: UploadingRowProps) => {
           {filename}
         </div>
         {error ? (
-          <div className="text-[11.5px] text-(--color-danger)">{error}</div>
+          <div
+            className="text-[11.5px] text-(--color-danger) line-clamp-2 break-words"
+            title={error}
+          >
+            {error}
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <Progress value={progress} className="h-1.5 flex-1" />

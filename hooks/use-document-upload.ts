@@ -128,11 +128,14 @@ export function useDocumentUpload() {
         const message = err instanceof Error ? err.message : "Upload gagal";
         setUploadError(uploadId, message);
 
-        // Refetch so failed document appears in list from server
-        await queryClient.invalidateQueries({ queryKey: ["documents"] });
-
-        // Remove uploading row after delay so user sees the error briefly
-        setTimeout(() => removeUploadingFile(uploadId), 3000);
+        // Keep the uploading row (with full error text) visible on its own for
+        // a beat, THEN swap to the server row — refetching immediately caused
+        // both rows to show at once for 3s (duplicate "failed" state), which
+        // read as the final status appearing before the error had settled
+        setTimeout(() => {
+          removeUploadingFile(uploadId);
+          void queryClient.invalidateQueries({ queryKey: ["documents"] });
+        }, 3000);
       }
     },
     [
