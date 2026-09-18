@@ -526,7 +526,7 @@ processedWebhooks: {
 ### Layer 3 — Input Validation (Zod v4)
 
 - Every Server Action and Route Handler validates all input before touching DB
-- Message content capped at 500 chars before hitting OpenAI
+- Public chat message content capped at 1,000 chars before hitting OpenAI; staff replies during human handoff remain capped at 500 chars
 - File uploads validated: mime type, extension, size (max 10MB), and magic bytes
 
 ### Layer 4 — Prompt Injection Defense
@@ -567,7 +567,7 @@ processedWebhooks: {
 ### Layer 9 — Security Headers
 
 - `Strict-Transport-Security`, `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`
-- `Content-Security-Policy` configured for Clerk, Pusher, Midtrans, CloudFront
+- No global `Content-Security-Policy` is currently set. `/chat/:path*` routes override the global `X-Frame-Options` with `ALLOWALL` + `frame-ancestors *` so the chat page can be embedded in the widget iframe
 - `Permissions-Policy`: camera, microphone, geolocation all denied
 
 ### Layer 10 — Org Slug Enumeration Protection
@@ -615,8 +615,8 @@ Since Midtrans doesn't have native subscription management like Stripe, we handl
 4. Update orgs: plan, subscriptionStatus: "active", nextBillingDate = +30 days
 5. Vercel Cron runs daily → finds orgs where nextBillingDate is today
 6. Creates new Midtrans charge → sends payment link via Resend
-7. If not paid within 3 days → subscriptionStatus: "past_due" → limit features
-8. If not paid within 7 days → subscriptionStatus: "suspended" → block Pro features
+7. If not paid within 3 days → subscriptionStatus: "past_due" → email warning sent, full access maintained
+8. If not paid within 7 days → real downgrade: plan: "free", subscriptionStatus: "free", messagesLimit reset to Free's value, nextBillingDate: null
 9. On payment → subscriptionStatus: "active", reset nextBillingDate
 ```
 
