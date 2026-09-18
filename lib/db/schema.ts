@@ -49,9 +49,6 @@ export const orgs = pgTable("orgs", {
   // Subscription plan — enforced server-side on every chat message
   plan: text("plan").notNull().default("free"),
 
-  // Midtrans customer reference — nullable until first payment
-  midtransCustomerId: text("midtrans_customer_id"),
-
   // Subscription state machine: free → active → past_due → suspended → cancelled
   subscriptionStatus: text("subscription_status").notNull().default("free"),
 

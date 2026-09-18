@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" DROP COLUMN "midtrans_customer_id";
