@@ -174,7 +174,8 @@ export async function cancelPendingPaymentAction(): Promise<{
 
     if (pending) {
       // Close the door at Midtrans FIRST. If the DB update fails afterwards, pressing
-      // Batalkan again works: step 2 answers "not found" and we cancel locally.
+      // Batalkan again works: Midtrans reports both the page and the payment as
+      // already gone, which cancelMidtransPayment accepts as confirmed.
       const closedAtMidtrans = await cancelMidtransPayment(
         pending.orderId,
         pending.redirectUrl,

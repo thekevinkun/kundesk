@@ -221,9 +221,12 @@ function extractSnapToken(redirectUrl: string): string | null {
 }
 
 // Closes a pending payment on Midtrans's side, so an old link/QR/VA can't be paid
-// after the owner clicked "Batalkan".
-// Returns true  → safe to mark the payment cancelled in our DB
-// Returns false → Midtrans refused (e.g. payment is being processed) — do NOT cancel locally
+// after the owner clicked "Batalkan". Two things must be closed, in this order:
+//   1. the PAYMENT (QRIS/VA/GoPay already generated) — Core API cancel by order_id
+//   2. the Snap PAGE — so nobody can reopen the old link and start a new payment
+// Cancelling only the page is NOT enough: in sandbox the QRIS stayed payable.
+// Returns true only when both are confirmed closed.
+// Returns false otherwise → the caller keeps the local row pending.
 export async function cancelMidtransPayment(
   orderId: string,
   redirectUrl: string,
@@ -253,53 +256,82 @@ export async function cancelMidtransPayment(
     ? "https://api.midtrans.com/v2"
     : "https://api.sandbox.midtrans.com/v2";
 
-  // Step 1 — cancel the Snap page. Works when the customer has NOT picked a method yet.
-  // Any failure here (already in progress, token unknown, network) just moves on to step 2.
-  // 4s timeout each: Vercel free functions stop at 10s and we may make two calls.
-  const token = extractSnapToken(redirectUrl);
-  if (token) {
-    try {
-      const res = await fetch(`${snapBase}/transactions/${token}/cancel`, {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(4000),
-      });
-      if (res.ok) return true;
-    } catch (err) {
-      console.warn("[cancelMidtransPayment] Snap session cancel failed", err);
+  // 3s timeout per call: Vercel free functions stop at 10s and we may make 3 calls
+  const call = (url: string, method: "GET" | "POST") =>
+    fetch(url, { method, headers, signal: AbortSignal.timeout(3000) });
+
+  const orderPath = encodeURIComponent(orderId);
+
+  // ── Step 1 — close the payment ──
+  try {
+    const res = await call(`${coreBase}/${orderPath}/cancel`, "POST");
+    const body = (await res.json().catch(() => null)) as {
+      status_code?: string;
+    } | null;
+    // Core reports the real result inside the body, even when HTTP is 200
+    const code = body?.status_code;
+
+    // "200" = cancelled now. "404" = no payment exists yet (customer never picked
+    // a method) — nothing to pay, but the page may still be alive, so step 2 decides.
+    let paymentClosed = code === "200" || code === "404";
+
+    if (!paymentClosed) {
+      // Refused or unclear (e.g. already cancelled on a repeat click, or settled).
+      // Ask Midtrans for the real state instead of guessing.
+      const statusRes = await call(`${coreBase}/${orderPath}/status`, "GET");
+      const status = (await statusRes.json().catch(() => null)) as {
+        status_code?: string;
+        transaction_status?: string;
+      } | null;
+
+      paymentClosed =
+        status?.status_code === "404" ||
+        ["cancel", "expire", "deny", "failure"].includes(
+          status?.transaction_status ?? "",
+        );
     }
+
+    if (!paymentClosed) {
+      console.error("[cancelMidtransPayment] Payment could not be closed", {
+        orderId,
+        code: code ?? `http-${res.status}`,
+      });
+      return false;
+    }
+  } catch (err) {
+    console.error("[cancelMidtransPayment] Payment cancel failed", err);
+    return false;
   }
 
-  // Step 2 — cancel the payment itself. Works when the customer already picked
-  // QRIS / VA / GoPay and a pending payment exists.
-  // Core API can answer HTTP 200 with the real result inside body.status_code,
-  // so we read the body first and fall back to the HTTP status.
-  const res = await fetch(`${coreBase}/${encodeURIComponent(orderId)}/cancel`, {
-    method: "POST",
-    headers,
-    signal: AbortSignal.timeout(4000),
-  });
-  const body = (await res.json().catch(() => null)) as {
-    status_code?: string;
-  } | null;
-  const code = body?.status_code ?? String(res.status);
-
-  if (code === "200") return true; // Payment cancelled
-
-  if (code === "404") {
-    // Midtrans knows no payment for this order and step 1 found no live page.
-    // Nothing left to close, so cancelling locally is safe. Logged in case the
-    // token parsing is wrong (the page would still be alive).
-    console.warn("[cancelMidtransPayment] Nothing to cancel at Midtrans", {
+  // ── Step 2 — close the Snap page ──
+  const token = extractSnapToken(redirectUrl);
+  if (!token) {
+    // Can't prove the page is closed — safer to keep the row pending
+    console.error("[cancelMidtransPayment] No Snap token in redirect URL", {
       orderId,
     });
-    return true;
+    return false;
   }
 
-  // Anything else (e.g. already settled / cannot be changed): refuse
-  console.error("[cancelMidtransPayment] Midtrans refused cancel", {
+  try {
+    const res = await call(`${snapBase}/transactions/${token}/cancel`, "POST");
+
+    if (res.ok) {
+      // Confirmed success body looks like {"canceled_at": "..."} (checked in sandbox)
+      const data = (await res.json().catch(() => null)) as {
+        canceled_at?: string;
+      } | null;
+      if (data?.canceled_at) return true;
+    } else if (res.status === 404) {
+      // "Token not found": the page is already gone (expired or cancelled earlier)
+      return true;
+    }
+  } catch (err) {
+    console.error("[cancelMidtransPayment] Snap session cancel failed", err);
+  }
+
+  console.error("[cancelMidtransPayment] Snap page could not be closed", {
     orderId,
-    code,
   });
   return false;
 }

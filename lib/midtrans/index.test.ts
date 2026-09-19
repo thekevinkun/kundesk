@@ -196,8 +196,8 @@ describe("generateOrderId", () => {
 });
 
 // ─── cancelMidtransPayment ──
-// fetch is stubbed — no real Midtrans calls
-
+// fetch is stubbed — no real Midtrans calls.
+// Call order: 1) Core cancel by order_id, 2) (only if unclear) Core status, 3) Snap page cancel
 describe("cancelMidtransPayment", () => {
   const ORDER_ID = "KUNDESK-org_3DZH-STARTER-1234567890";
   const TOKEN = "1661df7b-28ca-45d9-88d3-fe9d2ae5b8ac";
@@ -208,6 +208,10 @@ describe("cancelMidtransPayment", () => {
   function res(status: number, body: object): Response {
     return new Response(JSON.stringify(body), { status });
   }
+
+  // Function, not a constant: a Response body can only be read once
+  const pageCancelled = () =>
+    res(200, { canceled_at: "2026-09-19T16:09:16.686Z" });
 
   beforeEach(() => {
     fetchMock.mockReset();
@@ -227,55 +231,97 @@ describe("cancelMidtransPayment", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("cancels the Snap session with the token from the URL", async () => {
-    fetchMock.mockResolvedValueOnce(res(200, {}));
+  it("cancels the payment first, then the Snap page", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(200, { status_code: "200" })) // payment cancelled
+      .mockResolvedValueOnce(pageCancelled());
 
     expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]![0]).toContain(
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]![0]).toContain(`/v2/${ORDER_ID}/cancel`);
+    expect(fetchMock.mock.calls[1]![0]).toContain(
       `/snap/v1/transactions/${TOKEN}/cancel`,
     );
   });
 
-  it("falls back to cancelling the payment when the session cancel fails", async () => {
+  it("returns true when no payment exists yet and the page is cancelled", async () => {
+    // Customer never picked a method: Core has nothing, the page is the only thing alive
     fetchMock
-      .mockResolvedValueOnce(res(409, {})) // session: transaction in progress
-      .mockResolvedValueOnce(res(200, { status_code: "200" })); // payment cancelled
-
-    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[1]![0]).toContain(`/v2/${ORDER_ID}/cancel`);
-  });
-
-  it("falls back when the session request throws (network error)", async () => {
-    fetchMock
-      .mockRejectedValueOnce(new Error("network"))
-      .mockResolvedValueOnce(res(200, { status_code: "200" }));
+      .mockResolvedValueOnce(res(200, { status_code: "404" }))
+      .mockResolvedValueOnce(pageCancelled());
 
     expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
   });
 
-  it("returns true when Midtrans knows nothing about the order (404)", async () => {
+  it("returns false when the payment is cancelled but the page cancel fails", async () => {
     fetchMock
-      .mockResolvedValueOnce(res(404, {}))
-      .mockResolvedValueOnce(res(200, { status_code: "404" }));
-
-    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
-  });
-
-  it("returns false when Midtrans refuses to cancel (e.g. 412)", async () => {
-    fetchMock
-      .mockResolvedValueOnce(res(409, {}))
-      .mockResolvedValueOnce(res(200, { status_code: "412" }));
+      .mockResolvedValueOnce(res(200, { status_code: "200" }))
+      .mockResolvedValueOnce(res(500, {}));
 
     expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(false);
   });
 
-  it("skips the session step when the URL has no token", async () => {
+  it("returns true when the page is already gone (404 token not found)", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(200, { status_code: "200" }))
+      .mockResolvedValueOnce(res(404, {}));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+  });
+
+  it("does not trust a page cancel that answers 200 without canceled_at", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(200, { status_code: "200" }))
+      .mockResolvedValueOnce(res(200, { message: "something else" }));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(false);
+  });
+
+  it("returns false and skips the page when Midtrans refuses and the payment is still live", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(200, { status_code: "412" })) // cannot cancel
+      .mockResolvedValueOnce(
+        res(200, { status_code: "201", transaction_status: "pending" }),
+      );
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(false);
+    // Never touched the Snap page — cancel call + status call only
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("continues to the page when the refusal is because the payment was already cancelled", async () => {
+    // Repeat click on Batalkan after a half-finished attempt
+    fetchMock
+      .mockResolvedValueOnce(res(200, { status_code: "412" }))
+      .mockResolvedValueOnce(
+        res(200, { status_code: "200", transaction_status: "cancel" }),
+      )
+      .mockResolvedValueOnce(pageCancelled());
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("checks the real status when Core answers without a status_code", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(200, {})) // unreadable/incomplete body
+      .mockResolvedValueOnce(
+        res(200, { status_code: "201", transaction_status: "pending" }),
+      );
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(false);
+  });
+
+  it("returns false when the payment cancel request throws (network error)", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("network"));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns false when the redirect URL has no token to cancel the page with", async () => {
     fetchMock.mockResolvedValueOnce(res(200, { status_code: "200" }));
 
-    expect(await cancelMidtransPayment(ORDER_ID, "not-a-url")).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]![0]).toContain("/v2/");
+    expect(await cancelMidtransPayment(ORDER_ID, "not-a-url")).toBe(false);
   });
 });
