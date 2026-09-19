@@ -52,6 +52,16 @@ export async function getBillingData(orgId: string): Promise<BillingPageData> {
   };
 }
 
+// Thrown when an org is already claimed for purging. Lets the webhook tell this rare
+// case apart from ordinary errors (timeouts, dropped connections) that should be retried.
+export class OrgPurgingError extends Error {
+  constructor() {
+    // Same message as before, so any existing test on it keeps passing
+    super("Organization is already being purged");
+    this.name = "OrgPurgingError";
+  }
+}
+
 // Activates a subscription after successful Midtrans payment
 // Called exclusively from the webhook handler — never from client code
 // Activates a subscription after successful Midtrans payment
@@ -94,7 +104,7 @@ export async function activateSubscription(
     .returning({ id: orgs.id });
 
   if (!updated) {
-    throw new Error("Organization is already being purged");
+    throw new OrgPurgingError();
   }
 
   await invalidateOrgCache(orgId);
@@ -281,8 +291,10 @@ export async function markPaymentSuccess(
   plan: PlanName,
   amount: number,
   paymentMethod: string,
+  // Optional transaction handle — so the payment write rolls back together with activation
+  dbOrTx: Parameters<Parameters<typeof db.transaction>[0]>[0] | typeof db = db,
 ): Promise<void> {
-  const result = await db
+  const result = await dbOrTx
     .update(payments)
     .set({
       status: "success",
@@ -294,7 +306,7 @@ export async function markPaymentSuccess(
 
   if (result.length === 0) {
     // No pending row existed — insert a fresh success record
-    await db.insert(payments).values({
+    await dbOrTx.insert(payments).values({
       orgId,
       orderId,
       plan,
@@ -315,7 +327,7 @@ export async function markPaymentClosed(
   await db
     .update(payments)
     .set({ status })
-    .where(eq(payments.orderId, orderId));
+    .where(and(eq(payments.orderId, orderId), eq(payments.status, "pending"))); // Only close rows still pending — a late "expire" must never overwrite success/cancelled
 }
 
 // Fetches a payment row by orderId, regardless of status — used to validate

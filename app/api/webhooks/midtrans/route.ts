@@ -18,6 +18,7 @@ import {
   markPaymentSuccess,
   markPaymentClosed,
   getPaymentByOrderId,
+  OrgPurgingError,
 } from "@/lib/db/queries/billing";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 
@@ -40,6 +41,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // ⚠️ Safety net: any unexpected error below (Neon cold start, dropped connection)
+  // returns 503. Midtrans retries a 503 up to 4 times, a plain 500 only once.
+  // We must never answer 200 for a payment we failed to record.
+  try {
+    return await processNotification(notification);
+  } catch (err) {
+    console.error(
+      "[midtrans webhook] Unexpected error — asking Midtrans to retry",
+      {
+        order_id: notification.order_id,
+        err,
+      },
+    );
+    // Sentry only sees what we send it — report it explicitly
+    Sentry.captureException(err, { extra: { orderId: notification.order_id } });
+    return NextResponse.json(
+      { error: "Temporary error — please retry" },
+      { status: 503 },
+    );
+  }
+}
+
+// All the notification logic lives here. Anything it throws is caught by POST above.
+async function processNotification(
+  notification: MidtransNotification,
+): Promise<NextResponse> {
+  // ── Layer 1: Signature verification ──
 
   // ── Layer 1: Signature verification ──
   // SHA512(order_id + status_code + gross_amount + server_key)
@@ -94,26 +123,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     transaction_status === "settlement" || transaction_status === "capture";
 
   if (!isSettled) {
-    // expire/cancel/deny → close out the pending payment row so it stops
-    // showing on /billing as "resume payment" and history reflects the outcome
-    if (
-      transaction_status === "expire" ||
-      transaction_status === "cancel" ||
-      transaction_status === "deny"
-    ) {
+    // ⚠️ A declined attempt (deny) does NOT end the order — Snap lets the customer go
+    // back to the list and try another method on the same order_id. Log only: the row
+    // stays pending, and a later settlement can still activate.
+    if (transaction_status === "deny") {
+      console.log("[midtrans webhook] Attempt denied — order still open", {
+        order_id,
+      });
+      return NextResponse.json(
+        { message: "Attempt denied — no action" },
+        { status: 200 },
+      );
+    }
+
+    // expire/cancel → the order is really finished. Close the pending row so it stops
+    // showing on /billing as "resume payment".
+    if (transaction_status === "expire" || transaction_status === "cancel") {
       const closedStatus =
         transaction_status === "expire" ? "expired" : "failed";
 
-      await markPaymentClosed(order_id, closedStatus).catch(console.error);
+      // No .catch here — if the DB is down we WANT the 503 so Midtrans retries
+      await markPaymentClosed(order_id, closedStatus);
 
-      // Mark processed so Midtrans stops retrying this notification
-      await db
-        .insert(processedWebhooks)
-        .values({ externalId: order_id, source: "midtrans" })
-        .catch(() => {
-          // Unique constraint violation on retry — already marked processed, ignore
-        });
-
+      // ⚠️ Deliberately NOT writing to processedWebhooks: answering 200 already stops
+      // Midtrans retrying, and marking a non-payment event as "processed" is what
+      // used to block a later successful payment on the same order.
       console.log("[midtrans webhook] Payment closed", {
         order_id,
         transaction_status,
@@ -316,6 +350,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         plan,
         parseInt(notification.gross_amount, 10),
         payment_type,
+        tx, // same transaction as activation — rolls back together
       );
 
       if (promoId !== null) {
@@ -331,6 +366,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       });
     });
   } catch (err) {
+    // ⚠️ Only the purge race gets the "mark processed, stop retrying" treatment below.
+    // Any other error (timeout, dropped connection) is rethrown → POST returns 503 →
+    // Midtrans retries, and the customer still gets activated.
+    if (!(err instanceof OrgPurgingError)) {
+      throw err;
+    }
+
     // Org was purged (or claimed for purging) in the moment this webhook was
     // processing — extremely rare race, but must not surface as a 500 and
     // trigger endless Midtrans retries. Log for manual review; the payment

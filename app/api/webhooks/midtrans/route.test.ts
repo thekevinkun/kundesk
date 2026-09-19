@@ -81,14 +81,25 @@ vi.mock("@/lib/db", () => {
 
 // ── Mock billing queries ──
 // We verify these get called with correct args on the happy path
-vi.mock("@/lib/db/queries/billing", () => ({
-  activateSubscription: vi
-    .fn()
-    .mockResolvedValue({ periodEnd: new Date("2026-07-12") }),
-  markPaymentSuccess: vi.fn().mockResolvedValue(undefined),
-  markPaymentClosed: vi.fn().mockResolvedValue(undefined),
-  getPaymentByOrderId: vi.fn().mockResolvedValue(null),
-}));
+vi.mock("@/lib/db/queries/billing", () => {
+  // Real class inside the factory — the route uses `instanceof` on it
+  class OrgPurgingError extends Error {
+    constructor() {
+      super("Organization is already being purged");
+      this.name = "OrgPurgingError";
+    }
+  }
+
+  return {
+    OrgPurgingError,
+    activateSubscription: vi
+      .fn()
+      .mockResolvedValue({ periodEnd: new Date("2026-07-12") }),
+    markPaymentSuccess: vi.fn().mockResolvedValue(undefined),
+    markPaymentClosed: vi.fn().mockResolvedValue(undefined),
+    getPaymentByOrderId: vi.fn().mockResolvedValue(null),
+  };
+});
 
 vi.mock("@/lib/email", () => ({
   sendPlanUpgradedEmail: vi.fn().mockResolvedValue(undefined),
@@ -121,6 +132,7 @@ import {
   markPaymentSuccess,
   markPaymentClosed,
   getPaymentByOrderId,
+  OrgPurgingError,
 } from "@/lib/db/queries/billing";
 import { db } from "@/lib/db";
 
@@ -418,13 +430,14 @@ describe("POST /api/webhooks/midtrans", () => {
       "bank_transfer",
       expect.anything(),
     );
-    // Pending payment row marked as success
+    // 6th argument is the transaction handle — payment write now rolls back with activation
     expect(markPaymentSuccess).toHaveBeenCalledWith(
       "org_3DZHfake123",
       notification.order_id,
       "starter",
       149000,
       "bank_transfer",
+      expect.anything(),
     );
   });
 
@@ -556,5 +569,111 @@ describe("POST /api/webhooks/midtrans", () => {
     const body = await res.json();
     expect(body.message).toBe("OK");
     expect(activateSubscription).toHaveBeenCalled();
+  });
+
+  // ── Retry safety (Phase 16 — webhook hardening) ──
+
+  // Helper: idempotency select → empty, org lookup → found
+  function mockOrgFound() {
+    let callCount = 0;
+    vi.mocked(db.select).mockImplementation(() => {
+      callCount++;
+      return {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(
+            callCount === 1
+              ? []
+              : [
+                  {
+                    id: "org_3DZHfake123",
+                    name: "Test Org",
+                    ownerEmail: "owner@test.com",
+                  },
+                ],
+          ),
+        }),
+      } as unknown as ReturnType<typeof db.select>;
+    });
+  }
+
+  it("ignores a denied attempt without closing the order or marking it processed", async () => {
+    // A declined card must not end the order — customer can retry with another method
+    const res = await POST(
+      makeRequest(validNotification({ transaction_status: "deny" })),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toBe("Attempt denied — no action");
+    expect(markPaymentClosed).not.toHaveBeenCalled();
+    // Nothing written to processedWebhooks — a later settlement must still get through
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("activates the plan when a payment settles after an earlier denied attempt", async () => {
+    // Attempt 1: card declined
+    await POST(makeRequest(validNotification({ transaction_status: "deny" })));
+    expect(db.insert).not.toHaveBeenCalled();
+
+    // Attempt 2: same order_id, paid another way
+    mockOrgFound();
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect(activateSubscription).toHaveBeenCalled();
+  });
+
+  it("does not mark expire notifications as processed", async () => {
+    await POST(
+      makeRequest(validNotification({ transaction_status: "expire" })),
+    );
+
+    expect(markPaymentClosed).toHaveBeenCalled();
+    // Non-payment events must never write to processedWebhooks
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when the database fails (so Midtrans retries)", async () => {
+    // Simulate a Neon cold-start timeout on the very first query
+    vi.mocked(db.select).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockRejectedValue(new Error("ETIMEDOUT")),
+      }),
+    } as unknown as ReturnType<typeof db.select>);
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(503);
+    expect(activateSubscription).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 and does not mark processed when activation fails with a normal error", async () => {
+    mockOrgFound();
+    // Ordinary failure (not the purge race) — Midtrans must retry
+    vi.mocked(activateSubscription).mockRejectedValueOnce(
+      new Error("ETIMEDOUT"),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(503);
+    // Not marked processed — the retry must be allowed to activate
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 and marks processed when the org is being purged", async () => {
+    mockOrgFound();
+    // The one rare case where retrying is pointless
+    vi.mocked(activateSubscription).mockRejectedValueOnce(
+      new OrgPurgingError(),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.message).toBe("Activation failed — flagged for review");
+    // Marked processed so Midtrans stops retrying
+    expect(db.insert).toHaveBeenCalled();
   });
 });
