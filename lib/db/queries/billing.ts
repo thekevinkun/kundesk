@@ -196,7 +196,11 @@ export async function resetMessagesUsed(orgId: string): Promise<void> {
   await db.update(orgs).set({ messagesUsed: 0 }).where(eq(orgs.id, orgId));
 }
 
-// Fetches all orgs where nextBillingDate falls within today — used by renewal cron
+// Fetches every active org whose nextBillingDate is today OR EARLIER — used by renewal cron.
+// "Or earlier" matters: if a run failed for an org (Neon timeout, Midtrans error, skipped
+// cron), the org is still active and overdue, so the next run picks it up again instead of
+// leaving it on a paid plan forever. Successful renewals flip the org to past_due, so
+// they drop out of this list on their own.
 export async function getOrgsDueForRenewal(): Promise<
   Array<{
     id: string;
@@ -225,7 +229,6 @@ export async function getOrgsDueForRenewal(): Promise<
     .where(
       and(
         eq(orgs.subscriptionStatus, "active"),
-        gte(orgs.nextBillingDate, today),
         lt(orgs.nextBillingDate, tomorrow),
       ),
     );
@@ -333,8 +336,8 @@ export async function markPaymentClosed(
 // Fetches a payment row by orderId, regardless of status — used to validate
 // that the amount Midtrans reports at settlement matches what was agreed at
 // checkout (payments.amount, promo discount already applied server-side).
-// Returns null if no row exists yet (e.g. renewal-cron checkouts don't
-// currently insert a pending row — tracked separately in Open Items).
+// Returns null if no row exists (synthetic/test notifications, legacy flows).
+// Renewal-cron checkouts insert their own pending row, so they are found here too.
 export async function getPaymentByOrderId(
   orderId: string,
 ): Promise<{ amount: number; status: string } | null> {

@@ -285,9 +285,9 @@ async function processNotification(
   // to charge, since a caller with the public client key could create their
   // own Snap transaction using our order_id format at a lower price.
   //
-  // If no pending row exists (e.g. renewal-cron checkouts, which don't yet
-  // insert one), we can't validate and fall back to trusting the webhook —
-  // same behavior as before this fix, until that gap is closed separately.
+  // If no pending row exists (synthetic/test notifications or legacy flows), we can't
+  // validate and fall back to trusting the webhook. Renewal-cron checkouts DO insert a
+  // pending row, so they are validated like any other payment.
   const paymentRecord = await getPaymentByOrderId(order_id);
   const reportedAmount = parseInt(notification.gross_amount, 10);
 

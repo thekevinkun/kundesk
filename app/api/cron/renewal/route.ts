@@ -148,9 +148,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         ),
       );
 
-      console.log(
-        `[cron/renewal] Charged org ${org.id} — payment link: ${redirectUrl}`,
-      );
+      console.log(`[cron/renewal] Charged org ${org.id} — order ${orderId}`);
       results.push({ orgId: org.id, status: "charged" });
     } catch (err) {
       // One failure doesn't stop the loop — process all orgs even if one errors
