@@ -124,7 +124,15 @@ export async function markPastDue(orgId: string): Promise<void> {
 
   await db
     .update(orgs)
-    .set({ subscriptionStatus: "past_due" })
+    .set({
+      subscriptionStatus: "past_due",
+      // The grace clock (3-day warning, 7-day downgrade) counts from nextBillingDate.
+      // An org picked up late by the renewal cron (an earlier run failed) has a date far
+      // in the past and would be downgraded within the hour, before the owner could use
+      // the new payment link. GREATEST leaves a normal due date untouched and restarts
+      // the clock at "now" for a late pickup.
+      nextBillingDate: sql`GREATEST(${orgs.nextBillingDate}, NOW())`,
+    })
     .where(eq(orgs.id, orgId));
 
   // Invalidate org cache

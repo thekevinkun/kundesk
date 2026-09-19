@@ -83,7 +83,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           results.push({ orgId: org.id, status: "skipped" });
         }
       } else if (daysOverdue >= 3) {
-        // ── Day 3 only — use idempotency key to prevent repeat emails ──
+        // ── Day 3+ — one warning per billing cycle ──
         // Key format: PASTDUE-{orgId}-{billingDate} — unique per billing cycle
         const billingDateStr = org.nextBillingDate.toISOString().slice(0, 10);
         const pastDueKey = `PASTDUE-${org.id}-${billingDateStr}`;
@@ -98,32 +98,33 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             ),
           );
 
-        if (!alreadyWarned) {
-          // Record before sending — prevents duplicate emails on cron retry
-          await db.insert(processedWebhooks).values({
-            externalId: pastDueKey,
-            source: "midtrans",
-          });
+        if (alreadyWarned) {
+          results.push({ orgId: org.id, status: "skipped" });
+        } else if (!org.ownerEmail) {
+          console.warn(
+            `[cron/past-due] Org ${org.id} has no ownerEmail — cannot warn`,
+          );
+          results.push({ orgId: org.id, status: "skipped" });
+        } else {
+          // Send FIRST and await it, record AFTER. A lost warning is worse than a
+          // duplicate one: if the send throws, nothing is recorded, the outer catch
+          // logs it, and tomorrow's run tries again (until the day-7 downgrade).
+          await sendPastDueEmail(
+            org.ownerEmail,
+            org.name,
+            PLAN_PRICE[org.plan as PlanName],
+            env.logoUrl,
+          );
+          await db
+            .insert(processedWebhooks)
+            .values({ externalId: pastDueKey, source: "midtrans" })
+            .onConflictDoNothing();
 
-          if (org.ownerEmail) {
-            sendPastDueEmail(
-              org.ownerEmail,
-              org.name,
-              PLAN_PRICE[org.plan as PlanName],
-              env.logoUrl,
-            ).catch((err) =>
-              console.error(
-                `[cron/past-due] Failed to send email for org ${org.id}:`,
-                err,
-              ),
-            );
-          }
+          console.log(
+            `[cron/past-due] Warned org ${org.id} — ${daysOverdue} days overdue`,
+          );
+          results.push({ orgId: org.id, status: "warned" });
         }
-
-        console.log(
-          `[cron/past-due] Warned org ${org.id} — ${daysOverdue} days overdue`,
-        );
-        results.push({ orgId: org.id, status: "warned" });
       } else {
         // Day 1–2: grace period, no action yet
         results.push({ orgId: org.id, status: "skipped" });
