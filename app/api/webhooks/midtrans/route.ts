@@ -396,12 +396,12 @@ async function processNotification(
     // transient failures, but for this specific race the org is gone, so
     // retrying forever accomplishes nothing. Mark it processed here,
     // separately, so retries stop — support handles it manually from Sentry.
+    // onConflictDoNothing ignores ONLY a duplicate (a concurrent retry already marked it).
+    // Any other DB error (timeout, outage) is not swallowed → POST returns 503 → Midtrans retries.
     await db
       .insert(processedWebhooks)
       .values({ externalId: order_id, source: "midtrans" })
-      .catch(() => {
-        // Already marked by a concurrent retry — ignore
-      });
+      .onConflictDoNothing();
 
     return NextResponse.json(
       { message: "Activation failed — flagged for review" },

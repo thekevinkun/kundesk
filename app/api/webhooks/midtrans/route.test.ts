@@ -668,12 +668,36 @@ describe("POST /api/webhooks/midtrans", () => {
       new OrgPurgingError(),
     );
 
+    // insert(...).values(...).onConflictDoNothing() — only a duplicate is ignored
+    const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(db.insert).mockReturnValue({
+      values: vi.fn().mockReturnValue({ onConflictDoNothing }),
+    } as unknown as ReturnType<typeof db.insert>);
+
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.message).toBe("Activation failed — flagged for review");
     // Marked processed so Midtrans stops retrying
-    expect(db.insert).toHaveBeenCalled();
+    expect(onConflictDoNothing).toHaveBeenCalled();
+  });
+
+  it("returns 503 when recording the purge outcome fails", async () => {
+    mockOrgFound();
+    vi.mocked(activateSubscription).mockRejectedValueOnce(
+      new OrgPurgingError(),
+    );
+
+    // A real DB failure (not a duplicate) must not be swallowed
+    vi.mocked(db.insert).mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockRejectedValue(new Error("ETIMEDOUT")),
+      }),
+    } as unknown as ReturnType<typeof db.insert>);
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(503);
   });
 });
