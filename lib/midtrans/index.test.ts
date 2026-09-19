@@ -2,23 +2,27 @@
 // Tests the actual cryptographic signature verification — not mocked
 // Also covers order ID generation and format validation
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createHash } from "crypto";
 
 // ── Mock @/lib/env ──
-// env.ts calls requireEnv() at module load — throws without real vars
-vi.mock("@/lib/env", () => ({
-  env: {
-    midtransServerKey: "test-server-key-12345",
-    midtransClientKey: "test-client-key-12345",
-    midtransProduction: false,
-    paymentMode: "mock",
-    appUrl: "http://localhost:3000",
-  },
+// env.ts calls requireEnv() at module load — throws without real vars.
+// vi.hoisted makes the object mutable so cancel tests can flip paymentMode.
+const mockEnv = vi.hoisted(() => ({
+  midtransServerKey: "test-server-key-12345" as string | undefined,
+  midtransClientKey: "test-client-key-12345",
+  midtransProduction: false,
+  paymentMode: "mock" as string,
+  appUrl: "http://localhost:3000",
 }));
+vi.mock("@/lib/env", () => ({ env: mockEnv }));
 
 // ── Import after mocks ──
-import { verifyMidtransSignature, generateOrderId } from "./index";
+import {
+  verifyMidtransSignature,
+  generateOrderId,
+  cancelMidtransPayment,
+} from "./index";
 import type { MidtransNotification } from "@/types/billing";
 
 // ── Helper: build a valid notification with correct signature ──
@@ -188,5 +192,90 @@ describe("generateOrderId", () => {
     const orderId = generateOrderId("org_3DZHfake123", "pro");
     const parts = orderId.split("-");
     expect(parts.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+// ─── cancelMidtransPayment ──
+// fetch is stubbed — no real Midtrans calls
+
+describe("cancelMidtransPayment", () => {
+  const ORDER_ID = "KUNDESK-org_3DZH-STARTER-1234567890";
+  const TOKEN = "1661df7b-28ca-45d9-88d3-fe9d2ae5b8ac";
+  const URL_OK = `https://app.sandbox.midtrans.com/snap/v4/redirection/${TOKEN}`;
+  const fetchMock = vi.fn();
+
+  // Small helper: a fake fetch Response with a JSON body
+  function res(status: number, body: object): Response {
+    return new Response(JSON.stringify(body), { status });
+  }
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    mockEnv.paymentMode = "midtrans";
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    // Put everything back so other tests in this file are unaffected
+    mockEnv.paymentMode = "mock";
+    vi.unstubAllGlobals();
+  });
+
+  it("returns true in mock mode without calling Midtrans", async () => {
+    mockEnv.paymentMode = "mock";
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("cancels the Snap session with the token from the URL", async () => {
+    fetchMock.mockResolvedValueOnce(res(200, {}));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]![0]).toContain(
+      `/snap/v1/transactions/${TOKEN}/cancel`,
+    );
+  });
+
+  it("falls back to cancelling the payment when the session cancel fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(409, {})) // session: transaction in progress
+      .mockResolvedValueOnce(res(200, { status_code: "200" })); // payment cancelled
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]![0]).toContain(`/v2/${ORDER_ID}/cancel`);
+  });
+
+  it("falls back when the session request throws (network error)", async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce(res(200, { status_code: "200" }));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+  });
+
+  it("returns true when Midtrans knows nothing about the order (404)", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(404, {}))
+      .mockResolvedValueOnce(res(200, { status_code: "404" }));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(true);
+  });
+
+  it("returns false when Midtrans refuses to cancel (e.g. 412)", async () => {
+    fetchMock
+      .mockResolvedValueOnce(res(409, {}))
+      .mockResolvedValueOnce(res(200, { status_code: "412" }));
+
+    expect(await cancelMidtransPayment(ORDER_ID, URL_OK)).toBe(false);
+  });
+
+  it("skips the session step when the URL has no token", async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { status_code: "200" }));
+
+    expect(await cancelMidtransPayment(ORDER_ID, "not-a-url")).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]![0]).toContain("/v2/");
   });
 });

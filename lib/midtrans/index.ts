@@ -207,3 +207,99 @@ export async function fireMockWebhook(
     body: JSON.stringify({ ...notification, signature_key }),
   });
 }
+
+// Pulls the Snap token out of a stored redirect URL.
+// Redirect URL looks like .../snap/v4/redirection/{token} — token is a UUID.
+// Returns null if the URL has no UUID at the end (then we skip the session step).
+function extractSnapToken(redirectUrl: string): string | null {
+  try {
+    const last = new URL(redirectUrl).pathname.split("/").filter(Boolean).pop();
+    return last && /^[0-9a-f-]{36}$/i.test(last) ? last : null;
+  } catch {
+    return null; // Malformed URL — nothing to extract
+  }
+}
+
+// Closes a pending payment on Midtrans's side, so an old link/QR/VA can't be paid
+// after the owner clicked "Batalkan".
+// Returns true  → safe to mark the payment cancelled in our DB
+// Returns false → Midtrans refused (e.g. payment is being processed) — do NOT cancel locally
+export async function cancelMidtransPayment(
+  orderId: string,
+  redirectUrl: string,
+): Promise<boolean> {
+  // Mock mode: nothing exists at Midtrans, so there is nothing to close
+  if (env.paymentMode === "mock") return true;
+
+  if (!env.midtransServerKey) {
+    throw new Error(
+      "Midtrans credentials required when KUNDESK_PAYMENT_MODE=midtrans",
+    );
+  }
+
+  const authHeader = Buffer.from(`${env.midtransServerKey}:`).toString(
+    "base64",
+  );
+  const headers = {
+    Authorization: `Basic ${authHeader}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  const snapBase = env.midtransProduction
+    ? "https://app.midtrans.com/snap/v1"
+    : "https://app.sandbox.midtrans.com/snap/v1";
+  const coreBase = env.midtransProduction
+    ? "https://api.midtrans.com/v2"
+    : "https://api.sandbox.midtrans.com/v2";
+
+  // Step 1 — cancel the Snap page. Works when the customer has NOT picked a method yet.
+  // Any failure here (already in progress, token unknown, network) just moves on to step 2.
+  // 4s timeout each: Vercel free functions stop at 10s and we may make two calls.
+  const token = extractSnapToken(redirectUrl);
+  if (token) {
+    try {
+      const res = await fetch(`${snapBase}/transactions/${token}/cancel`, {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(4000),
+      });
+      if (res.ok) return true;
+    } catch (err) {
+      console.warn("[cancelMidtransPayment] Snap session cancel failed", err);
+    }
+  }
+
+  // Step 2 — cancel the payment itself. Works when the customer already picked
+  // QRIS / VA / GoPay and a pending payment exists.
+  // Core API can answer HTTP 200 with the real result inside body.status_code,
+  // so we read the body first and fall back to the HTTP status.
+  const res = await fetch(`${coreBase}/${encodeURIComponent(orderId)}/cancel`, {
+    method: "POST",
+    headers,
+    signal: AbortSignal.timeout(4000),
+  });
+  const body = (await res.json().catch(() => null)) as {
+    status_code?: string;
+  } | null;
+  const code = body?.status_code ?? String(res.status);
+
+  if (code === "200") return true; // Payment cancelled
+
+  if (code === "404") {
+    // Midtrans knows no payment for this order and step 1 found no live page.
+    // Nothing left to close, so cancelling locally is safe. Logged in case the
+    // token parsing is wrong (the page would still be alive).
+    console.warn("[cancelMidtransPayment] Nothing to cancel at Midtrans", {
+      orderId,
+    });
+    return true;
+  }
+
+  // Anything else (e.g. already settled / cannot be changed): refuse
+  console.error("[cancelMidtransPayment] Midtrans refused cancel", {
+    orderId,
+    code,
+  });
+  return false;
+}
