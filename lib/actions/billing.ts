@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { z } from "zod/v4";
 import { eq } from "drizzle-orm";
@@ -8,7 +9,10 @@ import { db } from "@/lib/db";
 import { requireOrgAdmin } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { orgs } from "@/lib/db/schema";
-import { createSubscriptionTransaction } from "@/lib/midtrans";
+import {
+  createSubscriptionTransaction,
+  cancelMidtransPayment,
+} from "@/lib/midtrans";
 import { sendPaymentPendingEmail } from "@/lib/email";
 import {
   cancelSubscription,
@@ -157,17 +161,45 @@ export async function createPayment(
 }
 
 // cancelPendingPayment action
+// Closes the payment at Midtrans first, then in our DB — so the old email link can't be paid
 export async function cancelPendingPaymentAction(): Promise<{
   success: boolean;
   error?: string;
 }> {
   try {
     const { orgId } = await requireOrgAdmin();
+
+    // Which order to cancel comes from our DB — never from the client (IDOR-safe)
+    const pending = await getPendingPayment(orgId);
+
+    if (pending) {
+      // Close the door at Midtrans FIRST. If the DB update fails afterwards, pressing
+      // Batalkan again works: step 2 answers "not found" and we cancel locally.
+      const closedAtMidtrans = await cancelMidtransPayment(
+        pending.orderId,
+        pending.redirectUrl,
+      );
+
+      if (!closedAtMidtrans) {
+        Sentry.captureMessage("cancel payment: Midtrans refused", {
+          level: "warning",
+          extra: { orgId, orderId: pending.orderId },
+        });
+        return {
+          success: false,
+          error:
+            "Pembayaran ini belum bisa dibatalkan — mungkin sedang diproses. Muat ulang halaman dalam beberapa saat.",
+        };
+      }
+    }
+
+    // Also cleans up any stale (>24h) pending row — its Snap page has expired already
     await cancelPendingPayment(orgId);
     revalidatePath("/dashboard/billing");
     return { success: true };
   } catch (err) {
     console.error("[cancelPendingPaymentAction] error:", err);
+    Sentry.captureException(err);
     return { success: false, error: "Gagal membatalkan transaksi. Coba lagi." };
   }
 }
