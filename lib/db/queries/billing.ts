@@ -406,6 +406,28 @@ export async function cancelPendingPayment(orgId: string): Promise<void> {
     .where(and(eq(payments.orgId, orgId), eq(payments.status, "pending")));
 }
 
+// Marks every pending payment older than 24h as expired — called by the daily housekeeping cron.
+// Why: Snap sends NO webhook when a checkout page just expires, and nothing else touches a row
+// whose owner opened checkout and never came back, so it would show "PENDING" forever.
+// Safe: the Snap transaction is created with a 24h expiry (createSubscriptionTransaction), so by
+// the time a row is older than 24h Midtrans has expired it too. Returns how many rows changed.
+export async function expireStalePayments(): Promise<number> {
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const updated = await db
+    .update(payments)
+    .set({ status: "expired" })
+    .where(
+      and(
+        eq(payments.status, "pending"),
+        lt(payments.createdAt, twentyFourHoursAgo),
+      ),
+    )
+    .returning({ id: payments.id });
+
+  return updated.length;
+}
+
 // Fetches payment history for an org — newest first, max 12 records
 // Used by the billing page PaymentHistoryCard
 // Scoped to orgId — tenant isolation + IDOR protection
