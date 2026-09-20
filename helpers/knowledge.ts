@@ -10,6 +10,7 @@ import type {
   CompileSection,
   EntryPrice,
   HoursSchedule,
+  SyncItem,
 } from "@/types/knowledge";
 
 // An entry at or under this size stays ONE chunk — a bit above chunkText's own 900 target
@@ -207,4 +208,44 @@ export function compileProfileBlock(profile: CompileProfile): string | null {
 
   // Nothing filled in — caller skips the whole block
   return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
+// Decides exactly which chunks a sync writes: chunks for the target entries + the section summary
+// The summary always covers ALL entries (the list changed even if only one entry did)
+export function buildSyncItems(
+  section: CompileSection,
+  entries: (CompileEntry & { id: number })[],
+  targetIds: number[],
+  sectionId: number,
+): SyncItem[] {
+  const targets = new Set(targetIds);
+  const items: SyncItem[] = [];
+
+  // Per-item chunks — only for the entries being rebuilt, owned by the entry
+  for (const entry of entries) {
+    if (!targets.has(entry.id)) continue;
+    for (const content of compileEntryChunks(section, entry)) {
+      items.push({ content, entryId: entry.id, sectionId: null });
+    }
+  }
+
+  // Summary chunks — owned by the section, built from every entry
+  for (const content of compileSectionSummaryChunks(section, entries)) {
+    items.push({ content, entryId: null, sectionId });
+  }
+
+  return items;
+}
+
+// Fingerprint of a section's data — the sync compares it before and after embedding
+// A different fingerprint means someone saved something in between
+export function buildSectionSnapshot(
+  section: { updatedAt: Date },
+  entries: { id: number; updatedAt: Date }[],
+): string {
+  const entryPart = [...entries]
+    .sort((a, b) => a.id - b.id) // stable order — row order from the DB must not matter
+    .map((entry) => `${entry.id}:${entry.updatedAt.getTime()}`)
+    .join(",");
+  return `${section.updatedAt.getTime()}|${entryPart}`;
 }

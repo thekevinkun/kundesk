@@ -8,6 +8,8 @@ import {
   compileProfileBlock,
   compileSectionSummaryChunks,
   formatEntryPrice,
+  buildSyncItems,
+  buildSectionSnapshot,
 } from "./knowledge";
 import type {
   CompileEntry,
@@ -358,5 +360,121 @@ describe("compileProfileBlock", () => {
     });
 
     expect(block).toBe("Alamat: Jalan Pramuka No. 47, Samarinda");
+  });
+});
+
+describe("buildSyncItems", () => {
+  const section = makeSection();
+  const entries = [
+    { ...makeEntry({ title: "Nasi Kuning Komplit" }), id: 1 },
+    {
+      ...makeEntry({
+        title: "Bubur Ayam Kalimantan",
+        price: { mode: "fixed", amount: 14000 },
+      }),
+      id: 2,
+    },
+    {
+      ...makeEntry({
+        title: "Lontong Sayur",
+        price: { mode: "fixed", amount: 15000 },
+      }),
+      id: 3,
+    },
+  ];
+
+  it("gives the target entry its own chunk and the section its summary", () => {
+    const items = buildSyncItems(section, entries, [2], 10);
+
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ entryId: 2, sectionId: null });
+    expect(items[0]?.content).toContain("Bubur Ayam Kalimantan");
+    expect(items[1]).toMatchObject({ entryId: null, sectionId: 10 });
+  });
+
+  it("builds the summary from ALL entries even when only one is a target", () => {
+    const summary = buildSyncItems(section, entries, [2], 10)[1]?.content ?? "";
+
+    expect(summary).toContain("Nasi Kuning Komplit");
+    expect(summary).toContain("Bubur Ayam Kalimantan");
+    expect(summary).toContain("Lontong Sayur");
+  });
+
+  it("builds only the summary when there are no targets", () => {
+    const items = buildSyncItems(section, entries, [], 10);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ entryId: null, sectionId: 10 });
+  });
+
+  it("puts every entry chunk before the summary when all entries are targets", () => {
+    const items = buildSyncItems(section, entries, [1, 2, 3], 10);
+
+    expect(items.map((item) => item.entryId)).toEqual([1, 2, 3, null]);
+  });
+
+  it("skips disabled non-catalog entries and never builds a summary for them", () => {
+    const promoSection = makeSection({
+      kind: "promo",
+      title: "Promo",
+      note: null,
+    });
+    const promoEntries = [
+      {
+        ...makeEntry({ title: "Promo Senin", price: null, isAvailable: false }),
+        id: 1,
+      },
+      { ...makeEntry({ title: "Promo Keluarga", price: null }), id: 2 },
+    ];
+    const items = buildSyncItems(promoSection, promoEntries, [1, 2], 10);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ entryId: 2, sectionId: null });
+  });
+});
+
+describe("buildSectionSnapshot", () => {
+  const t = (n: number) => new Date(n);
+  const section = { updatedAt: t(1000) };
+  const entries = [
+    { id: 1, updatedAt: t(2000) },
+    { id: 2, updatedAt: t(3000) },
+  ];
+
+  it("is the same for identical data, regardless of row order", () => {
+    const reversed = [...entries].reverse();
+
+    expect(buildSectionSnapshot(section, reversed)).toBe(
+      buildSectionSnapshot(section, entries),
+    );
+  });
+
+  it("changes when an entry is saved again", () => {
+    const edited = [
+      entries[0] as (typeof entries)[number],
+      { id: 2, updatedAt: t(3001) },
+    ];
+
+    expect(buildSectionSnapshot(section, edited)).not.toBe(
+      buildSectionSnapshot(section, entries),
+    );
+  });
+
+  it("changes when an entry is deleted or added", () => {
+    expect(buildSectionSnapshot(section, entries.slice(0, 1))).not.toBe(
+      buildSectionSnapshot(section, entries),
+    );
+    expect(
+      buildSectionSnapshot(section, [
+        ...entries,
+        { id: 3, updatedAt: t(4000) },
+      ]),
+    ).not.toBe(buildSectionSnapshot(section, entries));
+  });
+
+  it("changes when the section itself is saved again", () => {
+    expect(buildSectionSnapshot({ updatedAt: t(1001) }, entries)).not.toBe(
+      buildSectionSnapshot(section, entries),
+    );
   });
 });

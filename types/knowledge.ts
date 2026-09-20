@@ -64,3 +64,21 @@ export interface CompileProfile {
   hours: HoursSchedule[];
   paymentMethods: PaymentMethod[];
 }
+
+// ─── Sync layer ───
+
+// One chunk ready to embed + store — exactly ONE of entryId / sectionId is set
+export interface SyncItem {
+  content: string;
+  entryId: number | null; // per-item chunk
+  sectionId: number | null; // section summary chunk
+}
+
+// Outcome of a sync — DB errors are thrown, not returned
+export type SyncResult =
+  | { status: "synced"; chunkCount: number }
+  // A newer save changed the data mid-sync — that save's own sync owns the result
+  | { status: "superseded" }
+  // OpenAI failed — old chunks kept, entries stay "stale" so a retry can fix them
+  | { status: "embed_failed" }
+  | { status: "not_found" };
