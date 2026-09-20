@@ -36,6 +36,13 @@
       "when": 1789689806557,
       "tag": "0004_cold_wallop",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789904526789,
+      "tag": "0005_friendly_cassandra_nova",
+      "breakpoints": true
     }
   ]
 }

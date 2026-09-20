@@ -9,11 +9,20 @@ import {
   integer,
   boolean,
   timestamp,
+  jsonb,
   index,
   uniqueIndex,
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type {
+  ContactItem,
+  EntryPrice,
+  HoursSchedule,
+  PaymentMethod,
+  SectionKind,
+  SyncStatus,
+} from "@/types/knowledge";
 
 // ─── CUSTOM TYPES ───
 
@@ -164,6 +173,86 @@ export const documents = pgTable(
   ],
 );
 
+// ─── BUSINESS PROFILES ───
+// One row per org — always-needed facts (hours, contact, payment) that go straight
+// into the system prompt on every message instead of competing for retrieval slots
+export const businessProfiles = pgTable("business_profiles", {
+  // PK = orgId — enforces one profile per org at the DB level
+  orgId: text("org_id")
+    .primaryKey()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  about: text("about"),
+  address: text("address"),
+  // JSONB typed via $type — Zod validates shape at write time
+  contacts: jsonb("contacts").$type<ContactItem[]>().notNull().default([]),
+  hours: jsonb("hours").$type<HoursSchedule[]>().notNull().default([]),
+  paymentMethods: jsonb("payment_methods")
+    .$type<PaymentMethod[]>()
+    .notNull()
+    .default([]),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ─── KNOWLEDGE SECTIONS ───
+// A named group of entries — "Menu Sarapan", "Vaksinasi", "FAQ", "Kebijakan"
+export const knowledgeSections = pgTable(
+  "knowledge_sections",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<SectionKind>().notNull(),
+    title: text("title").notNull(),
+    // Group-level note, e.g. "Tersedia 07.00 – 10.00"
+    note: text("note"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("knowledge_sections_org_sort_idx").on(table.orgId, table.sortOrder),
+  ],
+);
+
+// ─── KNOWLEDGE ENTRIES ───
+// One item: a menu item, service, FAQ pair, policy, promo, or free note
+export const knowledgeEntries = pgTable(
+  "knowledge_entries",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    sectionId: integer("section_id")
+      .notNull()
+      .references(() => knowledgeSections.id, { onDelete: "cascade" }),
+    // Item name, FAQ question, or policy title
+    title: text("title").notNull(),
+    // Description, FAQ answer, or policy text
+    body: text("body").notNull().default(""),
+    // Null for non-priced entries (FAQ, policy, note)
+    price: jsonb("price").$type<EntryPrice>(),
+    // "Habis hari ini" toggle — chunk stays, wording changes, KUN says "lagi habis"
+    isAvailable: boolean("is_available").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    // Whether this row's chunks match its current content
+    syncStatus: text("sync_status")
+      .$type<SyncStatus>()
+      .notNull()
+      .default("stale"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("knowledge_entries_org_id_idx").on(table.orgId),
+    index("knowledge_entries_section_sort_idx").on(
+      table.sectionId,
+      table.sortOrder,
+    ),
+  ],
+);
+
 // ─── CHUNKS ───
 // The RAG knowledge base — most queried table in the entire app
 // HNSW index on embedding column for fast cosine similarity search
@@ -177,10 +266,21 @@ export const chunks = pgTable(
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
 
-    // Parent document — used to delete chunks when document is deleted
-    documentId: integer("document_id")
-      .notNull()
-      .references(() => documents.id, { onDelete: "cascade" }),
+    // Parent document — now nullable: a chunk belongs to exactly ONE of
+    // document / entry / section (enforced by chunks_single_owner_chk)
+    documentId: integer("document_id").references(() => documents.id, {
+      onDelete: "cascade",
+    }), // ← removed .notNull()
+
+    // Chunk of a single form entry (per-item chunk)
+    entryId: integer("entry_id").references(() => knowledgeEntries.id, {
+      onDelete: "cascade",
+    }),
+
+    // Chunk summarising a whole section (list questions like "apa saja menu sarapan?")
+    sectionId: integer("section_id").references(() => knowledgeSections.id, {
+      onDelete: "cascade",
+    }),
 
     // The actual text content retrieved and injected into the AI prompt
     content: text("content").notNull(),
@@ -202,6 +302,14 @@ export const chunks = pgTable(
     index("chunks_embedding_idx")
       .using("hnsw", sql`(embedding::vector(1536)) vector_cosine_ops`)
       .with({ m: 16, ef_construction: 128 }),
+
+    index("chunks_entry_id_idx").on(table.entryId),
+    index("chunks_section_id_idx").on(table.sectionId),
+    // Exactly one owner per chunk — no orphans, no double-owned rows
+    check(
+      "chunks_single_owner_chk",
+      sql`num_nonnulls(${table.documentId}, ${table.entryId}, ${table.sectionId}) = 1`,
+    ),
   ],
 );
 
