@@ -10,6 +10,7 @@ import {
   formatEntryPrice,
   buildSyncItems,
   buildSectionSnapshot,
+  toSyncStatus,
 } from "./knowledge";
 import type {
   CompileEntry,
@@ -476,5 +477,17 @@ describe("buildSectionSnapshot", () => {
     expect(buildSectionSnapshot({ updatedAt: t(1001) }, entries)).not.toBe(
       buildSectionSnapshot(section, entries),
     );
+  });
+});
+
+describe("toSyncStatus", () => {
+  it("is synced only when the sync finished", () => {
+    expect(toSyncStatus({ status: "synced", chunkCount: 3 })).toBe("synced");
+  });
+
+  it("is stale for every other outcome", () => {
+    expect(toSyncStatus({ status: "superseded" })).toBe("stale");
+    expect(toSyncStatus({ status: "embed_failed" })).toBe("stale");
+    expect(toSyncStatus({ status: "not_found" })).toBe("stale");
   });
 });

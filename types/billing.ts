@@ -17,6 +17,7 @@ export interface PlanLimits {
   embedWidget: boolean;
   whatsapp: boolean;
   analytics: boolean;
+  knowledgeEntries: number;
 }
 
 // Plan limits lookup — single source of truth
@@ -27,6 +28,7 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     embedWidget: false,
     whatsapp: false,
     analytics: false,
+    knowledgeEntries: 50,
   },
   starter: {
     messagesPerMonth: 1000,
@@ -34,6 +36,7 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     embedWidget: true,
     whatsapp: false,
     analytics: true,
+    knowledgeEntries: 300,
   },
   pro: {
     messagesPerMonth: 10000,
@@ -41,6 +44,7 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     embedWidget: true,
     whatsapp: true,
     analytics: true,
+    knowledgeEntries: 1000,
   },
 };
 

@@ -52,6 +52,7 @@ import {
   checkOrgMessageLimit,
   checkUploadRateLimit,
   checkAuthRateLimit,
+  checkKnowledgeWriteLimit,
   cacheGet,
   cacheSet,
 } from "@/lib/redis";
@@ -213,6 +214,43 @@ describe("checkAuthRateLimit", () => {
     await checkAuthRateLimit("10.0.0.1");
 
     expect(mockLimit).toHaveBeenCalledWith("10.0.0.1");
+  });
+});
+
+describe("checkKnowledgeWriteLimit", () => {
+  beforeEach(() => {
+    mockLimit.mockClear();
+  });
+
+  it("returns success: true when under limit", async () => {
+    mockLimit.mockResolvedValueOnce({
+      success: true,
+      remaining: 199,
+      reset: Date.now() + 3600000,
+    });
+
+    const result = await checkKnowledgeWriteLimit("org_test123");
+
+    expect(result.success).toBe(true);
+    expect(result.remaining).toBe(199);
+  });
+
+  it("returns success: false when the limit is exceeded", async () => {
+    mockLimit.mockResolvedValueOnce({
+      success: false,
+      remaining: 0,
+      reset: Date.now() + 3600000,
+    });
+
+    const result = await checkKnowledgeWriteLimit("org_test123");
+
+    expect(result.success).toBe(false);
+  });
+
+  it("passes orgId as the limit key", async () => {
+    await checkKnowledgeWriteLimit("org_knowledge");
+
+    expect(mockLimit).toHaveBeenCalledWith("org_knowledge");
   });
 });
 

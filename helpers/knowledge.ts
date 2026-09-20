@@ -11,6 +11,8 @@ import type {
   EntryPrice,
   HoursSchedule,
   SyncItem,
+  SyncResult,
+  SyncStatus,
 } from "@/types/knowledge";
 
 // An entry at or under this size stays ONE chunk — a bit above chunkText's own 900 target
@@ -248,4 +250,11 @@ export function buildSectionSnapshot(
     .map((entry) => `${entry.id}:${entry.updatedAt.getTime()}`)
     .join(",");
   return `${section.updatedAt.getTime()}|${entryPart}`;
+}
+
+// Maps a sync outcome to what the UI shows on the entry
+// Anything except a finished sync counts as "stale" — including "superseded",
+// because the newer save's own sync will flip it to "synced" a moment later
+export function toSyncStatus(result: SyncResult): SyncStatus {
+  return result.status === "synced" ? "synced" : "stale";
 }

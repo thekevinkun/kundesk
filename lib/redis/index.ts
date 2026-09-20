@@ -142,6 +142,29 @@ export async function checkWidgetRateLimit(
   };
 }
 
+// knowledgeWriteLimit — 200 saves/hour per org
+// Every knowledge save calls OpenAI to embed, so this bounds cost and abuse.
+// Generous enough to type a whole menu in one sitting (Rumah Paco has ~190 entries)
+export async function checkKnowledgeWriteLimit(
+  orgId: string,
+): Promise<RateLimitResult> {
+  const redis = await getRedis();
+  const { Ratelimit } = await import("@upstash/ratelimit");
+
+  const limiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(200, "1 h"),
+    prefix: "kundesk:rl:knowledge:org",
+  });
+
+  const result = await limiter.limit(orgId);
+  return {
+    success: result.success,
+    remaining: result.remaining,
+    reset: result.reset,
+  };
+}
+
 // Generic cache get/set — used for response caching
 export async function cacheGet(key: string): Promise<string | null> {
   const redis = await getRedis();
@@ -174,6 +197,8 @@ export const CacheKeys = {
   orgById: (orgId: string) => `kundesk:cache:org:id:${orgId}`,
   // Keyed by orgId — chatbot config rarely changes
   chatbot: (orgId: string) => `kundesk:cache:chatbot:${orgId}`,
+  // Keyed by orgId — compiled business profile block (cached by the chat route in a later PR)
+  profile: (orgId: string) => `kundesk:cache:profile:${orgId}`,
 } as const;
 
 // Org cache TTL — 5 minutes

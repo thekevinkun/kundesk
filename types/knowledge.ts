@@ -18,14 +18,14 @@ export type EntryPrice =
 export interface HoursLine {
   days: string;
   time: string;
-  note?: string;
+  note?: string | undefined;
 }
 
 // A named schedule — Rumah Paco has three (Klinik, Pet Shop, Darurat)
 export interface HoursSchedule {
   label: string;
   lines: HoursLine[];
-  note?: string;
+  note?: string | undefined;
 }
 
 // Labeled contact — Rumah Paco has two different WhatsApp numbers with different purposes
@@ -36,8 +36,8 @@ export interface ContactItem {
 
 // Payment method with optional detail such as an account number
 export interface PaymentMethod {
-  label: string; // "Transfer BCA"
-  detail?: string; // "9876543210 a.n. Rumah Paco"
+  label: string;
+  detail?: string | undefined;
 }
 
 // ─── Compile helper inputs ───
@@ -82,3 +82,30 @@ export type SyncResult =
   // OpenAI failed — old chunks kept, entries stay "stale" so a retry can fix them
   | { status: "embed_failed" }
   | { status: "not_found" };
+
+// ─── Limits ───
+
+// Max sections per org — bounds sync work and dashboard clutter
+export const MAX_KNOWLEDGE_SECTIONS = 30;
+
+// Max characters of the compiled profile block — it rides along on EVERY chat message
+export const MAX_PROFILE_BLOCK_CHARS = 2500;
+
+// ─── Server Action result data ───
+
+// Returned after creating/updating one entry
+export interface EntrySaveData {
+  id: number;
+  syncStatus: SyncStatus; // "stale" = saved, but KUN hasn't picked it up yet — UI should offer a retry
+}
+
+// Returned after actions that only rebuild chunks
+export interface SyncStatusData {
+  syncStatus: SyncStatus;
+}
+
+// Returned by the retry action — remaining > 0 means "call again"
+export interface RetrySyncData {
+  synced: number;
+  remaining: number;
+}
