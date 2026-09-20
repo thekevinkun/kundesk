@@ -39,3 +39,28 @@ export interface PaymentMethod {
   label: string; // "Transfer BCA"
   detail?: string; // "9876543210 a.n. Rumah Paco"
 }
+
+// ─── Compile helper inputs ───
+// Minimal shapes the compile helpers need — decoupled from Drizzle row types
+// so tests never need a database. Drizzle rows are structurally assignable to these.
+
+export interface CompileSection {
+  kind: SectionKind;
+  title: string;
+  note: string | null;
+}
+
+export interface CompileEntry {
+  title: string;
+  body: string;
+  price: EntryPrice | null;
+  isAvailable: boolean;
+}
+
+export interface CompileProfile {
+  about: string | null;
+  address: string | null;
+  contacts: ContactItem[];
+  hours: HoursSchedule[];
+  paymentMethods: PaymentMethod[];
+}
