@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { requireOrgAdmin } from "@/lib/auth";
 import {
   businessProfiles,
+  chunks,
   knowledgeEntries,
   knowledgeSections,
 } from "@/lib/db/schema";
@@ -32,11 +33,11 @@ import {
   updateSectionSchema,
 } from "@/helpers/knowledge-schemas";
 import { PLAN_LIMITS } from "@/types/billing";
+import type { ActionResult } from "@/types/api";
 import {
   MAX_KNOWLEDGE_SECTIONS,
   MAX_PROFILE_BLOCK_CHARS,
 } from "@/types/knowledge";
-import type { ActionResult } from "@/types/api";
 import type {
   EntrySaveData,
   RetrySyncData,
@@ -172,13 +173,34 @@ export async function updateSection(
       return { success: false, error: "Bagian tidak ditemukan" };
     }
 
-    // Nothing changed — skip the embedding round trip
+    // Same values as before — no rewrite needed. But an earlier failed sync may have left
+    // entries stale, so never report "synced" without looking.
     if (
       existing.kind === kind &&
       existing.title === title &&
       existing.note === note
     ) {
-      return { success: true, data: { syncStatus: "synced" } };
+      const [staleEntry] = await db
+        .select({ id: knowledgeEntries.id })
+        .from(knowledgeEntries)
+        .where(
+          and(
+            eq(knowledgeEntries.sectionId, id),
+            eq(knowledgeEntries.orgId, orgId),
+            eq(knowledgeEntries.syncStatus, "stale"),
+          ),
+        )
+        .limit(1);
+
+      // Everything is really in sync — skip the embedding round trip
+      if (!staleEntry) {
+        return { success: true, data: { syncStatus: "synced" } };
+      }
+
+      // Stale entries exist: pressing save again acts as a retry, without rewriting the section
+      const retry = await syncSection(orgId, id);
+      revalidatePath(KNOWLEDGE_PATH);
+      return { success: true, data: { syncStatus: toSyncStatus(retry) } };
     }
 
     // Save + flag every entry of the section as stale in one transaction
@@ -425,7 +447,7 @@ export async function deleteEntry(
 
       // The section summary still lists the deleted item. Flag the remaining entries stale
       // so a failed rebuild stays visible and retryable instead of leaving a wrong list behind.
-      await tx
+      const remaining = await tx
         .update(knowledgeEntries)
         .set({ syncStatus: "stale" })
         .where(
@@ -433,7 +455,21 @@ export async function deleteEntry(
             eq(knowledgeEntries.sectionId, deleted.sectionId),
             eq(knowledgeEntries.orgId, orgId),
           ),
-        );
+        )
+        .returning({ id: knowledgeEntries.id });
+
+      // With fewer than 2 entries left there is no summary list at all. Delete it in THIS
+      // transaction: with zero entries left there'd be no stale row for a retry to find.
+      if (remaining.length < 2) {
+        await tx
+          .delete(chunks)
+          .where(
+            and(
+              eq(chunks.orgId, orgId),
+              eq(chunks.sectionId, deleted.sectionId),
+            ),
+          );
+      }
 
       return deleted.sectionId;
     });
