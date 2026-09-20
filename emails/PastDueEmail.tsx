@@ -16,6 +16,7 @@ import { EMAIL_PREVIEW_LOGO_URL } from "./constants";
 interface PastDueEmailProps {
   orgName: string;
   amount: string; // pre-formatted: "Rp 149.000"
+  downgradeDate: string; // pre-formatted: "12 Oktober 2026"
   billingUrl: string;
   logoUrl: string;
 }
@@ -23,6 +24,7 @@ interface PastDueEmailProps {
 export default function PastDueEmail({
   orgName,
   amount,
+  downgradeDate,
   billingUrl,
   logoUrl,
 }: PastDueEmailProps) {
@@ -48,12 +50,15 @@ export default function PastDueEmail({
 
           <Text style={styles.text}>
             Pembayaran Kundesk sebesar <strong>{amount}</strong> belum kami
-            terima. KUN saat ini dibatasi hingga pembayaran diselesaikan.
+            terima. Akun kamu masih aktif penuh untuk saat ini.
           </Text>
 
           <Text style={styles.text}>
-            Selesaikan pembayaran sekarang untuk memulihkan akses penuh dan
-            memastikan KUN kembali melayani pelanggan kamu 24/7.
+            Jika pembayaran belum selesai sekitar{" "}
+            <strong>{downgradeDate}</strong>, plan kamu akan otomatis turun ke
+            Free dan kuota pesan, dokumen, serta fitur akan mengikuti batas plan
+            Free. Selesaikan pembayaran sekarang agar KUN tetap melayani
+            pelanggan kamu 24/7 tanpa batasan.
           </Text>
 
           <Section style={styles.btnSection}>
@@ -139,6 +144,7 @@ const styles = {
 PastDueEmail.PreviewProps = {
   orgName: "Kun Borneo",
   amount: "Rp149.000",
+  downgradeDate: "12 Oktober 2026",
   billingUrl: "http://localhost:3000/dashboard/billing",
   logoUrl: EMAIL_PREVIEW_LOGO_URL,
 };

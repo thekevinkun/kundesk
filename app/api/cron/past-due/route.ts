@@ -51,7 +51,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const results: Array<{
     orgId: string;
-    status: "warned" | "downgraded" | "skipped";
+    status: "warned" | "downgraded" | "skipped" | "failed";
   }> = [];
 
   for (const org of pastDueOrgs) {
@@ -106,6 +106,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           );
           results.push({ orgId: org.id, status: "skipped" });
         } else {
+          // The downgrade runs once 7 full days have passed since nextBillingDate
+          // (see the daysOverdue >= 7 branch above), so the email says "sekitar" this date
+          const downgradeDate = new Date(
+            org.nextBillingDate.getTime() + 7 * 24 * 60 * 60 * 1000,
+          );
+
           // Send FIRST and await it, record AFTER. A lost warning is worse than a
           // duplicate one: if the send throws, nothing is recorded, the outer catch
           // logs it, and tomorrow's run tries again (until the day-7 downgrade).
@@ -113,6 +119,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
             org.ownerEmail,
             org.name,
             PLAN_PRICE[org.plan as PlanName],
+            downgradeDate,
             env.logoUrl,
           );
           await db
@@ -131,6 +138,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     } catch (err) {
       console.error(`[cron/past-due] Failed to process org ${org.id}:`, err);
+      results.push({ orgId: org.id, status: "failed" });
     }
   }
 

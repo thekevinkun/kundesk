@@ -170,6 +170,7 @@ export async function sendPastDueEmail(
   to: string,
   orgName: string,
   amount: number,
+  downgradeDate: Date,
   logoUrl: string,
 ): Promise<void> {
   const formattedAmount = new Intl.NumberFormat("id-ID", {
@@ -178,11 +179,20 @@ export async function sendPastDueEmail(
     minimumFractionDigits: 0,
   }).format(amount);
 
+  // WIB explicitly — server runs in UTC, which can show the previous day for Indonesian owners
+  const formattedDowngradeDate = downgradeDate.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  });
+
   const html = await render(
     PastDueEmail({
       orgName,
       logoUrl,
       amount: formattedAmount,
+      downgradeDate: formattedDowngradeDate,
       billingUrl: `${env.appUrl}/dashboard/billing`,
     }),
   );
