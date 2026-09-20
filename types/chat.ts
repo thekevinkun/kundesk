@@ -32,6 +32,14 @@ export type ChatbotConfig = {
   quickReplies: string[] | null;
 };
 
+// Optional per-request context for buildSystemPrompt — one object so callers can't mix up loose parameters
+export type SystemPromptOptions = {
+  // Business's IANA timezone — getCurrentDateTime falls back to WIB when missing
+  timeZone?: string | undefined;
+  // Compiled business profile (hours, contact, payment) — null when the owner filled in nothing
+  profileBlock?: string | null | undefined;
+};
+
 // A conversation session
 export interface Conversation {
   id: number;

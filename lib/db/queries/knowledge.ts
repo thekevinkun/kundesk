@@ -3,7 +3,13 @@
 
 import { count, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { knowledgeEntries, knowledgeSections, orgs } from "@/lib/db/schema";
+import {
+  businessProfiles,
+  knowledgeEntries,
+  knowledgeSections,
+  orgs,
+} from "@/lib/db/schema";
+import { compileProfileBlock } from "@/helpers/knowledge";
 import type { PlanName } from "@/types/billing";
 
 // Extracted from db.transaction's own callback signature — always matches the real driver types
@@ -50,4 +56,24 @@ export async function lockOrgForKnowledgeWrite(
     .for("update");
 
   return locked ? (locked.plan as PlanName) : null;
+}
+
+// Reads the org's business profile and compiles it into the block injected in the system prompt
+// Returns null when the org has no profile row or filled in nothing
+export async function getBusinessProfileBlock(
+  orgId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({
+      about: businessProfiles.about,
+      address: businessProfiles.address,
+      contacts: businessProfiles.contacts,
+      hours: businessProfiles.hours,
+      paymentMethods: businessProfiles.paymentMethods,
+    })
+    .from(businessProfiles)
+    .where(eq(businessProfiles.orgId, orgId)) // ← tenant scoping
+    .limit(1);
+
+  return row ? compileProfileBlock(row) : null;
 }

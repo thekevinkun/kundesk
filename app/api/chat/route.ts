@@ -7,6 +7,7 @@ import { trackEvent } from "@/lib/posthog";
 import { sendUsageWarningEmail } from "@/lib/email";
 import { createNotification } from "@/lib/db/queries/dashboard";
 import { retrieveContext, buildSystemPrompt } from "@/lib/ai/rag";
+import { getBusinessProfileBlock } from "@/lib/db/queries/knowledge";
 import {
   orgs,
   chatbots,
@@ -19,6 +20,7 @@ import {
   checkOrgMessageLimit,
   getCachedOrg,
   getCachedChatbot,
+  getCachedProfileBlock,
 } from "@/lib/redis";
 import {
   triggerOrgEvent,
@@ -718,8 +720,18 @@ export async function POST(request: NextRequest) {
     content: m.content,
   }));
 
-  // ── 11. RAG context ──
-  const contextChunks = await retrieveContext(message, org.id);
+  // ── 11. RAG context + business profile ──
+  // Independent lookups — run in parallel so the profile adds no extra latency.
+  // A profile failure must never break chat: fall back to "no profile" (the prompt is then unchanged)
+  const [contextChunks, profileBlock] = await Promise.all([
+    retrieveContext(message, org.id),
+    getCachedProfileBlock(org.id, () => getBusinessProfileBlock(org.id)).catch(
+      (err: unknown) => {
+        console.error("[chat] Failed to load business profile:", err);
+        return null;
+      },
+    ),
+  ]);
 
   // ── 12. Build system prompt ──
   // Build system prompt — KUN's identity is hardcoded in buildSystemPrompt
@@ -743,7 +755,7 @@ export async function POST(request: NextRequest) {
       })(),
     },
     contextChunks,
-    org.timezone, // ← business's own timezone for KUN's clock
+    { timeZone: org.timezone, profileBlock }, // ← business's own timezone for KUN's clock
   );
 
   // ── 13. Stream ──

@@ -313,3 +313,36 @@ export async function getCachedChatbot(
   await cacheSet(key, JSON.stringify(chatbot), CHATBOT_TTL);
   return chatbot;
 }
+
+// Profile block cache TTL — 10 minutes. saveBusinessProfile clears the key immediately,
+// so the TTL is only a safety net
+const PROFILE_TTL = 600;
+
+// Returns the cached profile block or loads it and caches it
+// Stored as {"block": ...} so "this org has no profile" (null) is cached too
+// and isn't mistaken for a cache miss on every request
+export async function getCachedProfileBlock(
+  orgId: string,
+  fetchFn: () => Promise<string | null>,
+): Promise<string | null> {
+  const key = CacheKeys.profile(orgId);
+
+  const cached: unknown = await cacheGet(key);
+  if (cached !== null && cached !== undefined) {
+    try {
+      // The client may hand back an already-parsed object — parse only when it is still a string
+      const parsed: unknown =
+        typeof cached === "string" ? JSON.parse(cached) : cached;
+      if (typeof parsed === "object" && parsed !== null && "block" in parsed) {
+        const block = (parsed as { block: unknown }).block;
+        if (block === null || typeof block === "string") return block;
+      }
+    } catch {
+      // Corrupted cache entry — fall through to the DB
+    }
+  }
+
+  const block = await fetchFn();
+  await cacheSet(key, JSON.stringify({ block }), PROFILE_TTL);
+  return block;
+}
