@@ -9,6 +9,8 @@ import {
   formatPaymentMethod,
   formatRelativeTime,
   toDateSafe,
+  getCurrentDateTime,
+  isValidTimeZone,
 } from "./format";
 
 describe("formatRupiah", () => {
@@ -176,5 +178,61 @@ describe("toDateSafe", () => {
     expect(result.getTime()).toBe(
       new Date("2026-06-01T12:00:00+07:00").getTime(),
     );
+  });
+});
+
+describe("getCurrentDateTime", () => {
+  // 13:21 UTC — the exact moment production KUN got wrong (it said "13.21 WITA")
+  const instant = new Date("2026-09-20T13:21:00Z");
+
+  it("converts to WITA (UTC+8)", () => {
+    expect(getCurrentDateTime("Asia/Makassar", instant)).toBe(
+      "Minggu, 20 September 2026 — 21.21 WITA (UTC+8)",
+    );
+  });
+
+  it("converts to WIB (UTC+7)", () => {
+    expect(getCurrentDateTime("Asia/Jakarta", instant)).toBe(
+      "Minggu, 20 September 2026 — 20.21 WIB (UTC+7)",
+    );
+  });
+
+  it("rolls the day over when local time is already the next day", () => {
+    // 17:30 UTC is already Monday 01.30 in WITA
+    expect(
+      getCurrentDateTime("Asia/Makassar", new Date("2026-09-20T17:30:00Z")),
+    ).toBe("Senin, 21 September 2026 — 01.30 WITA (UTC+8)");
+  });
+
+  it("shows 00 (not 24) at local midnight", () => {
+    expect(
+      getCurrentDateTime("Asia/Jakarta", new Date("2026-09-20T17:00:00Z")),
+    ).toBe("Senin, 21 September 2026 — 00.00 WIB (UTC+7)");
+  });
+
+  it("supports zones outside Indonesia, including half-hour offsets", () => {
+    expect(getCurrentDateTime("America/New_York", instant)).toBe(
+      "Minggu, 20 September 2026 — 09.21 UTC-4",
+    );
+    expect(getCurrentDateTime("Asia/Kolkata", instant)).toBe(
+      "Minggu, 20 September 2026 — 18.51 UTC+5:30",
+    );
+  });
+
+  it("falls back to WIB for an invalid zone instead of throwing", () => {
+    expect(getCurrentDateTime("Not/AZone", instant)).toBe(
+      getCurrentDateTime("Asia/Jakarta", instant),
+    );
+  });
+});
+
+describe("isValidTimeZone", () => {
+  it("accepts real IANA zones", () => {
+    expect(isValidTimeZone("Asia/Makassar")).toBe(true);
+  });
+
+  it("rejects garbage and empty strings", () => {
+    expect(isValidTimeZone("Not/AZone")).toBe(false);
+    expect(isValidTimeZone("")).toBe(false);
   });
 });

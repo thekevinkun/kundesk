@@ -277,6 +277,7 @@ export async function POST(request: NextRequest) {
         messagesUsed: orgs.messagesUsed,
         messagesLimit: orgs.messagesLimit,
         ownerEmail: orgs.ownerEmail,
+        timezone: orgs.timezone,
       })
       .from(orgs)
       .where(eq(orgs.slug, orgSlug))
@@ -742,6 +743,7 @@ export async function POST(request: NextRequest) {
       })(),
     },
     contextChunks,
+    org.timezone, // ← business's own timezone for KUN's clock
   );
 
   // ── 13. Stream ──

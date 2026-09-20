@@ -194,6 +194,7 @@ export interface CachedOrg {
   messagesUsed: number;
   messagesLimit: number;
   ownerEmail: string | null;
+  timezone: string;
 }
 
 // Chatbot shape stored in cache — full config needed to build system prompt

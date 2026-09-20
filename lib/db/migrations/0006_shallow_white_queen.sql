@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ADD COLUMN "timezone" text DEFAULT 'Asia/Jakarta' NOT NULL;

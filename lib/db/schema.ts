@@ -52,6 +52,10 @@ export const orgs = pgTable("orgs", {
   // Avoids Clerk API call on every usage check
   ownerEmail: text("owner_email"),
 
+  // IANA timezone of the business — drives KUN's "current date/time" and opening-hours answers
+  // Defaults to WIB; set per org in Neon until a settings screen exists
+  timezone: text("timezone").notNull().default("Asia/Jakarta"),
+
   // Clerk userId of the org creator — used to fetch owner email for transactional emails
   createdBy: text("created_by"),
 

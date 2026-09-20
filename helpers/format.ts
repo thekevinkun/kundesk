@@ -59,9 +59,55 @@ export function formatLocalClock(date: Date): string {
   });
 }
 
-// Format current date and time in Indonesian locale with timezone — "1 Juni 2026, 14:30:00 (UTC+7)"
-export function getCurrentDateTime(): string {
-  const now = new Date();
+// Well-known Indonesian zone names — every other zone falls back to a "UTC+X" label
+const ID_TIMEZONE_LABELS: Record<string, string> = {
+  "Asia/Jakarta": "WIB",
+  "Asia/Pontianak": "WIB",
+  "Asia/Makassar": "WITA",
+  "Asia/Jayapura": "WIT",
+};
+
+// Used when an org has no timezone set — most Indonesian SMEs run on WIB
+export const DEFAULT_TIMEZONE = "Asia/Jakarta";
+
+// True when the string is a real IANA zone the runtime understands (e.g. "Asia/Makassar")
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// "UTC+8", "UTC+5:30", "UTC-4", or "UTC" — the zone's offset at one specific moment
+function getUtcOffsetLabel(date: Date, timeZone: string): string {
+  const raw =
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" })
+      .formatToParts(date)
+      .find((part) => part.type === "timeZoneName")?.value ?? "GMT";
+
+  // longOffset looks like "GMT+08:00" — plain "GMT" means UTC itself
+  const match = raw.match(/^GMT([+-])(\d{2}):(\d{2})$/);
+  const sign = match?.[1];
+  const hours = match?.[2];
+  const minutes = match?.[3];
+  if (!sign || !hours || !minutes) return "UTC";
+
+  return minutes === "00"
+    ? `UTC${sign}${Number(hours)}`
+    : `UTC${sign}${Number(hours)}:${minutes}`;
+}
+
+// Current date and time in the BUSINESS's timezone — "Minggu, 20 September 2026 — 21.21 WITA (UTC+8)"
+// The zone label is always included so KUN never has to guess it
+// `now` is injectable so tests can pin the clock (same pattern as formatRelativeTime)
+export function getCurrentDateTime(
+  timeZone: string = DEFAULT_TIMEZONE,
+  now: Date = new Date(),
+): string {
+  // A bad or empty zone must never crash a chat request — fall back to the default
+  const zone = isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
 
   const dayNames = [
     "Minggu",
@@ -72,7 +118,6 @@ export function getCurrentDateTime(): string {
     "Jumat",
     "Sabtu",
   ];
-
   const monthNames = [
     "Januari",
     "Februari",
@@ -87,12 +132,41 @@ export function getCurrentDateTime(): string {
     "November",
     "Desember",
   ];
+  // Intl gives English weekday abbreviations — map them onto our Indonesian names
+  const weekdayIndex: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
 
-  return `${dayNames[now.getDay()]}, ${now.getDate()} ${
-    monthNames[now.getMonth()]
-  } ${now.getFullYear()} — ${String(now.getHours()).padStart(2, "0")}.${String(
-    now.getMinutes(),
-  ).padStart(2, "0")}`;
+  // Every field below is read in the target zone, never the server's local zone
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    weekday: "short",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23", // 00–23, so midnight is "00", never "24"
+  }).formatToParts(now);
+
+  const get = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  const dayName = dayNames[weekdayIndex[get("weekday")] ?? 0] ?? "";
+  const monthName = monthNames[Number(get("month")) - 1] ?? "";
+
+  // Named zones read "WITA (UTC+8)"; everything else just "UTC+1"
+  const offset = getUtcOffsetLabel(now, zone);
+  const name = ID_TIMEZONE_LABELS[zone];
+  const zoneLabel = name ? `${name} (${offset})` : offset;
+
+  return `${dayName}, ${get("day")} ${monthName} ${get("year")} — ${get("hour")}.${get("minute")} ${zoneLabel}`;
 }
 
 // Format UTC offset string — e.g. "UTC+8", "UTC+7", "UTC+5:30"
