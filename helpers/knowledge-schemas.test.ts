@@ -150,7 +150,7 @@ describe("saveProfileSchema", () => {
       hours: [
         {
           label: "Klinik Hewan",
-          lines: [{ days: "Senin – Jumat", time: "08.00 – 20.00" }],
+          lines: [{ days: [1, 2, 3, 4, 5], opens: "08:00", closes: "20:00" }],
         },
       ],
       paymentMethods: [
@@ -179,5 +179,36 @@ describe("saveProfileSchema", () => {
     }));
 
     expect(saveProfileSchema.safeParse({ contacts }).success).toBe(false);
+  });
+});
+
+describe("saveProfileSchema hours lines", () => {
+  const lineOk = (line: object) =>
+    saveProfileSchema.safeParse({ hours: [{ label: "Klinik", lines: [line] }] })
+      .success;
+
+  it("accepts a normal line and a closing time of 24:00", () => {
+    expect(lineOk({ days: [1, 2], opens: "08:00", closes: "20:00" })).toBe(
+      true,
+    );
+    expect(lineOk({ days: [1], opens: "08:00", closes: "24:00" })).toBe(true);
+  });
+
+  it("rejects bad clock formats and an opening time of 24:00", () => {
+    expect(lineOk({ days: [1], opens: "8:00", closes: "20:00" })).toBe(false);
+    expect(lineOk({ days: [1], opens: "08:00", closes: "25:00" })).toBe(false);
+    expect(lineOk({ days: [1], opens: "24:00", closes: "20:00" })).toBe(false);
+  });
+
+  it("rejects equal open and close times", () => {
+    expect(lineOk({ days: [1], opens: "08:00", closes: "08:00" })).toBe(false);
+  });
+
+  it("rejects empty, duplicate, and out-of-range days", () => {
+    expect(lineOk({ days: [], opens: "08:00", closes: "20:00" })).toBe(false);
+    expect(lineOk({ days: [1, 1], opens: "08:00", closes: "20:00" })).toBe(
+      false,
+    );
+    expect(lineOk({ days: [7], opens: "08:00", closes: "20:00" })).toBe(false);
   });
 });

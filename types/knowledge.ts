@@ -16,8 +16,11 @@ export type EntryPrice =
 
 // One line of a schedule, e.g. { days: "Senin – Jumat", time: "08.00 – 20.00" }
 export interface HoursLine {
-  days: string;
-  time: string;
+  // Weekday numbers, JS convention: 0 = Minggu … 6 = Sabtu
+  days: number[];
+  // 24-hour "HH:MM". `closes` may be "24:00". If closes <= opens, the shift ends after midnight
+  opens: string;
+  closes: string;
   note?: string | undefined;
 }
 
@@ -108,4 +111,11 @@ export interface SyncStatusData {
 export interface RetrySyncData {
   synced: number;
   remaining: number;
+}
+
+// What the chat route needs from a profile: the static text plus the raw hours
+// (raw hours are needed because open/closed is computed on every request, never cached)
+export interface ProfileData {
+  block: string | null;
+  hours: HoursSchedule[];
 }

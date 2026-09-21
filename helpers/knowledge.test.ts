@@ -325,13 +325,18 @@ describe("compileProfileBlock", () => {
         {
           label: "Klinik Hewan",
           lines: [
-            { days: "Senin – Jumat", time: "08.00 – 20.00" },
-            { days: "Minggu", time: "09.00 – 15.00", note: "dokter terbatas" },
+            { days: [1, 2, 3, 4, 5], opens: "08:00", closes: "20:00" },
+            {
+              days: [0],
+              opens: "09:00",
+              closes: "15:00",
+              note: "dokter terbatas",
+            },
           ],
         },
         {
           label: "Pet Shop",
-          lines: [{ days: "Minggu", time: "10.00 – 15.00" }],
+          lines: [{ days: [0], opens: "10:00", closes: "15:00" }],
         },
       ],
       paymentMethods: [
@@ -347,6 +352,7 @@ describe("compileProfileBlock", () => {
     expect(text).toContain("Alamat: Jalan Kesehatan No. 12, Samarinda");
     expect(lines).toContain("- WhatsApp Darurat: 0821-4567-8902");
     expect(lines).toContain("- Klinik Hewan");
+    expect(lines).toContain("  Senin – Jumat: 08.00 – 20.00");
     expect(lines).toContain("  Minggu: 09.00 – 15.00 (dokter terbatas)");
     expect(lines).toContain("- Pet Shop");
     expect(lines).toContain("  Minggu: 10.00 – 15.00");

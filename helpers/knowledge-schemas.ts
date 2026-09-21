@@ -86,11 +86,42 @@ export const setEntryAvailabilitySchema = z.object({
 export const idOnlySchema = z.object({ id: idSchema });
 
 // ─── Business profile ───
-const hoursLineSchema = z.object({
-  days: shortText(40, "Hari"),
-  time: shortText(40, "Jam"),
-  note: z.string().trim().max(100, "Catatan maksimal 100 karakter").optional(),
-});
+
+// 24-hour clock "HH:MM" — an opening time can't be 24:00, a closing time can (end of day)
+const opensSchema = z
+  .string()
+  .regex(
+    /^([01]\d|2[0-3]):[0-5]\d$/,
+    "Jam buka harus berformat HH:MM, contoh 08:00",
+  );
+const closesSchema = z
+  .string()
+  .regex(
+    /^(([01]\d|2[0-3]):[0-5]\d|24:00)$/,
+    "Jam tutup harus berformat HH:MM, contoh 20:00",
+  );
+
+const hoursLineSchema = z
+  .object({
+    // JS weekday numbers: 0 = Minggu … 6 = Sabtu
+    days: z
+      .array(z.number().int().min(0).max(6))
+      .min(1, "Pilih minimal satu hari")
+      .refine(
+        (days) => new Set(days).size === days.length,
+        "Hari tidak boleh ganda",
+      ),
+    opens: opensSchema,
+    closes: closesSchema,
+    note: z
+      .string()
+      .trim()
+      .max(100, "Catatan maksimal 100 karakter")
+      .optional(),
+  })
+  .refine((line) => line.opens !== line.closes, {
+    message: "Jam buka dan jam tutup tidak boleh sama",
+  });
 
 const hoursScheduleSchema = z.object({
   label: shortText(40, "Nama jadwal"),

@@ -1,6 +1,8 @@
 // Chat, conversation, and message types
 // Used by the RAG pipeline, SSE streaming, and dashboard conversations page
 
+import type { HoursSchedule } from "@/types/knowledge";
+
 // Role of a message sender — "human_agent" is for human handoff replies
 export type MessageRole = "user" | "assistant" | "human_agent";
 
@@ -34,10 +36,14 @@ export type ChatbotConfig = {
 
 // Optional per-request context for buildSystemPrompt — one object so callers can't mix up loose parameters
 export type SystemPromptOptions = {
-  // Business's IANA timezone — getCurrentDateTime falls back to WIB when missing
+  // Business's IANA timezone — falls back to WIB when missing
   timeZone?: string | undefined;
-  // Compiled business profile (hours, contact, payment) — null when the owner filled in nothing
+  // Compiled business profile text (about, address, contacts, hours, payment) — null when empty
   profileBlock?: string | null | undefined;
+  // Raw schedules — the open/closed status is computed from these on every request
+  hours?: HoursSchedule[] | undefined;
+  // Injectable clock so tests can pin the time
+  now?: Date | undefined;
 };
 
 // A conversation session

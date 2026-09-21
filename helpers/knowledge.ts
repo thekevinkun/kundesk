@@ -4,6 +4,7 @@
 
 import { chunkText } from "@/helpers/chunk";
 import { formatRupiah } from "@/helpers/format";
+import { formatDays, formatTimeRange } from "@/helpers/opening-hours";
 import type {
   CompileEntry,
   CompileProfile,
@@ -157,12 +158,12 @@ export function compileSectionSummaryChunks(
   return result;
 }
 
-// One schedule block — label first, then one indented line per day range
+// One schedule block — label first, then one indented line per day group
 function formatSchedule(schedule: HoursSchedule): string {
   const title = `- ${schedule.label}${schedule.note ? ` — ${schedule.note}` : ""}`;
   const lines = schedule.lines.map(
     (line) =>
-      `  ${line.days}: ${line.time}${line.note ? ` (${line.note})` : ""}`,
+      `  ${formatDays(line.days)}: ${formatTimeRange(line.opens, line.closes)}${line.note ? ` (${line.note})` : ""}`,
   );
   return [title, ...lines].join("\n");
 }

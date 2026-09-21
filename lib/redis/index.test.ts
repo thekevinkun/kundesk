@@ -53,7 +53,7 @@ import {
   checkUploadRateLimit,
   checkAuthRateLimit,
   checkKnowledgeWriteLimit,
-  getCachedProfileBlock,
+  getCachedProfile,
   cacheGet,
   cacheSet,
 } from "@/lib/redis";
@@ -293,74 +293,74 @@ describe("cacheSet", () => {
   });
 });
 
-describe("getCachedProfileBlock", () => {
+describe("getCachedProfile", () => {
+  const profile = {
+    block: "Alamat: Jalan Pramuka",
+    hours: [
+      {
+        label: "Klinik",
+        lines: [{ days: [1], opens: "08:00", closes: "20:00" }],
+      },
+    ],
+  };
+
   beforeEach(() => {
     mockGet.mockClear();
     mockSet.mockClear();
   });
 
-  it("returns the cached block without calling fetch", async () => {
-    mockGet.mockResolvedValueOnce(
-      JSON.stringify({ block: "Alamat: Jalan Pramuka" }),
-    );
+  it("returns the cached profile without calling fetch", async () => {
+    mockGet.mockResolvedValueOnce(JSON.stringify(profile));
     const fetchFn = vi.fn();
 
-    const result = await getCachedProfileBlock("org_1", fetchFn);
-
-    expect(result).toBe("Alamat: Jalan Pramuka");
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
   it("accepts an already-parsed cache value", async () => {
-    mockGet.mockResolvedValueOnce({ block: "Alamat: Jalan Pramuka" });
+    mockGet.mockResolvedValueOnce(profile);
     const fetchFn = vi.fn();
 
-    expect(await getCachedProfileBlock("org_1", fetchFn)).toBe(
-      "Alamat: Jalan Pramuka",
-    );
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
-  it("treats a cached null block as a hit", async () => {
-    mockGet.mockResolvedValueOnce(JSON.stringify({ block: null }));
+  it("treats a cached 'no profile' as a hit", async () => {
+    mockGet.mockResolvedValueOnce(JSON.stringify({ block: null, hours: [] }));
     const fetchFn = vi.fn();
 
-    expect(await getCachedProfileBlock("org_1", fetchFn)).toBeNull();
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual({
+      block: null,
+      hours: [],
+    });
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
-  it("loads and caches the block on a miss", async () => {
-    mockGet.mockResolvedValueOnce(null);
-    const fetchFn = vi.fn().mockResolvedValue("Alamat: X");
+  it("treats an old-format entry (no hours) as a miss", async () => {
+    mockGet.mockResolvedValueOnce(JSON.stringify({ block: "Alamat: X" }));
+    const fetchFn = vi.fn().mockResolvedValue(profile);
 
-    const result = await getCachedProfileBlock("org_1", fetchFn);
-
-    expect(result).toBe("Alamat: X");
-    expect(mockSet).toHaveBeenCalledWith(
-      "kundesk:cache:profile:org_1",
-      JSON.stringify({ block: "Alamat: X" }),
-      { ex: 600 },
-    );
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
-  it("caches 'no profile' as well", async () => {
+  it("loads and caches the profile on a miss", async () => {
     mockGet.mockResolvedValueOnce(null);
+    const fetchFn = vi.fn().mockResolvedValue(profile);
 
-    expect(
-      await getCachedProfileBlock("org_1", vi.fn().mockResolvedValue(null)),
-    ).toBeNull();
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
     expect(mockSet).toHaveBeenCalledWith(
       "kundesk:cache:profile:org_1",
-      JSON.stringify({ block: null }),
+      JSON.stringify(profile),
       { ex: 600 },
     );
   });
 
   it("falls back to the loader when the cached value is corrupted", async () => {
     mockGet.mockResolvedValueOnce("{not json");
-    const fetchFn = vi.fn().mockResolvedValue("Alamat: X");
+    const fetchFn = vi.fn().mockResolvedValue(profile);
 
-    expect(await getCachedProfileBlock("org_1", fetchFn)).toBe("Alamat: X");
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 });

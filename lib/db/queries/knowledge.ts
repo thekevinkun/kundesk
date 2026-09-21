@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/schema";
 import { compileProfileBlock } from "@/helpers/knowledge";
 import type { PlanName } from "@/types/billing";
+import type { ProfileData } from "@/types/knowledge";
 
 // Extracted from db.transaction's own callback signature — always matches the real driver types
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -58,11 +59,11 @@ export async function lockOrgForKnowledgeWrite(
   return locked ? (locked.plan as PlanName) : null;
 }
 
-// Reads the org's business profile and compiles it into the block injected in the system prompt
-// Returns null when the org has no profile row or filled in nothing
-export async function getBusinessProfileBlock(
+// Reads the org's business profile: the compiled text block AND the raw hours.
+// The raw hours are needed because open/closed is computed on every chat request.
+export async function getBusinessProfileData(
   orgId: string,
-): Promise<string | null> {
+): Promise<ProfileData> {
   const [row] = await db
     .select({
       about: businessProfiles.about,
@@ -75,5 +76,6 @@ export async function getBusinessProfileBlock(
     .where(eq(businessProfiles.orgId, orgId)) // ← tenant scoping
     .limit(1);
 
-  return row ? compileProfileBlock(row) : null;
+  if (!row) return { block: null, hours: [] };
+  return { block: compileProfileBlock(row), hours: row.hours };
 }

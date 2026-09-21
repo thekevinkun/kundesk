@@ -3,6 +3,7 @@
 // Rate limiters are initialized lazily — only when first called
 
 import { env } from "@/lib/env";
+import type { HoursSchedule, ProfileData } from "@/types/knowledge";
 
 // Lazy Redis client — initialized on first use to avoid cold start overhead
 let _redis: import("@upstash/redis").Redis | null = null;
@@ -318,13 +319,13 @@ export async function getCachedChatbot(
 // so the TTL is only a safety net
 const PROFILE_TTL = 600;
 
-// Returns the cached profile block or loads it and caches it
-// Stored as {"block": ...} so "this org has no profile" (null) is cached too
-// and isn't mistaken for a cache miss on every request
-export async function getCachedProfileBlock(
+// Returns the cached profile (text block + raw hours) or loads it and caches it
+// "No profile" is cached too, so it isn't mistaken for a miss on every request.
+// Only the STATIC parts are cached — open/closed is computed per request.
+export async function getCachedProfile(
   orgId: string,
-  fetchFn: () => Promise<string | null>,
-): Promise<string | null> {
+  fetchFn: () => Promise<ProfileData>,
+): Promise<ProfileData> {
   const key = CacheKeys.profile(orgId);
 
   const cached: unknown = await cacheGet(key);
@@ -333,16 +334,27 @@ export async function getCachedProfileBlock(
       // The client may hand back an already-parsed object — parse only when it is still a string
       const parsed: unknown =
         typeof cached === "string" ? JSON.parse(cached) : cached;
-      if (typeof parsed === "object" && parsed !== null && "block" in parsed) {
-        const block = (parsed as { block: unknown }).block;
-        if (block === null || typeof block === "string") return block;
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        "block" in parsed &&
+        "hours" in parsed
+      ) {
+        const { block, hours } = parsed as { block: unknown; hours: unknown };
+        // Entries cached before hours were included have no "hours" — they count as a miss
+        if (
+          (block === null || typeof block === "string") &&
+          Array.isArray(hours)
+        ) {
+          return { block, hours: hours as HoursSchedule[] };
+        }
       }
     } catch {
       // Corrupted cache entry — fall through to the DB
     }
   }
 
-  const block = await fetchFn();
-  await cacheSet(key, JSON.stringify({ block }), PROFILE_TTL);
-  return block;
+  const data = await fetchFn();
+  await cacheSet(key, JSON.stringify(data), PROFILE_TTL);
+  return data;
 }
