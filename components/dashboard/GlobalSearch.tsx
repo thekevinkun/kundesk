@@ -167,7 +167,7 @@ const GlobalSearch = ({
     setIsOpen(false);
     setQuery("");
     collapseCompactSearch();
-    router.push("/dashboard/documents");
+    router.push("/dashboard/knowledge");
   };
 
   const hasResults =

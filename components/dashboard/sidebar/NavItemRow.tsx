@@ -96,7 +96,7 @@ const NavItemRow = ({ item, onClick, subscriptionStatus }: NavItemRowProps) => {
       {item.href === "/dashboard/conversations" && <ConversationCountBadge />}
 
       {/* Live document count badge */}
-      {item.href === "/dashboard/documents" && <DocCountBadge />}
+      {item.href === "/dashboard/knowledge" && <DocCountBadge />}
     </Link>
   );
 };

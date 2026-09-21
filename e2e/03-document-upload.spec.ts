@@ -26,7 +26,7 @@ test.describe("Document upload", () => {
 
     await setupClerkTestingToken({ page });
 
-    await page.goto("/dashboard/documents");
+    await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/documents/, { timeout: 15_000 });
 
     await expect(page.getByLabel("Daftar dokumen")).toBeVisible({
@@ -111,7 +111,7 @@ test.describe("Document upload", () => {
   test("shows upload zone on documents page", async ({ page }) => {
     await setupClerkTestingToken({ page });
 
-    await page.goto("/dashboard/documents");
+    await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/documents/, { timeout: 15_000 });
 
     // Upload zone must be visible with correct aria-label

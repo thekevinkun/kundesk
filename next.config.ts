@@ -28,6 +28,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        // Old URL of the Documents page — it now lives at /dashboard/knowledge.
+        // Answered by the server before any layout or page runs, so there is no flash of an error screen.
+        source: "/dashboard/documents",
+        destination: "/dashboard/knowledge",
+        // permanent: true → HTTP 308, browsers and search engines remember it
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
