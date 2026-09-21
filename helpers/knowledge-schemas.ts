@@ -3,6 +3,7 @@
 // No "use server" here — a "use server" file can only export async functions
 
 import { z } from "zod/v4";
+import type { HoursSchedule } from "@/types/knowledge";
 
 // Whole rupiah, no decimals — same unit as the rest of the billing code
 const rupiah = z
@@ -152,3 +153,26 @@ export const saveProfileSchema = z.object({
     .max(12, "Maksimal 12 metode pembayaran")
     .default([]),
 });
+
+// Keeps only the schedules in stored data that pass the same rules as the save form.
+// Stored JSON can predate a format change or be edited by hand in Neon. A bad schedule is dropped
+// WHOLE (a half-read schedule could tell customers the wrong hours) and counted so callers can log it.
+export function parseStoredHours(value: unknown): {
+  hours: HoursSchedule[];
+  dropped: number;
+} {
+  if (!Array.isArray(value)) {
+    return {
+      hours: [],
+      dropped: value === null || value === undefined ? 0 : 1,
+    };
+  }
+
+  const hours: HoursSchedule[] = [];
+  for (const item of value) {
+    const parsed = hoursScheduleSchema.safeParse(item);
+    if (parsed.success) hours.push(parsed.data);
+  }
+
+  return { hours, dropped: value.length - hours.length };
+}

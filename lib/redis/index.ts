@@ -3,7 +3,8 @@
 // Rate limiters are initialized lazily — only when first called
 
 import { env } from "@/lib/env";
-import type { HoursSchedule, ProfileData } from "@/types/knowledge";
+import { parseStoredHours } from "@/helpers/knowledge-schemas";
+import type { ProfileData } from "@/types/knowledge";
 
 // Lazy Redis client — initialized on first use to avoid cold start overhead
 let _redis: import("@upstash/redis").Redis | null = null;
@@ -334,6 +335,7 @@ export async function getCachedProfile(
       // The client may hand back an already-parsed object — parse only when it is still a string
       const parsed: unknown =
         typeof cached === "string" ? JSON.parse(cached) : cached;
+
       if (
         typeof parsed === "object" &&
         parsed !== null &&
@@ -341,12 +343,13 @@ export async function getCachedProfile(
         "hours" in parsed
       ) {
         const { block, hours } = parsed as { block: unknown; hours: unknown };
-        // Entries cached before hours were included have no "hours" — they count as a miss
         if (
           (block === null || typeof block === "string") &&
           Array.isArray(hours)
         ) {
-          return { block, hours: hours as HoursSchedule[] };
+          const checked = parseStoredHours(hours);
+          // Anything the validator drops makes the entry suspect — refetch instead of serving it
+          if (checked.dropped === 0) return { block, hours: checked.hours };
         }
       }
     } catch {

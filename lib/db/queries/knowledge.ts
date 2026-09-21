@@ -10,6 +10,7 @@ import {
   orgs,
 } from "@/lib/db/schema";
 import { compileProfileBlock } from "@/helpers/knowledge";
+import { parseStoredHours } from "@/helpers/knowledge-schemas";
 import type { PlanName } from "@/types/billing";
 import type { ProfileData } from "@/types/knowledge";
 
@@ -77,5 +78,15 @@ export async function getBusinessProfileData(
     .limit(1);
 
   if (!row) return { block: null, hours: [] };
-  return { block: compileProfileBlock(row), hours: row.hours };
+
+  // Stored hours may predate a format change or have been edited by hand in Neon.
+  // Keep only what passes the save rules, so one bad schedule can't take the whole profile down.
+  const { hours, dropped } = parseStoredHours(row.hours);
+  if (dropped > 0) {
+    console.warn(
+      `[knowledge] Dropped ${dropped} unreadable schedule(s) for org ${orgId}`,
+    );
+  }
+
+  return { block: compileProfileBlock({ ...row, hours }), hours };
 }

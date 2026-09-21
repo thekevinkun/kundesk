@@ -8,6 +8,7 @@ import {
   entryPriceSchema,
   saveProfileSchema,
   setEntryAvailabilitySchema,
+  parseStoredHours,
 } from "./knowledge-schemas";
 
 describe("entryPriceSchema", () => {
@@ -210,5 +211,52 @@ describe("saveProfileSchema hours lines", () => {
       false,
     );
     expect(lineOk({ days: [7], opens: "08:00", closes: "20:00" })).toBe(false);
+  });
+});
+
+describe("parseStoredHours", () => {
+  const validSchedule = {
+    label: "Klinik Hewan",
+    lines: [{ days: [1, 2, 3, 4, 5], opens: "08:00", closes: "20:00" }],
+  };
+
+  it("keeps valid schedules", () => {
+    expect(parseStoredHours([validSchedule])).toEqual({
+      hours: [validSchedule],
+      dropped: 0,
+    });
+  });
+
+  it("drops the old free-text shape and counts it", () => {
+    const legacy = {
+      label: "Klinik Hewan",
+      lines: [{ days: "Senin – Jumat", time: "08.00 – 20.00" }],
+    };
+
+    expect(parseStoredHours([legacy])).toEqual({ hours: [], dropped: 1 });
+  });
+
+  it("drops a whole schedule when any of its lines is bad", () => {
+    const oneBadLine = {
+      label: "Klinik",
+      lines: [
+        { days: [1], opens: "08:00", closes: "20:00" },
+        { days: [2], opens: "08:00", closes: "08:00" },
+      ],
+    };
+
+    expect(parseStoredHours([validSchedule, oneBadLine])).toEqual({
+      hours: [validSchedule],
+      dropped: 1,
+    });
+  });
+
+  it("drops an empty object", () => {
+    expect(parseStoredHours([{}])).toEqual({ hours: [], dropped: 1 });
+  });
+
+  it("treats null as nothing stored and any other non-array as one bad value", () => {
+    expect(parseStoredHours(null)).toEqual({ hours: [], dropped: 0 });
+    expect(parseStoredHours({ label: "x" })).toEqual({ hours: [], dropped: 1 });
   });
 });

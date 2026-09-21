@@ -363,4 +363,32 @@ describe("getCachedProfile", () => {
     expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
+
+  it("treats malformed hours as a miss", async () => {
+    mockGet.mockResolvedValueOnce(
+      JSON.stringify({ block: "Alamat: X", hours: [{}] }),
+    );
+    const fetchFn = vi.fn().mockResolvedValue(profile);
+
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats old free-text hours as a miss", async () => {
+    mockGet.mockResolvedValueOnce(
+      JSON.stringify({
+        block: "Alamat: X",
+        hours: [
+          {
+            label: "Klinik",
+            lines: [{ days: "Senin – Jumat", time: "08.00 – 20.00" }],
+          },
+        ],
+      }),
+    );
+    const fetchFn = vi.fn().mockResolvedValue(profile);
+
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
 });

@@ -178,14 +178,15 @@ describe("describeOpenStatus", () => {
     });
   });
 
-  it("treats a 24-hour schedule as always open", () => {
+  it("says a full-day, every-day schedule never closes", () => {
     const igd: HoursSchedule = {
       label: "Darurat",
       lines: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: "00:00", closes: "24:00" }],
     };
 
+    // Monday 23.59 WITA — no "tutup tengah malam"
     expect(describeOpenStatus([igd], WITA, at("2026-09-21T15:59:00Z"))).toBe(
-      "- Darurat: BUKA sekarang, tutup tengah malam.",
+      "- Darurat: BUKA sekarang, buka 24 jam setiap hari.",
     );
   });
 
@@ -224,5 +225,67 @@ describe("describeOpenStatus", () => {
     expect(
       describeOpenStatus([broken], WITA, at("2026-09-21T04:09:00Z")),
     ).toBeNull();
+  });
+
+  describe("full-day lines on some days only", () => {
+    const kantor: HoursSchedule = {
+      label: "Kantor",
+      lines: [{ days: [1, 2, 3, 4, 5], opens: "00:00", closes: "24:00" }],
+    };
+
+    it("stays open past midnight when the next day starts at 00:00", () => {
+      // Monday 12.09 WITA — Tuesday also opens at 00:00
+      expect(
+        describeOpenStatus([kantor], WITA, at("2026-09-21T04:09:00Z")),
+      ).toBe("- Kantor: BUKA sekarang, lanjut buka melewati tengah malam.");
+    });
+
+    it("closes at midnight on the last full day", () => {
+      // Friday 12.00 WITA — Saturday has no line
+      expect(
+        describeOpenStatus([kantor], WITA, at("2026-09-25T04:00:00Z")),
+      ).toBe("- Kantor: BUKA sekarang, tutup tengah malam.");
+    });
+  });
+
+  describe("lines that make no sense", () => {
+    it("ignores a line whose open and close times are equal", () => {
+      const equal: HoursSchedule = {
+        label: "Aneh",
+        lines: [{ days: [1], opens: "08:00", closes: "08:00" }],
+      };
+
+      expect(
+        describeOpenStatus([equal], WITA, at("2026-09-21T04:09:00Z")),
+      ).toBeNull();
+    });
+
+    it("ignores a line that opens at 24:00", () => {
+      const late: HoursSchedule = {
+        label: "Aneh",
+        lines: [
+          { days: [0, 1, 2, 3, 4, 5, 6], opens: "24:00", closes: "20:00" },
+        ],
+      };
+
+      expect(
+        describeOpenStatus([late], WITA, at("2026-09-21T04:09:00Z")),
+      ).toBeNull();
+    });
+
+    it("never lets a bad line turn a schedule open", () => {
+      const mixed: HoursSchedule = {
+        label: "Campur",
+        lines: [
+          { days: [2], opens: "08:00", closes: "20:00" },
+          { days: [1], opens: "08:00", closes: "08:00" }, // bad line, Monday
+        ],
+      };
+
+      // Monday 12.09 WITA — the bad line must not read as open
+      expect(
+        describeOpenStatus([mixed], WITA, at("2026-09-21T04:09:00Z")),
+      ).toBe("- Campur: TUTUP sekarang. Buka lagi besok (Selasa) pukul 08.00.");
+    });
   });
 });

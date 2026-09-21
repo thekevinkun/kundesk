@@ -18,7 +18,7 @@ export type EntryPrice =
 export interface HoursLine {
   // Weekday numbers, JS convention: 0 = Minggu … 6 = Sabtu
   days: number[];
-  // 24-hour "HH:MM". `closes` may be "24:00". If closes <= opens, the shift ends after midnight
+  // 24-hour "HH:MM". `closes` may be "24:00". If closes < opens, the shift ends after midnight
   opens: string;
   closes: string;
   note?: string | undefined;
