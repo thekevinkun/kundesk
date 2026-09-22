@@ -5,20 +5,22 @@ import { motion } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DocumentsPage from "./DocumentsPage";
 import { DocCountBadge } from "@/components/dashboard/badge";
+import { ProfileForm } from "@/components/dashboard/knowledge";
 import { fadeUp } from "@/lib/animations";
+import type { CompileProfile } from "@/types/knowledge";
 
 // Local to this page's tab state — not promoted to types/ since nothing
 // outside this component reads it
 type KnowledgeTab = "profil" | "dokumen";
-
 interface KnowledgePageProps {
   isAdmin: boolean;
+  initialProfile: CompileProfile;
 }
 
 // Owns the shared page header + Profil/Dokumen tabs. Profil is the default
 // tab (not Dokumen) — a form-based entry point reads friendlier to an owner
 // who's never written a document before than landing on an upload zone.
-const KnowledgePage = ({ isAdmin }: KnowledgePageProps) => {
+const KnowledgePage = ({ isAdmin, initialProfile }: KnowledgePageProps) => {
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("profil");
 
   return (
@@ -86,16 +88,7 @@ const KnowledgePage = ({ isAdmin }: KnowledgePageProps) => {
           </TabsList>
 
           <TabsContent value="profil">
-            {/* Placeholder — profile form is the next build step, not this one */}
-            <div className="card-base overflow-hidden py-14 text-center">
-              <div className="text-4xl mb-3">🏪</div>
-              <div className="text-[14px] font-semibold text-(--color-text-500)">
-                Profil bisnis akan segera hadir di sini
-              </div>
-              <div className="text-[12px] text-(--color-text-400) mt-1">
-                Jam buka, kontak, dan metode pembayaran — sedang dibangun
-              </div>
-            </div>
+            <ProfileForm isAdmin={isAdmin} initialProfile={initialProfile} />
           </TabsContent>
 
           <TabsContent value="dokumen">

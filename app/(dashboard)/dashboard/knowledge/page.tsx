@@ -1,17 +1,27 @@
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { KnowledgePage } from "@/components/dashboard";
+import { getBusinessProfileForEdit } from "@/lib/db/queries/knowledge";
 
 export const metadata: Metadata = {
   title: "Info Bisnis",
 };
 
 export default async function KnowledgeRoute() {
-  // Page itself stays visible to org:member (Option B decision) — only
-  // upload/delete (Dokumen tab) are gated. isAdmin controls whether those
-  // controls render inside the tabs.
-  const { orgRole } = await auth();
+  const { orgId, orgRole } = await auth();
   const isAdmin = orgRole === "org:admin";
 
-  return <KnowledgePage isAdmin={isAdmin} />;
+  // orgId is guaranteed by proxy.ts's dashboard guard, but fetch defensively
+  // rather than asserting non-null across the query boundary
+  const initialProfile = orgId
+    ? await getBusinessProfileForEdit(orgId)
+    : {
+        about: null,
+        address: null,
+        contacts: [],
+        hours: [],
+        paymentMethods: [],
+      };
+
+  return <KnowledgePage isAdmin={isAdmin} initialProfile={initialProfile} />;
 }

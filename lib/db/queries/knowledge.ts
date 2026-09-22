@@ -12,7 +12,7 @@ import {
 import { compileProfileBlock } from "@/helpers/knowledge";
 import { parseStoredHours } from "@/helpers/knowledge-schemas";
 import type { PlanName } from "@/types/billing";
-import type { ProfileData } from "@/types/knowledge";
+import type { CompileProfile, ProfileData } from "@/types/knowledge";
 
 // Extracted from db.transaction's own callback signature — always matches the real driver types
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -89,4 +89,50 @@ export async function getBusinessProfileData(
   }
 
   return { block: compileProfileBlock({ ...row, hours }), hours };
+}
+
+// Reads the org's full business profile for the dashboard edit form — unlike
+// getBusinessProfileData (compiled block + hours only, used by chat), this
+// returns every raw field so the form can pre-fill and let the owner edit them.
+export async function getBusinessProfileForEdit(
+  orgId: string,
+): Promise<CompileProfile> {
+  const [row] = await db
+    .select({
+      about: businessProfiles.about,
+      address: businessProfiles.address,
+      contacts: businessProfiles.contacts,
+      hours: businessProfiles.hours,
+      paymentMethods: businessProfiles.paymentMethods,
+    })
+    .from(businessProfiles)
+    .where(eq(businessProfiles.orgId, orgId))
+    .limit(1);
+
+  if (!row) {
+    return {
+      about: null,
+      address: null,
+      contacts: [],
+      hours: [],
+      paymentMethods: [],
+    };
+  }
+
+  // Same drop-whole-bad-schedule protection as getBusinessProfileData — a
+  // hand-edited or legacy-format schedule must not crash the edit form either
+  const { hours, dropped } = parseStoredHours(row.hours);
+  if (dropped > 0) {
+    console.warn(
+      `[knowledge] Dropped ${dropped} unreadable schedule(s) for org ${orgId} (edit form)`,
+    );
+  }
+
+  return {
+    about: row.about,
+    address: row.address,
+    contacts: row.contacts,
+    hours,
+    paymentMethods: row.paymentMethods,
+  };
 }
