@@ -26,6 +26,7 @@ test.describe("Document upload", () => {
 
     await setupClerkTestingToken({ page });
 
+    await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
 
     await expect(page.getByLabel("Daftar dokumen")).toBeVisible({
@@ -94,7 +95,7 @@ test.describe("Document upload", () => {
     expect(processRes.data?.chunkCount).toBeGreaterThan(0);
 
     // Step 4 — reload and verify
-    await page.reload();
+    await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 10_000 });
 
     // Use first() — multiple uploads from prev runs may exist, we just need ours
@@ -110,6 +111,7 @@ test.describe("Document upload", () => {
   test("shows upload zone on documents page", async ({ page }) => {
     await setupClerkTestingToken({ page });
 
+    await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
 
     // Upload zone must be visible with correct aria-label
