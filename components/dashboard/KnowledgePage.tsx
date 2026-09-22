@@ -1,9 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { fadeUp } from "@/lib/animations";
 import DocumentsPage from "./DocumentsPage";
+import { DocCountBadge } from "@/components/dashboard/badge";
+import { fadeUp } from "@/lib/animations";
+
+// Local to this page's tab state — not promoted to types/ since nothing
+// outside this component reads it
+type KnowledgeTab = "profil" | "dokumen";
 
 interface KnowledgePageProps {
   isAdmin: boolean;
@@ -13,6 +19,8 @@ interface KnowledgePageProps {
 // tab (not Dokumen) — a form-based entry point reads friendlier to an owner
 // who's never written a document before than landing on an upload zone.
 const KnowledgePage = ({ isAdmin }: KnowledgePageProps) => {
+  const [activeTab, setActiveTab] = useState<KnowledgeTab>("profil");
+
   return (
     <motion.div
       variants={fadeUp}
@@ -32,10 +40,49 @@ const KnowledgePage = ({ isAdmin }: KnowledgePageProps) => {
           </p>
         </div>
 
-        <Tabs defaultValue="profil">
-          <TabsList>
-            <TabsTrigger value="profil">Profil</TabsTrigger>
-            <TabsTrigger value="dokumen">Dokumen</TabsTrigger>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as KnowledgeTab)}
+        >
+          <TabsList className="p-1.5 gap-1 rounded-[12px] bg-(--color-bg-page) border border-(--color-border)">
+            <TabsTrigger
+              value="profil"
+              className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
+              transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
+              data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none 
+              dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) 
+              dark:data-[state=inactive]:hover:text-(--color-text-900)"
+            >
+              {activeTab === "profil" && (
+                <motion.span
+                  layoutId="knowledge-tab-pill"
+                  className="absolute inset-0 rounded-[9px] bg-(--color-bg-card) shadow-sm"
+                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                />
+              )}
+              <span className="relative z-10">Profil</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="dokumen"
+              className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
+                transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
+                data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none 
+                dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) 
+                dark:data-[state=inactive]:hover:text-(--color-text-900)"
+            >
+              {activeTab === "dokumen" && (
+                <motion.span
+                  layoutId="knowledge-tab-pill"
+                  className="absolute inset-0 rounded-[9px] bg-(--color-bg-card) shadow-sm"
+                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                Dokumen
+                <DocCountBadge />
+              </span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profil">
