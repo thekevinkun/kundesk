@@ -5,18 +5,19 @@
 
 import { Button } from "@/components/ui/button";
 import HoursScheduleBlock from "./HoursScheduleBlock";
-import type { HoursSchedule } from "@/types/knowledge";
+import { newEditorId } from "@/helpers/editor-id";
+import type { EditableHoursSchedule } from "@/types/knowledge-editor";
 
 interface HoursEditorProps {
-  hours: HoursSchedule[];
-  onChange: (next: HoursSchedule[]) => void;
+  hours: EditableHoursSchedule[];
+  onChange: (next: EditableHoursSchedule[]) => void;
   disabled: boolean;
 }
 
 const MAX_SCHEDULES = 8; // matches saveProfileSchema.hours array max
 
 const HoursEditor = ({ hours, onChange, disabled }: HoursEditorProps) => {
-  const update = (index: number, schedule: HoursSchedule) => {
+  const update = (index: number, schedule: EditableHoursSchedule) => {
     onChange(hours.map((s, i) => (i === index ? schedule : s)));
   };
 
@@ -27,7 +28,18 @@ const HoursEditor = ({ hours, onChange, disabled }: HoursEditorProps) => {
   const add = () => {
     onChange([
       ...hours,
-      { label: "", lines: [{ days: [], opens: "08:00", closes: "17:00" }] },
+      {
+        editorId: newEditorId(),
+        label: "",
+        lines: [
+          {
+            editorId: newEditorId(),
+            days: [],
+            opens: "08:00",
+            closes: "17:00",
+          },
+        ],
+      },
     ]);
   };
 
@@ -35,7 +47,7 @@ const HoursEditor = ({ hours, onChange, disabled }: HoursEditorProps) => {
     <div className="space-y-3">
       {hours.map((schedule, index) => (
         <HoursScheduleBlock
-          key={index}
+          key={schedule.editorId}
           schedule={schedule}
           onChange={(next) => update(index, next)}
           onRemove={() => remove(index)}

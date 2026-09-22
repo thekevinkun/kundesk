@@ -10,6 +10,12 @@ import ContactsEditor from "./ContactsEditor";
 import PaymentMethodsEditor from "./PaymentMethodsEditor";
 import HoursEditor from "./HoursEditor";
 import { saveBusinessProfile } from "@/lib/actions/knowledge";
+import { newEditorId } from "@/helpers/editor-id";
+import type {
+  EditableContact,
+  EditableHoursSchedule,
+  EditablePaymentMethod,
+} from "@/types/knowledge-editor";
 import type {
   CompileProfile,
   ContactItem,
@@ -21,6 +27,45 @@ interface ProfileFormProps {
   isAdmin: boolean;
   initialProfile: CompileProfile;
 }
+
+// initialProfile arrives with the persisted shape (no editorId) — assign one
+// per row, once, the first time each list enters editor state
+const toEditableContacts = (contacts: ContactItem[]): EditableContact[] =>
+  contacts.map((c) => ({ ...c, editorId: newEditorId() }));
+
+const toEditablePaymentMethods = (
+  methods: PaymentMethod[],
+): EditablePaymentMethod[] =>
+  methods.map((m) => ({ ...m, editorId: newEditorId() }));
+
+const toEditableHours = (hours: HoursSchedule[]): EditableHoursSchedule[] =>
+  hours.map((s) => ({
+    ...s,
+    editorId: newEditorId(),
+    lines: s.lines.map((l) => ({ ...l, editorId: newEditorId() })),
+  }));
+
+// Reverse direction, called right before saveBusinessProfile — editorId
+// must never reach the server or the persisted JSONB columns
+const stripContacts = (contacts: EditableContact[]): ContactItem[] =>
+  contacts.map((c) => ({ label: c.label, value: c.value }));
+
+const stripPaymentMethods = (
+  methods: EditablePaymentMethod[],
+): PaymentMethod[] =>
+  methods.map((m) => ({ label: m.label, detail: m.detail }));
+
+const stripHours = (hours: EditableHoursSchedule[]): HoursSchedule[] =>
+  hours.map((s) => ({
+    label: s.label,
+    note: s.note,
+    lines: s.lines.map((l) => ({
+      days: l.days,
+      opens: l.opens,
+      closes: l.closes,
+      note: l.note,
+    })),
+  }));
 
 // Local section wrapper — same visual language as ChatbotConfigPage's
 // ConfigSection, kept separate since that one isn't exported for reuse
@@ -48,12 +93,14 @@ const ProfileSection = ({
 const ProfileForm = ({ isAdmin, initialProfile }: ProfileFormProps) => {
   const [about, setAbout] = useState(initialProfile.about ?? "");
   const [address, setAddress] = useState(initialProfile.address ?? "");
-  const [contacts, setContacts] = useState<ContactItem[]>(
-    initialProfile.contacts,
+  const [contacts, setContacts] = useState<EditableContact[]>(() =>
+    toEditableContacts(initialProfile.contacts),
   );
-  const [hours, setHours] = useState<HoursSchedule[]>(initialProfile.hours);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(
-    initialProfile.paymentMethods,
+  const [hours, setHours] = useState<EditableHoursSchedule[]>(() =>
+    toEditableHours(initialProfile.hours),
+  );
+  const [paymentMethods, setPaymentMethods] = useState<EditablePaymentMethod[]>(
+    () => toEditablePaymentMethods(initialProfile.paymentMethods),
   );
 
   const [isPending, startTransition] = useTransition();
@@ -63,9 +110,9 @@ const ProfileForm = ({ isAdmin, initialProfile }: ProfileFormProps) => {
       const result = await saveBusinessProfile({
         about,
         address,
-        contacts,
-        hours,
-        paymentMethods,
+        contacts: stripContacts(contacts),
+        hours: stripHours(hours),
+        paymentMethods: stripPaymentMethods(paymentMethods),
       });
 
       if (result.success) {

@@ -4,11 +4,12 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { PaymentMethod } from "@/types/knowledge";
+import { newEditorId } from "@/helpers/editor-id";
+import type { EditablePaymentMethod } from "@/types/knowledge-editor";
 
 interface PaymentMethodsEditorProps {
-  methods: PaymentMethod[];
-  onChange: (next: PaymentMethod[]) => void;
+  methods: EditablePaymentMethod[];
+  onChange: (next: EditablePaymentMethod[]) => void;
   disabled: boolean;
 }
 
@@ -19,7 +20,7 @@ const PaymentMethodsEditor = ({
   onChange,
   disabled,
 }: PaymentMethodsEditorProps) => {
-  const update = (index: number, patch: Partial<PaymentMethod>) => {
+  const update = (index: number, patch: Partial<EditablePaymentMethod>) => {
     onChange(methods.map((m, i) => (i === index ? { ...m, ...patch } : m)));
   };
 
@@ -28,13 +29,16 @@ const PaymentMethodsEditor = ({
   };
 
   const add = () => {
-    onChange([...methods, { label: "", detail: undefined }]);
+    onChange([
+      ...methods,
+      { editorId: newEditorId(), label: "", detail: undefined },
+    ]);
   };
 
   return (
     <div className="space-y-3">
       {methods.map((method, index) => (
-        <div key={index} className="flex items-start gap-2">
+        <div key={method.editorId} className="flex items-start gap-2">
           <div className="w-[160px] flex-shrink-0">
             <Input
               value={method.label}

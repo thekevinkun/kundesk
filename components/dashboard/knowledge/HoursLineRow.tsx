@@ -4,20 +4,20 @@
 // Day chips reuse the same pressable-button pattern as ChatbotConfigPage's
 // color preset grid, instead of introducing a new checkbox-group primitive
 
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { HoursLine } from "@/types/knowledge";
+import type { EditableHoursLine } from "@/types/knowledge-editor";
 
 interface HoursLineRowProps {
-  line: HoursLine;
-  onChange: (next: HoursLine) => void;
+  line: EditableHoursLine;
+  onChange: (next: EditableHoursLine) => void;
   onRemove: () => void;
   disabled: boolean;
 }
 
-// Display order starts Monday even though stored days use 0=Minggu (JS getDay convention)
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const WEEKDAY_LABELS: Record<number, string> = {
   0: "Min",
@@ -45,6 +45,20 @@ const HoursLineRow = ({
   // "24:00" isn't a valid native <input type="time"> value — handled as a
   // separate switch rather than forcing it through the time input
   const isMidnight = line.closes === "24:00";
+
+  // Remembers the last real closing time so disabling "sampai tengah malam"
+  // restores it instead of a hardcoded fallback (CodeRabbit finding — the
+  // previous version always reset to 22:00, silently discarding whatever
+  // the owner had actually set, e.g. 17:00, before enabling midnight)
+  const [lastNonMidnightClose, setLastNonMidnightClose] = useState(
+    line.closes === "24:00" ? "22:00" : line.closes,
+  );
+
+  useEffect(() => {
+    if (line.closes !== "24:00") {
+      setLastNonMidnightClose(line.closes);
+    }
+  }, [line.closes]);
 
   return (
     <div className="rounded-(--radius-sm) border border-(--color-border-sm) p-3 space-y-2.5">
@@ -99,7 +113,10 @@ const HoursLineRow = ({
           <Switch
             checked={isMidnight}
             onCheckedChange={(checked) =>
-              onChange({ ...line, closes: checked ? "24:00" : "22:00" })
+              onChange({
+                ...line,
+                closes: checked ? "24:00" : lastNonMidnightClose,
+              })
             }
             disabled={disabled}
             aria-label="Sampai tengah malam"

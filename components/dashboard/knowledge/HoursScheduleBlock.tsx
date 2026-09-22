@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import HoursLineRow from "./HoursLineRow";
-import type { HoursSchedule } from "@/types/knowledge";
+import { newEditorId } from "@/helpers/editor-id";
+import type { EditableHoursSchedule } from "@/types/knowledge-editor";
 
 interface HoursScheduleBlockProps {
-  schedule: HoursSchedule;
-  onChange: (next: HoursSchedule) => void;
+  schedule: EditableHoursSchedule;
+  onChange: (next: EditableHoursSchedule) => void;
   onRemove: () => void;
   disabled: boolean;
 }
@@ -24,7 +25,10 @@ const HoursScheduleBlock = ({
   onRemove,
   disabled,
 }: HoursScheduleBlockProps) => {
-  const updateLine = (index: number, line: HoursSchedule["lines"][number]) => {
+  const updateLine = (
+    index: number,
+    line: EditableHoursSchedule["lines"][number],
+  ) => {
     onChange({
       ...schedule,
       lines: schedule.lines.map((l, i) => (i === index ? line : l)),
@@ -41,7 +45,10 @@ const HoursScheduleBlock = ({
   const addLine = () => {
     onChange({
       ...schedule,
-      lines: [...schedule.lines, { days: [], opens: "08:00", closes: "17:00" }],
+      lines: [
+        ...schedule.lines,
+        { editorId: newEditorId(), days: [], opens: "08:00", closes: "17:00" },
+      ],
     });
   };
 
@@ -88,7 +95,7 @@ const HoursScheduleBlock = ({
       <div className="space-y-2.5">
         {schedule.lines.map((line, index) => (
           <HoursLineRow
-            key={index}
+            key={line.editorId}
             line={line}
             onChange={(next) => updateLine(index, next)}
             onRemove={() => removeLine(index)}

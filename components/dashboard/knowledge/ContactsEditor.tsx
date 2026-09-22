@@ -4,11 +4,12 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { ContactItem } from "@/types/knowledge";
+import { newEditorId } from "@/helpers/editor-id";
+import type { EditableContact } from "@/types/knowledge-editor";
 
 interface ContactsEditorProps {
-  contacts: ContactItem[];
-  onChange: (next: ContactItem[]) => void;
+  contacts: EditableContact[];
+  onChange: (next: EditableContact[]) => void;
   disabled: boolean;
 }
 
@@ -19,7 +20,7 @@ const ContactsEditor = ({
   onChange,
   disabled,
 }: ContactsEditorProps) => {
-  const update = (index: number, patch: Partial<ContactItem>) => {
+  const update = (index: number, patch: Partial<EditableContact>) => {
     onChange(contacts.map((c, i) => (i === index ? { ...c, ...patch } : c)));
   };
 
@@ -28,13 +29,13 @@ const ContactsEditor = ({
   };
 
   const add = () => {
-    onChange([...contacts, { label: "", value: "" }]);
+    onChange([...contacts, { editorId: newEditorId(), label: "", value: "" }]);
   };
 
   return (
     <div className="space-y-3">
       {contacts.map((contact, index) => (
-        <div key={index} className="flex items-start gap-2">
+        <div key={contact.editorId} className="flex items-start gap-2">
           <div className="w-[160px] flex-shrink-0">
             <Input
               value={contact.label}
