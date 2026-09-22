@@ -38,7 +38,7 @@ export const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
         icon: "⚙️",
         adminOnly: true,
       },
-      { href: "/dashboard/knowledge", label: "Dokumen", icon: "📄" },
+      { href: "/dashboard/knowledge", label: "Info Bisnis", icon: "📄" },
       { href: "/dashboard/widget", label: "Widget Embed", icon: "🔗" },
     ],
   },

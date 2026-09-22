@@ -152,17 +152,6 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
       className="flex flex-col items-center"
     >
       <div className="w-full max-w-4xl mx-auto">
-        {/* Page header */}
-        <div className="mb-6">
-          <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
-            Dokumen
-          </h1>
-          <p className="text-[13px] text-(--color-text-500) mt-1">
-            Upload menu, FAQ, atau daftar harga — KUN akan mempelajarinya
-            otomatis.
-          </p>
-        </div>
-
         {/* Main card */}
         <div className="card-base overflow-hidden">
           {/* Card header */}

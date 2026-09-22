@@ -29,6 +29,9 @@ test.describe("Document upload", () => {
     await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
 
+    // Profil is the default tab now — switch to Dokumen before asserting
+    await page.getByRole("tab", { name: "Dokumen" }).click();
+
     await expect(page.getByLabel("Daftar dokumen")).toBeVisible({
       timeout: 10_000,
     });
@@ -98,6 +101,9 @@ test.describe("Document upload", () => {
     await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 10_000 });
 
+    // Fresh navigation resets to the default (Profil) tab — switch back
+    await page.getByRole("tab", { name: "Dokumen" }).click();
+
     // Use first() — multiple uploads from prev runs may exist, we just need ours
     await expect(page.getByText(filename).first()).toBeVisible({
       timeout: 10_000,
@@ -113,6 +119,9 @@ test.describe("Document upload", () => {
 
     await page.goto("/dashboard/knowledge");
     await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
+
+    // Profil is the default tab — switch to Dokumen first
+    await page.getByRole("tab", { name: "Dokumen" }).click();
 
     // Upload zone must be visible with correct aria-label
     await expect(page.getByLabel(/Upload dokumen/i)).toBeVisible({

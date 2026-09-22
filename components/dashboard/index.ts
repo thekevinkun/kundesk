@@ -5,6 +5,7 @@ export { default as DashboardOverview } from "./DashboardOverview";
 export { default as AnalyticsPage } from "./AnalyticsPage";
 export { default as BillingPage } from "./BillingPage";
 export { default as DocumentsPage } from "./DocumentsPage";
+export { default as KnowledgePage } from "./KnowledgePage";
 export { default as ConversationsPage } from "./ConversationsPage";
 export { default as ChatbotConfigPage } from "./ChatbotConfigPage";
 export { default as SettingsPage } from "./SettingsPage";
