@@ -30,6 +30,7 @@ import {
   idOnlySchema,
   saveProfileSchema,
   setEntryAvailabilitySchema,
+  retrySyncSchema,
   updateEntrySchema,
   updateSectionSchema,
 } from "@/helpers/knowledge-schemas";
@@ -534,12 +535,23 @@ export async function saveBusinessProfile(
 
 // ─── Repair ───
 
-// Rebuilds sections that still have "stale" entries (e.g. OpenAI was down during a save)
-// A few sections per call — the UI calls again while remaining > 0
-export async function retryStaleKnowledgeSync(): Promise<
-  ActionResult<RetrySyncData>
-> {
+// Rebuilds sections that still have "stale" entries (e.g. OpenAI was down
+// during a save). Processes a few sections per call — the UI calls again
+// while remaining > 0. excludeSectionIds lets a client-side retry loop skip
+// sections that already failed earlier in the same session, so a
+// persistently-failing section can never block the rest of the stale list
+// from being attempted (previously: no ORDER BY + a plain slice(0, 3) meant
+// every call re-selected the same first 3 sections regardless of outcome).
+export async function retryStaleKnowledgeSync(
+  rawInput: unknown = {},
+): Promise<ActionResult<RetrySyncData>> {
   return runWrite("retryStaleKnowledgeSync", async (orgId) => {
+    const parsed = retrySyncSchema.safeParse(rawInput ?? {});
+    if (!parsed.success) {
+      return { success: false, error: firstIssue(parsed.error) };
+    }
+    const excludeSet = new Set(parsed.data.excludeSectionIds);
+
     const staleSections = await db
       .selectDistinct({ sectionId: knowledgeEntries.sectionId })
       .from(knowledgeEntries)
@@ -550,19 +562,31 @@ export async function retryStaleKnowledgeSync(): Promise<
         ),
       );
 
+    const candidates = staleSections.filter(
+      (s) => !excludeSet.has(s.sectionId),
+    );
+    const batch = candidates.slice(0, MAX_RETRY_SECTIONS_PER_CALL);
+
     let synced = 0;
-    for (const { sectionId } of staleSections.slice(
-      0,
-      MAX_RETRY_SECTIONS_PER_CALL,
-    )) {
+    const failedSectionIds: number[] = [];
+    for (const { sectionId } of batch) {
       const result = await syncSection(orgId, sectionId);
-      if (result.status === "synced") synced += 1;
+      if (result.status === "synced") {
+        synced += 1;
+      } else {
+        failedSectionIds.push(sectionId);
+      }
     }
 
     revalidatePath(KNOWLEDGE_PATH);
     return {
       success: true,
-      data: { synced, remaining: staleSections.length - synced },
+      data: {
+        synced,
+        remaining: staleSections.length - synced,
+        failedSectionIds,
+        attemptedCount: batch.length,
+      },
     };
   });
 }

@@ -3,6 +3,7 @@
 // No "use server" here — a "use server" file can only export async functions
 
 import { z } from "zod/v4";
+import { MAX_KNOWLEDGE_SECTIONS } from "@/types/knowledge";
 import type { HoursSchedule } from "@/types/knowledge";
 
 // Whole rupiah, no decimals — same unit as the rest of the billing code
@@ -152,6 +153,13 @@ export const saveProfileSchema = z.object({
     .array(paymentMethodSchema)
     .max(12, "Maksimal 12 metode pembayaran")
     .default([]),
+});
+
+// Input to retryStaleKnowledgeSync — the client's own accumulated list of
+// sections that already failed in this retry session, so the server can
+// skip them and surface untried sections instead
+export const retrySyncSchema = z.object({
+  excludeSectionIds: z.array(idSchema).max(MAX_KNOWLEDGE_SECTIONS).default([]),
 });
 
 // Keeps only the schedules in stored data that pass the same rules as the save form.

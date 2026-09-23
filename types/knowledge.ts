@@ -111,6 +111,16 @@ export interface SyncStatusData {
 export interface RetrySyncData {
   synced: number;
   remaining: number;
+  // Sections attempted this call that are still stale — pass back as
+  // excludeSectionIds on the next call so a persistently-failing section
+  // can't crowd out other stale sections from ever being attempted
+  // (CodeRabbit finding — the previous version had no rotation at all)
+  failedSectionIds: number[];
+  // How many sections this call actually tried. 0 means nothing left to
+  // try this round — either everything's synced, or every remaining
+  // stale section is already in excludeSectionIds. This is the signal
+  // the client uses to stop looping, instead of guessing from synced=0.
+  attemptedCount: number;
 }
 
 // What the chat route needs from a profile: the static text plus the raw hours

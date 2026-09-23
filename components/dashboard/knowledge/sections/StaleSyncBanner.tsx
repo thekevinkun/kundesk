@@ -5,6 +5,12 @@
 // retryStaleKnowledgeSync to completion — it only processes up to
 // MAX_RETRY_SECTIONS_PER_CALL (3) sections per call, so the UI loops
 // automatically rather than making the owner click repeatedly.
+//
+// The loop tracks its own excludeSectionIds across iterations so a
+// section that keeps failing to embed doesn't get retried forever while
+// blocking every other stale section from a turn (CodeRabbit finding —
+// see lib/actions/knowledge.ts's retryStaleKnowledgeSync for the
+// server-side half of this fix).
 
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -16,9 +22,9 @@ interface StaleSyncBannerProps {
   onSynced: () => void;
 }
 
-// Safety cap on loop iterations — MAX_KNOWLEDGE_SECTIONS (30) / 3 per call
-// means 10 iterations covers every section even if all of them are stale.
-// This is a backstop against an unforeseen bug, not an expected path.
+// Safety cap on loop iterations — an unforeseen-bug backstop, not an
+// expected path. At 3 sections/call this covers 45 sections in one click,
+// comfortably above MAX_KNOWLEDGE_SECTIONS (30).
 const MAX_RETRY_ITERATIONS = 15;
 
 const StaleSyncBanner = ({
@@ -32,10 +38,23 @@ const StaleSyncBanner = ({
   const handleRetry = () => {
     startTransition(async () => {
       let totalSynced = 0;
+      let excludeSectionIds: number[] = [];
+      let lastRemaining = 0;
       let stuck = false;
 
       for (let i = 0; i < MAX_RETRY_ITERATIONS; i++) {
-        const result = await retryStaleKnowledgeSync();
+        // A rejected call (e.g. requireOrgAdmin() throwing because the
+        // session expired or admin access was revoked mid-retry) must not
+        // silently kill the loop and drop any progress already made —
+        // CodeRabbit finding
+        const result = await retryStaleKnowledgeSync({
+          excludeSectionIds,
+        }).catch(() => null);
+
+        if (!result) {
+          stuck = true;
+          break;
+        }
 
         if (!result.success) {
           toast.error("Gagal menyinkronkan", { description: result.error });
@@ -44,17 +63,26 @@ const StaleSyncBanner = ({
         }
 
         totalSynced += result.data.synced;
+        lastRemaining = result.data.remaining;
+        excludeSectionIds = [
+          ...excludeSectionIds,
+          ...result.data.failedSectionIds,
+        ];
 
-        // No section made progress this round but some are still stale —
-        // sync is genuinely failing (e.g. OpenAI down), not just queued.
-        // Looping further would hammer the same failure forever.
-        if (result.data.synced === 0 && result.data.remaining > 0) {
+        if (result.data.remaining === 0) break;
+
+        // Nothing left to try this round and it's still not fully synced —
+        // every remaining stale section has already failed once and is now
+        // excluded. Looping further would do nothing.
+        if (result.data.attemptedCount === 0) {
           stuck = true;
           break;
         }
-
-        if (result.data.remaining === 0) break;
       }
+
+      // Covers both the "ran out of iterations" case and belt-and-suspenders
+      // for any path above that left work undone — CodeRabbit finding
+      if (lastRemaining > 0) stuck = true;
 
       if (totalSynced > 0) {
         toast.success(
