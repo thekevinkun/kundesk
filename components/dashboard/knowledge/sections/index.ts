@@ -6,3 +6,4 @@ export { default as SectionDialog } from "./SectionDialog";
 export { default as RemoveSectionDialog } from "./RemoveSectionDialog";
 export { default as RemoveEntryDialog } from "./RemoveEntryDialog";
 export { default as KnowledgeSectionsPanel } from "./KnowledgeSectionsPanel";
+export { default as StaleSyncBanner } from "./StaleSyncBanner";

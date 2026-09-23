@@ -10,6 +10,7 @@ import {
   SectionDialog,
   RemoveEntryDialog,
   RemoveSectionDialog,
+  StaleSyncBanner,
 } from "@/components/dashboard/knowledge/sections";
 import { listKnowledgeSections } from "@/lib/actions/knowledge";
 import { PLAN_LIMITS } from "@/types/billing";
@@ -66,6 +67,12 @@ const KnowledgeSectionsPanel = ({
   const entryLimitReached = totalEntries >= entryLimit;
   const sectionLimitReached = sections.length >= MAX_KNOWLEDGE_SECTIONS;
 
+  // Drives StaleSyncBanner — counted across every section's entries
+  const staleEntryCount = sections.reduce(
+    (sum, s) => sum + s.entries.filter((e) => e.syncStatus === "stale").length,
+    0,
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -91,6 +98,10 @@ const KnowledgeSectionsPanel = ({
         <div className="px-4 py-3 rounded-(--radius-sm) bg-(--color-brand-light) border border-(--color-brand-mid) text-[12.5px] text-(--color-brand-dark)">
           Batas entri tercapai. Upgrade plan untuk menambah lebih banyak.
         </div>
+      )}
+
+      {isAdmin && (
+        <StaleSyncBanner staleEntryCount={staleEntryCount} onSynced={refresh} />
       )}
 
       {sections.length === 0 ? (
