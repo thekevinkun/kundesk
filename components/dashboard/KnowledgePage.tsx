@@ -98,7 +98,11 @@ const KnowledgePage = ({
 
             <TabsTrigger
               value="katalog"
-              className="relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) transition-colors duration-200 hover:text-(--color-text-900) data-[state=active]:bg-transparent data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) dark:hover:text-(--color-text-900)"
+              className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
+                transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
+                data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none 
+                dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) 
+                dark:data-[state=inactive]:hover:text-(--color-text-900)"
             >
               {activeTab === "katalog" && (
                 <motion.span
