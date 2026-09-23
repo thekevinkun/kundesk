@@ -119,3 +119,26 @@ export interface ProfileData {
   block: string | null;
   hours: HoursSchedule[];
 }
+
+// ─── Dashboard read shapes ───
+
+// One entry as read for the dashboard list/edit UI
+export interface KnowledgeEntryRow {
+  id: number;
+  title: string;
+  body: string;
+  price: EntryPrice | null;
+  isAvailable: boolean;
+  sortOrder: number;
+  syncStatus: SyncStatus;
+}
+
+// One section with its entries, for the Katalog & FAQ tab
+export interface KnowledgeSectionRow {
+  id: number;
+  kind: SectionKind;
+  title: string;
+  note: string | null;
+  sortOrder: number;
+  entries: KnowledgeEntryRow[];
+}

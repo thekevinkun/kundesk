@@ -29,3 +29,19 @@ export interface EditableHoursSchedule extends Omit<HoursSchedule, "lines"> {
   editorId: string;
   lines: EditableHoursLine[];
 }
+
+// One priced variant row in the editor — same editorId pattern as the
+// profile form's repeatable rows (CodeRabbit finding on that PR)
+export interface EditableVariantOption {
+  editorId: string;
+  label: string;
+  amount: number;
+}
+
+// Editor-only mirror of EntryPrice — "variants" carries EditableVariantOption
+// instead of the plain {label, amount} the server expects
+export type EditablePrice =
+  | { mode: "fixed"; amount: number }
+  | { mode: "range"; min: number; max: number }
+  | { mode: "variants"; options: EditableVariantOption[] }
+  | { mode: "contact" };

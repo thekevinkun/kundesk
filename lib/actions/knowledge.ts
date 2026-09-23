@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
 import { and, eq, max } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { requireOrgAdmin } from "@/lib/auth";
+import { requireOrg, requireOrgAdmin } from "@/lib/auth";
 import {
   businessProfiles,
   chunks,
@@ -19,6 +19,7 @@ import { cacheDelete, CacheKeys, checkKnowledgeWriteLimit } from "@/lib/redis";
 import {
   getOrgKnowledgeEntryCount,
   getOrgKnowledgeSectionCount,
+  getKnowledgeSectionsWithEntries,
   lockOrgForKnowledgeWrite,
 } from "@/lib/db/queries/knowledge";
 import { syncEntry, syncSection } from "@/lib/knowledge/sync";
@@ -42,6 +43,7 @@ import type {
   EntrySaveData,
   RetrySyncData,
   SyncStatusData,
+  KnowledgeSectionRow,
 } from "@/types/knowledge";
 
 // Route the dashboard UI will use — revalidating a route that doesn't exist yet is harmless
@@ -563,4 +565,24 @@ export async function retryStaleKnowledgeSync(): Promise<
       data: { synced, remaining: staleSections.length - synced },
     };
   });
+}
+
+// ─── Reads (client components refresh through this after any mutation) ───
+
+// Members can view (rule 128's Documents/Team view-only pattern) — requireOrg,
+// not requireOrgAdmin. Wrapped as a Server Action since a plain query
+// function can't be called directly from a "use client" component.
+export async function listKnowledgeSections(): Promise<
+  ActionResult<KnowledgeSectionRow[]>
+> {
+  const { orgId } = await requireOrg();
+
+  try {
+    const sections = await getKnowledgeSectionsWithEntries(orgId);
+    return { success: true, data: sections };
+  } catch (err) {
+    console.error("[knowledge/listKnowledgeSections] failed:", err);
+    Sentry.captureException(err, { extra: { orgId } });
+    return { success: false, error: "Gagal memuat data." };
+  }
 }

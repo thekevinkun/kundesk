@@ -6,21 +6,31 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import DocumentsPage from "./DocumentsPage";
 import { DocCountBadge } from "@/components/dashboard/badge";
 import { ProfileForm } from "@/components/dashboard/knowledge";
+import { KnowledgeSectionsPanel } from "@/components/dashboard/knowledge/sections";
 import { fadeUp } from "@/lib/animations";
-import type { CompileProfile } from "@/types/knowledge";
+import type { PlanName } from "@/types/billing";
+import type { CompileProfile, KnowledgeSectionRow } from "@/types/knowledge";
 
 // Local to this page's tab state — not promoted to types/ since nothing
 // outside this component reads it
-type KnowledgeTab = "profil" | "dokumen";
+type KnowledgeTab = "profil" | "dokumen" | "katalog";
+
 interface KnowledgePageProps {
   isAdmin: boolean;
   initialProfile: CompileProfile;
+  initialSections: KnowledgeSectionRow[];
+  plan: PlanName;
 }
 
 // Owns the shared page header + Profil/Dokumen tabs. Profil is the default
 // tab (not Dokumen) — a form-based entry point reads friendlier to an owner
 // who's never written a document before than landing on an upload zone.
-const KnowledgePage = ({ isAdmin, initialProfile }: KnowledgePageProps) => {
+const KnowledgePage = ({
+  isAdmin,
+  initialProfile,
+  initialSections,
+  plan,
+}: KnowledgePageProps) => {
   const [activeTab, setActiveTab] = useState<KnowledgeTab>("profil");
 
   return (
@@ -85,6 +95,20 @@ const KnowledgePage = ({ isAdmin, initialProfile }: KnowledgePageProps) => {
                 <DocCountBadge />
               </span>
             </TabsTrigger>
+
+            <TabsTrigger
+              value="katalog"
+              className="relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) transition-colors duration-200 hover:text-(--color-text-900) data-[state=active]:bg-transparent data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) dark:hover:text-(--color-text-900)"
+            >
+              {activeTab === "katalog" && (
+                <motion.span
+                  layoutId="knowledge-tab-pill"
+                  className="absolute inset-0 rounded-[9px] bg-(--color-bg-card) shadow-sm"
+                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                />
+              )}
+              <span className="relative z-10">Katalog & FAQ</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profil">
@@ -93,6 +117,14 @@ const KnowledgePage = ({ isAdmin, initialProfile }: KnowledgePageProps) => {
 
           <TabsContent value="dokumen">
             <DocumentsPage isAdmin={isAdmin} />
+          </TabsContent>
+
+          <TabsContent value="katalog">
+            <KnowledgeSectionsPanel
+              isAdmin={isAdmin}
+              initialSections={initialSections}
+              plan={plan}
+            />
           </TabsContent>
         </Tabs>
       </div>

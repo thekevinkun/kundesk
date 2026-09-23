@@ -12,7 +12,11 @@ import {
 import { compileProfileBlock } from "@/helpers/knowledge";
 import { parseStoredHours } from "@/helpers/knowledge-schemas";
 import type { PlanName } from "@/types/billing";
-import type { CompileProfile, ProfileData } from "@/types/knowledge";
+import type {
+  CompileProfile,
+  KnowledgeSectionRow,
+  ProfileData,
+} from "@/types/knowledge";
 
 // Extracted from db.transaction's own callback signature — always matches the real driver types
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -135,4 +139,66 @@ export async function getBusinessProfileForEdit(
     hours,
     paymentMethods: row.paymentMethods,
   };
+}
+
+// Reads every section + its entries for the dashboard's Katalog & FAQ tab.
+// Two queries instead of a JOIN — a JOIN would repeat every section row once
+// per entry, wasteful once a catalog section has ~190 entries (rule 184).
+export async function getKnowledgeSectionsWithEntries(
+  orgId: string,
+): Promise<KnowledgeSectionRow[]> {
+  const sectionRows = await db
+    .select({
+      id: knowledgeSections.id,
+      kind: knowledgeSections.kind,
+      title: knowledgeSections.title,
+      note: knowledgeSections.note,
+      sortOrder: knowledgeSections.sortOrder,
+    })
+    .from(knowledgeSections)
+    .where(eq(knowledgeSections.orgId, orgId))
+    .orderBy(knowledgeSections.sortOrder);
+
+  const entryRows = await db
+    .select({
+      id: knowledgeEntries.id,
+      sectionId: knowledgeEntries.sectionId,
+      title: knowledgeEntries.title,
+      body: knowledgeEntries.body,
+      price: knowledgeEntries.price,
+      isAvailable: knowledgeEntries.isAvailable,
+      sortOrder: knowledgeEntries.sortOrder,
+      syncStatus: knowledgeEntries.syncStatus,
+    })
+    .from(knowledgeEntries)
+    .where(eq(knowledgeEntries.orgId, orgId))
+    .orderBy(knowledgeEntries.sortOrder);
+
+  return sectionRows.map((section) => ({
+    ...section,
+    entries: entryRows
+      .filter((e) => e.sectionId === section.id)
+      .map((e) => ({
+        id: e.id,
+        title: e.title,
+        body: e.body,
+        price: e.price,
+        isAvailable: e.isAvailable,
+        sortOrder: e.sortOrder,
+        syncStatus: e.syncStatus,
+      })),
+  }));
+}
+
+// CHECK FOR AN EXISTING EQUIVALENT (e.g. lib/db/queries/billing.ts) BEFORE
+// MERGING — added here only because this file already imports `orgs` for
+// lockOrgForKnowledgeWrite and I have no visibility into the billing queries.
+export async function getOrgPlan(orgId: string): Promise<PlanName> {
+  const [row] = await db
+    .select({ plan: orgs.plan })
+    .from(orgs)
+    .where(eq(orgs.id, orgId))
+    .limit(1);
+
+  return (row?.plan as PlanName) ?? "free";
 }
