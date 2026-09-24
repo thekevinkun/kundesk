@@ -13,7 +13,7 @@ import type { CompileProfile, KnowledgeSectionRow } from "@/types/knowledge";
 
 // Local to this page's tab state — not promoted to types/ since nothing
 // outside this component reads it
-type KnowledgeTab = "profil" | "dokumen" | "katalog";
+type KnowledgeTab = "profil" | "dokumen";
 
 interface KnowledgePageProps {
   isAdmin: boolean;
@@ -25,6 +25,9 @@ interface KnowledgePageProps {
 // Owns the shared page header + Profil/Dokumen tabs. Profil is the default
 // tab (not Dokumen) — a form-based entry point reads friendlier to an owner
 // who's never written a document before than landing on an upload zone.
+// Katalog & FAQ lives inside Profil as a section, not its own tab — it's
+// one more manual-entry field group alongside the profile form, not a
+// separate way of feeding KUN. Only Profil vs Dokumen is a real fork.
 const KnowledgePage = ({
   isAdmin,
   initialProfile,
@@ -95,40 +98,28 @@ const KnowledgePage = ({
                 <DocCountBadge />
               </span>
             </TabsTrigger>
-
-            <TabsTrigger
-              value="katalog"
-              className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
-                transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
-                data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none 
-                dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) 
-                dark:data-[state=inactive]:hover:text-(--color-text-900)"
-            >
-              {activeTab === "katalog" && (
-                <motion.span
-                  layoutId="knowledge-tab-pill"
-                  className="absolute inset-0 rounded-[9px] bg-(--color-bg-card) shadow-sm"
-                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
-                />
-              )}
-              <span className="relative z-10">Katalog & FAQ</span>
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profil">
             <ProfileForm isAdmin={isAdmin} initialProfile={initialProfile} />
+
+            {/* Divider — Katalog & FAQ is a section within Profil, not a
+                separate way of feeding KUN, so it's visually part of the
+                same tab rather than a page break */}
+            <div className="mt-10 pt-8 border-t border-(--color-border)">
+              <h2 className="text-[15px] font-semibold text-(--color-text-900) mb-4">
+                Katalog & FAQ
+              </h2>
+              <KnowledgeSectionsPanel
+                isAdmin={isAdmin}
+                initialSections={initialSections}
+                plan={plan}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="dokumen">
             <DocumentsPage isAdmin={isAdmin} />
-          </TabsContent>
-
-          <TabsContent value="katalog">
-            <KnowledgeSectionsPanel
-              isAdmin={isAdmin}
-              initialSections={initialSections}
-              plan={plan}
-            />
           </TabsContent>
         </Tabs>
       </div>

@@ -144,7 +144,7 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await setupClerkTestingToken({ page });
       await page.goto("/dashboard/knowledge");
       await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
-      await page.getByRole("tab", { name: "Katalog & FAQ" }).click();
+      await page.getByRole("tab", { name: "Profil" }).click();
 
       // The numerator isn't asserted exactly — this is a real, shared test
       // org, not a clean fixture, so the count could legitimately be >=
@@ -203,7 +203,7 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await setupClerkTestingToken({ page });
       await page.goto("/dashboard/knowledge");
       await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
-      await page.getByRole("tab", { name: "Katalog & FAQ" }).click();
+      await page.getByRole("tab", { name: "Profil" }).click();
 
       // A brief settle so an empty list at t=0 can't make this pass vacuously
       await page.waitForTimeout(1000);
@@ -234,7 +234,7 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await setupClerkTestingToken({ page });
       await page.goto("/dashboard/knowledge");
       await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
-      await page.getByRole("tab", { name: "Katalog & FAQ" }).click();
+      await page.getByRole("tab", { name: "Profil" }).click();
 
       const sectionTitle = `E2E Orphan Test ${Date.now()}`;
 
@@ -243,7 +243,10 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       // inside the actual Server Actions
       await page.getByRole("button", { name: "+ Tambah bagian" }).click();
       await page.getByLabel("Nama bagian").fill(sectionTitle);
-      await page.getByRole("button", { name: "Simpan" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Simpan" })
+        .click();
       await expect(page.getByText("Bagian ditambahkan")).toBeVisible({
         timeout: 10_000,
       });
@@ -254,7 +257,10 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       for (const title of ["E2E Item A", "E2E Item B"]) {
         await page.getByRole("button", { name: "+ Tambah entri" }).click();
         await page.getByLabel("Judul entri").fill(title);
-        await page.getByRole("button", { name: "Simpan" }).click();
+        await page
+          .getByRole("dialog")
+          .getByRole("button", { name: "Simpan" })
+          .click();
         await expect(page.getByText("Entri ditambahkan")).toBeVisible({
           timeout: 15_000,
         });
@@ -295,7 +301,10 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await page
         .getByLabel("Catatan bagian")
         .fill(`forced resync ${Date.now()}`);
-      await page.getByRole("button", { name: "Simpan" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Simpan" })
+        .click();
       await expect(page.getByText("Bagian diperbarui")).toBeVisible({
         timeout: 10_000,
       });
