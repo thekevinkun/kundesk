@@ -2,6 +2,7 @@
 
 // Repeatable label/detail rows — e.g. "QRIS" / "scan di kasir"
 
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { newEditorId } from "@/helpers/editor-id";
@@ -36,41 +37,40 @@ const PaymentMethodsEditor = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {methods.map((method, index) => (
-        <div key={method.editorId} className="flex items-start gap-2">
-          <div className="w-[160px] flex-shrink-0">
-            <Input
-              value={method.label}
-              onChange={(e) => update(index, { label: e.target.value })}
-              placeholder="Contoh: QRIS"
-              maxLength={40}
-              disabled={disabled}
-              className="input-base"
-              aria-label={`Metode pembayaran ${index + 1}`}
-            />
-          </div>
-          <div className="flex-1">
-            <Input
-              value={method.detail ?? ""}
-              onChange={(e) =>
-                update(index, { detail: e.target.value || undefined })
-              }
-              placeholder="Detail (opsional) — contoh: scan di kasir"
-              maxLength={120}
-              disabled={disabled}
-              className="input-base"
-              aria-label={`Detail metode ${index + 1}`}
-            />
-          </div>
+        <div
+          key={method.editorId}
+          className="group grid grid-cols-1 sm:grid-cols-[200px_1fr_auto] gap-3 items-center rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg-page) p-3 transition-colors hover:border-(--color-brand-mid) hover:bg-(--color-bg-card)"
+        >
+          <Input
+            value={method.label}
+            onChange={(e) => update(index, { label: e.target.value })}
+            placeholder="Contoh: QRIS"
+            maxLength={40}
+            disabled={disabled}
+            className="input-base"
+            aria-label={`Metode pembayaran ${index + 1}`}
+          />
+          <Input
+            value={method.detail ?? ""}
+            onChange={(e) =>
+              update(index, { detail: e.target.value || undefined })
+            }
+            placeholder="Detail (opsional) — contoh: scan di kasir"
+            maxLength={120}
+            disabled={disabled}
+            className="input-base"
+            aria-label={`Detail metode ${index + 1}`}
+          />
           {!disabled && (
             <button
               type="button"
               onClick={() => remove(index)}
               aria-label={`Hapus metode ${method.label || index + 1}`}
-              className="text-(--color-text-400) hover:text-(--color-danger) transition-colors px-2 py-2 leading-none"
+              className="justify-self-end rounded-full p-1.5 text-(--color-text-400) transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
             >
-              ×
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>

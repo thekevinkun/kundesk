@@ -177,11 +177,14 @@ const EntryDialog = ({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
+            className="shrink-0 text-red-600 border border-red-200 
+              hover:bg-red-600 hover:text-white hover:border-red-600 transition-all
+              dark:text-red-400 dark:border-red-900 dark:hover:bg-red-600 dark:hover:text-white"
           >
             Batal
           </Button>

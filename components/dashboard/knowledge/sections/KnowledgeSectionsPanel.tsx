@@ -25,16 +25,17 @@ import type {
 
 interface KnowledgeSectionsPanelProps {
   isAdmin: boolean;
-  initialSections: KnowledgeSectionRow[];
+  sections: KnowledgeSectionRow[];
+  onSectionsChange: (next: KnowledgeSectionRow[]) => void;
   plan: PlanName;
 }
 
 const KnowledgeSectionsPanel = ({
   isAdmin,
-  initialSections,
+  sections,
+  onSectionsChange,
   plan,
 }: KnowledgeSectionsPanelProps) => {
-  const [sections, setSections] = useState(initialSections);
   const [, startRefresh] = useTransition();
 
   const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
@@ -55,12 +56,12 @@ const KnowledgeSectionsPanel = ({
     startRefresh(async () => {
       const result = await listKnowledgeSections();
       if (result.success) {
-        setSections(result.data);
+        onSectionsChange(result.data);
       } else {
         toast.error("Gagal memuat ulang", { description: result.error });
       }
     });
-  }, []);
+  }, [onSectionsChange]);
 
   const totalEntries = sections.reduce((sum, s) => sum + s.entries.length, 0);
   const entryLimit = PLAN_LIMITS[plan].knowledgeEntries;

@@ -144,7 +144,8 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await setupClerkTestingToken({ page });
       await page.goto("/dashboard/knowledge");
       await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
-      await page.getByRole("tab", { name: "Profil" }).click();
+      await page.getByRole("tab", { name: "Isi Manual" }).click();
+      await page.getByRole("tab", { name: "Katalog & FAQ" }).click();
 
       // The numerator isn't asserted exactly — this is a real, shared test
       // org, not a clean fixture, so the count could legitimately be >=
@@ -203,7 +204,8 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await setupClerkTestingToken({ page });
       await page.goto("/dashboard/knowledge");
       await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
-      await page.getByRole("tab", { name: "Profil" }).click();
+      await page.getByRole("tab", { name: "Isi Manual" }).click();
+      await page.getByRole("tab", { name: "Katalog & FAQ" }).click();
 
       // A brief settle so an empty list at t=0 can't make this pass vacuously
       await page.waitForTimeout(1000);
@@ -234,7 +236,8 @@ test.describe("Knowledge — plan limit, org isolation, orphan chunks", () => {
       await setupClerkTestingToken({ page });
       await page.goto("/dashboard/knowledge");
       await page.waitForURL(/\/dashboard\/knowledge/, { timeout: 15_000 });
-      await page.getByRole("tab", { name: "Profil" }).click();
+      await page.getByRole("tab", { name: "Isi Manual" }).click();
+      await page.getByRole("tab", { name: "Katalog & FAQ" }).click();
 
       const sectionTitle = `E2E Orphan Test ${Date.now()}`;
 

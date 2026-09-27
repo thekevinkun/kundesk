@@ -3,6 +3,7 @@
 // One named schedule (e.g. "Klinik", "Pet Shop", "Darurat") — label, optional
 // note, and its list of HoursLineRow entries
 
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -53,9 +54,11 @@ const HoursScheduleBlock = ({
   };
 
   return (
-    <div className="rounded-(--radius-md) border border-(--color-border) p-4 space-y-3">
+    <div className="rounded-(--radius-md) border border-(--color-border) p-4 space-y-3 transition-colors hover:border-(--color-brand-mid)">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 space-y-2">
+        {/* Name + note side by side — both are short, one-line fields,
+            no reason to burn two full-width rows on them */}
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Input
             value={schedule.label}
             onChange={(e) => onChange({ ...schedule, label: e.target.value })}
@@ -83,9 +86,9 @@ const HoursScheduleBlock = ({
             type="button"
             onClick={onRemove}
             aria-label={`Hapus jadwal ${schedule.label || ""}`}
-            className="text-(--color-text-400) hover:text-(--color-danger) transition-colors px-1"
+            className="rounded-full p-1.5 text-(--color-text-400) transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
           >
-            ×
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>

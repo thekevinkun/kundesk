@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Store, Clock, CreditCard, BookOpen } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import ContactsEditor from "./ContactsEditor";
 import PaymentMethodsEditor from "./PaymentMethodsEditor";
 import HoursEditor from "./HoursEditor";
+import NumberedSection from "./NumberedSection";
+import { KnowledgeSectionsPanel } from "@/components/dashboard/knowledge/sections";
 import { saveBusinessProfile } from "@/lib/actions/knowledge";
 import { newEditorId } from "@/helpers/editor-id";
 import type {
@@ -20,16 +23,23 @@ import type {
   CompileProfile,
   ContactItem,
   HoursSchedule,
+  KnowledgeSectionRow,
   PaymentMethod,
 } from "@/types/knowledge";
+import type { PlanName } from "@/types/billing";
 
 interface ProfileFormProps {
   isAdmin: boolean;
   initialProfile: CompileProfile;
+  initialSections: KnowledgeSectionRow[];
+  plan: PlanName;
 }
 
-// initialProfile arrives with the persisted shape (no editorId) — assign one
-// per row, once, the first time each list enters editor state
+// Sub-tabs under "Isi Manual" — replaces the old scroll-jump quick-nav.
+// Naming kept generic (not "profil") since this now covers more than
+// business-profile fields.
+type ManualSubTab = "identitas" | "jam" | "pembayaran" | "katalog";
+
 const toEditableContacts = (contacts: ContactItem[]): EditableContact[] =>
   contacts.map((c) => ({ ...c, editorId: newEditorId() }));
 
@@ -45,8 +55,6 @@ const toEditableHours = (hours: HoursSchedule[]): EditableHoursSchedule[] =>
     lines: s.lines.map((l) => ({ ...l, editorId: newEditorId() })),
   }));
 
-// Reverse direction, called right before saveBusinessProfile — editorId
-// must never reach the server or the persisted JSONB columns
 const stripContacts = (contacts: EditableContact[]): ContactItem[] =>
   contacts.map((c) => ({ label: c.label, value: c.value }));
 
@@ -67,30 +75,21 @@ const stripHours = (hours: EditableHoursSchedule[]): HoursSchedule[] =>
     })),
   }));
 
-// Local section wrapper — same visual language as ChatbotConfigPage's
-// ConfigSection, kept separate since that one isn't exported for reuse
-const ProfileSection = ({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) => (
-  <div className="card-base p-6">
-    <div className="mb-4">
-      <h2 className="text-[15px] font-bold text-(--color-text-900) mb-1">
-        {title}
-      </h2>
-      <p className="text-[12.5px] text-(--color-text-400)">{description}</p>
-    </div>
-    <Separator className="mb-4 bg-(--color-border-sm)" />
-    {children}
-  </div>
-);
+// Underline style for the sub-tab level, distinct from the pill-style
+// top-level Profil/Dokumen tabs in KnowledgePage — two stacked pill bars
+// would blur the hierarchy; pill (outer) + underline (inner) reads clearly
+const subTabTriggerClass =
+  "w-full pb-2 sm:pb-2.5 px-0.5 h-auto rounded-none bg-transparent shadow-none border-b-2 border-transparent " +
+  "text-[12px] sm:text-[13px] font-medium text-(--color-text-500) transition-colors hover:text-(--color-text-900) " +
+  "data-[state=active]:border-(--color-brand) data-[state=active]:text-(--color-brand-dark) " +
+  "data-[state=active]:font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none";
 
-const ProfileForm = ({ isAdmin, initialProfile }: ProfileFormProps) => {
+const ProfileForm = ({
+  isAdmin,
+  initialProfile,
+  initialSections,
+  plan,
+}: ProfileFormProps) => {
   const [about, setAbout] = useState(initialProfile.about ?? "");
   const [address, setAddress] = useState(initialProfile.address ?? "");
   const [contacts, setContacts] = useState<EditableContact[]>(() =>
@@ -102,8 +101,22 @@ const ProfileForm = ({ isAdmin, initialProfile }: ProfileFormProps) => {
   const [paymentMethods, setPaymentMethods] = useState<EditablePaymentMethod[]>(
     () => toEditablePaymentMethods(initialProfile.paymentMethods),
   );
+  // Lifted out of KnowledgeSectionsPanel — a naive tab switch would
+  // otherwise remount it back to initialSections and silently hide
+  // whatever was just added/edited until a full page reload
+  const [sections, setSections] =
+    useState<KnowledgeSectionRow[]>(initialSections);
 
+  const [subTab, setSubTab] = useState<ManualSubTab>("identitas");
   const [isPending, startTransition] = useTransition();
+
+  const identityComplete =
+    about.trim().length > 0 && address.trim().length > 0 && contacts.length > 0;
+
+  const totalKnowledgeEntries = useMemo(
+    () => sections.reduce((sum, s) => sum + s.entries.length, 0),
+    [sections],
+  );
 
   const handleSave = () => {
     startTransition(async () => {
@@ -126,8 +139,28 @@ const ProfileForm = ({ isAdmin, initialProfile }: ProfileFormProps) => {
     });
   };
 
+  // One save action, rendered per sub-tab — clicking it from any of the
+  // three form tabs saves the full profile object regardless of which
+  // tab is active, since it's all one row in the DB. Expected, not a bug.
+  const saveBar = isAdmin && (
+    <div className="flex flex-col items-stretch gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-[12px] leading-relaxed text-(--color-text-400)">
+        Perubahan berlaku setelah disimpan dan diproses ulang oleh KUN.
+      </p>
+      <Button
+        type="button"
+        onClick={handleSave}
+        disabled={isPending}
+        className="btn-brand w-full sm:w-auto sm:min-w-[120px]"
+        aria-busy={isPending}
+      >
+        {isPending ? "Menyimpan..." : "Simpan"}
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sm:px-1.5">
       {!isAdmin && (
         <div className="px-4 py-3 rounded-(--radius-sm) bg-(--color-bg-page) border border-(--color-border) text-[12.5px] text-(--color-text-500)">
           Hubungi admin untuk mengubah profil bisnis. Kamu masih bisa melihat
@@ -135,82 +168,149 @@ const ProfileForm = ({ isAdmin, initialProfile }: ProfileFormProps) => {
         </div>
       )}
 
-      <ProfileSection
-        title="Tentang Bisnis"
-        description="Deskripsi singkat yang membantu KUN menjawab pertanyaan umum tentang bisnismu."
+      <Tabs
+        value={subTab}
+        onValueChange={(value) => setSubTab(value as ManualSubTab)}
+        className="mt-3"
       >
-        <Textarea
-          value={about}
-          onChange={(e) => setAbout(e.target.value)}
-          placeholder="Contoh: Kedai Bu Sari adalah warung makan rumahan yang buka sejak 2015..."
-          maxLength={1000}
-          rows={4}
-          disabled={!isAdmin}
-          className="input-base no-zoom resize-none h-[110px] overflow-y-auto"
-          aria-label="Deskripsi bisnis"
-        />
-      </ProfileSection>
+        <TabsList className="grid w-full grid-cols-2 items-end justify-start gap-x-4 gap-y-0 
+          h-auto p-0 bg-transparent border-b-2 border-(--color-border) rounded-none sm:flex sm:gap-6"
+        >
+          <TabsTrigger value="identitas" className={subTabTriggerClass}>
+            Identitas & Kontak
+          </TabsTrigger>
+          <TabsTrigger value="jam" className={subTabTriggerClass}>
+            Jam Operasional
+          </TabsTrigger>
+          <TabsTrigger value="pembayaran" className={subTabTriggerClass}>
+            Metode Pembayaran
+          </TabsTrigger>
+          <TabsTrigger value="katalog" className={subTabTriggerClass}>
+            <span className="flex items-center gap-1.5">
+              Katalog & FAQ
+              {totalKnowledgeEntries > 0 && (
+                <span className="text-[10px] font-bold bg-(--color-bg-page) text-(--color-text-500) px-1.5 py-0.5 rounded-full">
+                  {totalKnowledgeEntries}
+                </span>
+              )}
+            </span>
+          </TabsTrigger>
+        </TabsList>
 
-      <ProfileSection
-        title="Alamat"
-        description="Alamat lengkap — KUN akan menyebutkan ini jika pelanggan bertanya lokasi."
-      >
-        <Input
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Contoh: Jl. Merdeka No. 12, Balikpapan"
-          maxLength={300}
-          disabled={!isAdmin}
-          className="input-base"
-          aria-label="Alamat bisnis"
-        />
-      </ProfileSection>
-
-      <ProfileSection
-        title="Kontak"
-        description="Nomor WhatsApp, telepon, atau kontak lain yang perlu diketahui pelanggan."
-      >
-        <ContactsEditor
-          contacts={contacts}
-          onChange={setContacts}
-          disabled={!isAdmin}
-        />
-      </ProfileSection>
-
-      <ProfileSection
-        title="Jam Operasional"
-        description="Bisa lebih dari satu jadwal — misalnya jadwal klinik dan jadwal darurat yang berbeda."
-      >
-        <HoursEditor hours={hours} onChange={setHours} disabled={!isAdmin} />
-      </ProfileSection>
-
-      <ProfileSection
-        title="Metode Pembayaran"
-        description="Cara pelanggan bisa membayar — QRIS, transfer bank, tunai, dan sebagainya."
-      >
-        <PaymentMethodsEditor
-          methods={paymentMethods}
-          onChange={setPaymentMethods}
-          disabled={!isAdmin}
-        />
-      </ProfileSection>
-
-      {isAdmin && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-[12px] text-(--color-text-400)">
-            Perubahan berlaku setelah disimpan dan diproses ulang oleh KUN.
-          </p>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={isPending}
-            className="btn-brand min-w-[120px]"
-            aria-busy={isPending}
+        <TabsContent value="identitas" className="mt-14 sm:mt-5">
+          <NumberedSection
+            icon={<Store className="h-4 w-4" />}
+            title="Identitas & Kontak"
+            description="Info dasar yang membantu KUN memperkenalkan bisnismu dan menjawab pertanyaan lokasi/kontak."
+            action={
+              identityComplete && (
+                <span className="text-[11px] font-medium text-(--color-brand-dark) bg-(--color-brand-light) border border-(--color-brand-mid) px-2 py-0.5 rounded-(--radius-xs)">
+                  Lengkap
+                </span>
+              )
+            }
           >
-            {isPending ? "Menyimpan..." : "Simpan Profil"}
-          </Button>
-        </div>
-      )}
+            <div className="space-y-5">
+              <div>
+                <div className="flex flex-col gap-0.5 mb-1.5 sm:flex-row sm:items-center sm:justify-between">
+                  <label className="block text-[12.5px] font-semibold text-(--color-text-700)">
+                    Tentang Bisnis & Deskripsi
+                  </label>
+                  <span className="text-[11px] text-(--color-text-400)">
+                    Membantu KUN merangkum siapa kamu
+                  </span>
+                </div>
+                <Textarea
+                  value={about}
+                  onChange={(e) => setAbout(e.target.value)}
+                  placeholder="Contoh: Kedai Bu Sari adalah warung makan rumahan yang buka sejak 2015..."
+                  maxLength={1000}
+                  rows={4}
+                  disabled={!isAdmin}
+                  className="input-base no-zoom resize-none h-[110px] overflow-y-auto"
+                  aria-label="Deskripsi bisnis"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12.5px] font-semibold text-(--color-text-700) mb-1.5">
+                  Alamat Lengkap & Patokan Lokasi
+                </label>
+                <Input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Contoh: Jl. Merdeka No. 12, Balikpapan"
+                  maxLength={300}
+                  disabled={!isAdmin}
+                  className="input-base"
+                  aria-label="Alamat bisnis"
+                />
+                <p className="mt-1 text-[11px] text-(--color-text-400)">
+                  Alamat ini akan otomatis dibagikan KUN ketika pelanggan
+                  menanyakan lokasi atau jadwal kedatangan.
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-(--color-border-sm)">
+                <label className="block text-[12.5px] font-semibold text-(--color-text-700) mb-2">
+                  Kontak Layanan Utama
+                </label>
+                <ContactsEditor
+                  contacts={contacts}
+                  onChange={setContacts}
+                  disabled={!isAdmin}
+                />
+              </div>
+            </div>
+          </NumberedSection>
+          {saveBar}
+        </TabsContent>
+
+        <TabsContent value="jam" className="mt-14 sm:mt-5">
+          <NumberedSection
+            icon={<Clock className="h-4 w-4" />}
+            title="Jam Operasional"
+            description="Bisa lebih dari satu jadwal — misalnya jadwal klinik dan jadwal darurat yang berbeda."
+          >
+            <HoursEditor
+              hours={hours}
+              onChange={setHours}
+              disabled={!isAdmin}
+            />
+          </NumberedSection>
+          {saveBar}
+        </TabsContent>
+
+        <TabsContent value="pembayaran" className="mt-14 sm:mt-5">
+          <NumberedSection
+            icon={<CreditCard className="h-4 w-4" />}
+            title="Metode Pembayaran"
+            description="Cara pelanggan bisa membayar — QRIS, transfer bank, tunai, dan sebagainya."
+          >
+            <PaymentMethodsEditor
+              methods={paymentMethods}
+              onChange={setPaymentMethods}
+              disabled={!isAdmin}
+            />
+          </NumberedSection>
+          {saveBar}
+        </TabsContent>
+
+        <TabsContent value="katalog" className="mt-14 sm:mt-5">
+          <NumberedSection
+            icon={<BookOpen className="h-4 w-4" />}
+            title="Katalog & FAQ"
+            description="Menu, harga, kebijakan, promo, dan pertanyaan umum — tersimpan otomatis begitu kamu klik Simpan di masing-masing item."
+          >
+            <KnowledgeSectionsPanel
+              isAdmin={isAdmin}
+              sections={sections}
+              onSectionsChange={setSections}
+              plan={plan}
+            />
+          </NumberedSection>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

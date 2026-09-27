@@ -5,6 +5,7 @@
 // color preset grid, instead of introducing a new checkbox-group primitive
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -61,29 +62,45 @@ const HoursLineRow = ({
   }, [line.closes]);
 
   return (
-    <div className="rounded-(--radius-sm) border border-(--color-border-sm) p-3 space-y-2.5">
-      <div className="flex flex-wrap gap-1.5">
-        {WEEKDAY_ORDER.map((day) => (
+    <div className="group rounded-(--radius-sm) border border-(--color-border-sm)
+      p-3 space-y-2.5 transition-colors hover:border-(--color-brand-mid) hover:bg-(--color-bg-page)"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="grid flex-1 grid-cols-4 gap-1.5 sm:flex sm:flex-none sm:flex-wrap">
+          {WEEKDAY_ORDER.map((day) => (
+            <button
+              key={day}
+              type="button"
+              disabled={disabled}
+              onClick={() => toggleDay(day)}
+              aria-pressed={line.days.includes(day)}
+              className={cn(
+                "w-full h-8 sm:w-9 rounded-[7px] text-[12px] font-semibold transition-colors",
+                line.days.includes(day)
+                  ? "bg-(--color-brand) text-white hover:bg-(--color-brand-dark)"
+                  : "bg-(--color-bg-card) text-(--color-text-500) border border-(--color-border) hover:border-(--color-brand-mid) hover:bg-(--color-brand-light) hover:text-(--color-text-900)",
+              )}
+            >
+              {WEEKDAY_LABELS[day]}
+            </button>
+          ))}
+        </div>
+
+        {!disabled && (
           <button
-            key={day}
             type="button"
-            disabled={disabled}
-            onClick={() => toggleDay(day)}
-            aria-pressed={line.days.includes(day)}
-            className={cn(
-              "w-9 h-8 rounded-[7px] text-[12px] font-semibold transition-colors",
-              line.days.includes(day)
-                ? "bg-(--color-brand) text-white"
-                : "bg-(--color-bg-page) text-(--color-text-500) border border-(--color-border) hover:text-(--color-text-900)",
-            )}
+            onClick={onRemove}
+            aria-label="Hapus baris jam ini"
+            className="rounded-full p-1.5 text-(--color-text-400) opacity-100 transition-opacity sm:opacity-0 group-hover:opacity-100
+              group-focus-within:opacity-100 hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
           >
-            {WEEKDAY_LABELS[day]}
+            <X className="h-4 w-4" />
           </button>
-        ))}
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[120px] flex-1 sm:flex-none">
           <Label className="text-[11.5px] text-(--color-text-400) mb-1 block">
             Buka
           </Label>
@@ -92,11 +109,11 @@ const HoursLineRow = ({
             value={line.opens}
             onChange={(e) => onChange({ ...line, opens: e.target.value })}
             disabled={disabled}
-            className="input-base w-[110px]"
+            className="input-base w-full sm:w-[150px]"
           />
         </div>
 
-        <div>
+        <div className="min-w-[120px] flex-1 sm:flex-none">
           <Label className="text-[11.5px] text-(--color-text-400) mb-1 block">
             Tutup
           </Label>
@@ -105,11 +122,11 @@ const HoursLineRow = ({
             value={isMidnight ? "" : line.closes}
             onChange={(e) => onChange({ ...line, closes: e.target.value })}
             disabled={disabled || isMidnight}
-            className="input-base w-[110px]"
+            className="input-base w-full sm:w-[150px]"
           />
         </div>
 
-        <div className="flex items-center gap-2 pt-4">
+        <div className="flex w-full items-center gap-2 pt-1 sm:w-auto sm:pt-4">
           <Switch
             checked={isMidnight}
             onCheckedChange={(checked) =>
@@ -138,16 +155,6 @@ const HoursLineRow = ({
         className="input-base"
         aria-label="Catatan jam"
       />
-
-      {!disabled && (
-        <button
-          type="button"
-          onClick={onRemove}
-          className="text-[12px] text-(--color-text-400) hover:text-(--color-danger) transition-colors"
-        >
-          Hapus baris ini
-        </button>
-      )}
     </div>
   );
 };
