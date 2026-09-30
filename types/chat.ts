@@ -44,6 +44,7 @@ export type SystemPromptOptions = {
   hours?: HoursSchedule[] | undefined;
   // Injectable clock so tests can pin the time
   now?: Date | undefined;
+  isFirstMessage?: boolean; // true when this is the conversation's first user turn — controls greeting behavior
 };
 
 // A conversation session

@@ -145,21 +145,22 @@ describe("buildSystemPrompt open/closed status", () => {
 
 describe("buildSystemPrompt greeting", () => {
   it("names the right day part for the business's local time", () => {
-    expect(buildSystemPrompt(config, [], base)).toContain(
-      'Sapaan waktu yang tepat saat ini adalah "Siang"',
-    );
+    expect(
+      buildSystemPrompt(config, [], { ...base, isFirstMessage: true }),
+    ).toContain('Sapaan waktu yang tepat saat ini adalah "Siang"');
     expect(
       buildSystemPrompt(config, [], {
         timeZone: "Asia/Makassar",
         now: SUNDAY_NIGHT,
+        isFirstMessage: true,
       }),
     ).toContain('Sapaan waktu yang tepat saat ini adalah "Malam"');
   });
 
   it("appears for orgs without a profile too", () => {
-    expect(buildSystemPrompt(config, [], base)).toContain(
-      "Sapaan waktu yang tepat",
-    );
+    expect(
+      buildSystemPrompt(config, [], { ...base, isFirstMessage: true }),
+    ).toContain("Sapaan waktu yang tepat");
   });
 });
 

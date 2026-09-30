@@ -759,6 +759,8 @@ export async function POST(request: NextRequest) {
       timeZone: org.timezone,
       profileBlock: profile.block,
       hours: profile.hours,
+      // conversationHistory is built in step 10, before this call — length 0 means this is turn 1
+      isFirstMessage: conversationHistory.length === 0,
     },
   );
 
