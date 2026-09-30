@@ -63,10 +63,10 @@ const SectionRow = ({
       </button>
 
       {isAdmin && (
-        <div className="flex items-center gap-2 px-5 pb-3 -mt-1">
+        <div className="flex items-center gap-2 px-5 pb-3 mt-1">
           <button
             onClick={onEditSection}
-            className="text-[11.5px] text-(--color-text-400) hover:text-(--color-text-900) transition-colors"
+            className="text-[11.5px] text-(--color-text-400) hover:text-brand-dark transition-colors"
           >
             Edit bagian
           </button>
@@ -113,7 +113,7 @@ const SectionRow = ({
                   variant="outline"
                   onClick={onAddEntry}
                   disabled={entryLimitReached}
-                  className="border-(--color-border) text-[12.5px]"
+                  className="btn-outline hover:!bg-brand/75 text-[12px]"
                 >
                   + Tambah entri
                 </Button>

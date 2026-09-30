@@ -78,7 +78,7 @@ const EntryRow = ({
           <button
             onClick={onEdit}
             aria-label={`Edit ${entry.title}`}
-            className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[13px] transition-all hover:bg-(--color-bg-page)"
+            className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[13px] transition-all hover:bg-brand-mid"
           >
             ✏️
           </button>

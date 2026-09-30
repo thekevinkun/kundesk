@@ -4,10 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import {
-  ConversationCountBadge,
-  DocCountBadge,
-} from "@/components/dashboard/badge";
+import { ConversationCountBadge } from "@/components/dashboard/badge";
 import { BADGE_CLASS } from "./constants";
 import type { NavItem } from "./constants";
 import type { SubscriptionStatus } from "@/types/billing";
@@ -94,9 +91,6 @@ const NavItemRow = ({ item, onClick, subscriptionStatus }: NavItemRowProps) => {
 
       {/* Live pending handoff badge — red, only shows when count > 0 */}
       {item.href === "/dashboard/conversations" && <ConversationCountBadge />}
-
-      {/* Live document count badge */}
-      {item.href === "/dashboard/knowledge" && <DocCountBadge />}
     </Link>
   );
 };

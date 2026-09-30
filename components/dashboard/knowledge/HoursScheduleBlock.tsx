@@ -112,7 +112,7 @@ const HoursScheduleBlock = ({
           type="button"
           variant="outline"
           onClick={addLine}
-          className="border-(--color-border) text-[12px]"
+          className="btn-outline hover:!text-brand hover:!bg-brand/15 text-[12px]"
         >
           + Tambah baris jam
         </Button>

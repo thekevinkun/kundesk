@@ -62,7 +62,8 @@ const HoursLineRow = ({
   }, [line.closes]);
 
   return (
-    <div className="group rounded-(--radius-sm) border border-(--color-border-sm)
+    <div
+      className="group rounded-(--radius-sm) border border-(--color-border-sm)
       p-3 space-y-2.5 transition-colors hover:border-(--color-brand-mid) hover:bg-(--color-bg-page)"
     >
       <div className="flex items-start justify-between gap-3">
@@ -109,7 +110,7 @@ const HoursLineRow = ({
             value={line.opens}
             onChange={(e) => onChange({ ...line, opens: e.target.value })}
             disabled={disabled}
-            className="input-base w-full sm:w-[150px]"
+            className="input-base w-full sm:w-[150px] transition-all hover:border-brand hover:bg-brand/25"
           />
         </div>
 
@@ -122,7 +123,7 @@ const HoursLineRow = ({
             value={isMidnight ? "" : line.closes}
             onChange={(e) => onChange({ ...line, closes: e.target.value })}
             disabled={disabled || isMidnight}
-            className="input-base w-full sm:w-[150px]"
+            className="input-base w-full sm:w-[150px] transition-all hover:border-brand hover:bg-brand/25"
           />
         </div>
 

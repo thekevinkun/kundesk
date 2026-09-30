@@ -151,7 +151,7 @@ const ProfileForm = ({
         type="button"
         onClick={handleSave}
         disabled={isPending}
-        className="btn-brand w-full sm:w-auto sm:min-w-[120px]"
+        className="btn-brand w-full sm:w-auto sm:min-w-[120px] text-[13.5px]"
         aria-busy={isPending}
       >
         {isPending ? "Menyimpan..." : "Simpan"}
@@ -160,7 +160,7 @@ const ProfileForm = ({
   );
 
   return (
-    <div className="space-y-4 sm:px-1.5">
+    <div className="space-y-4 sm:px-1.5 pb-5">
       {!isAdmin && (
         <div className="px-4 py-3 rounded-(--radius-sm) bg-(--color-bg-page) border border-(--color-border) text-[12.5px] text-(--color-text-500)">
           Hubungi admin untuk mengubah profil bisnis. Kamu masih bisa melihat

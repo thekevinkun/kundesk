@@ -60,7 +60,7 @@ const HoursEditor = ({ hours, onChange, disabled }: HoursEditorProps) => {
           type="button"
           variant="outline"
           onClick={add}
-          className="border-(--color-border) text-[12.5px]"
+          className="btn-outline hover:!bg-brand/75 text-[12.5px]"
         >
           + Tambah jadwal
         </Button>
