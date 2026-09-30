@@ -6,7 +6,7 @@ import { setupClerkTestingToken } from "@clerk/testing/playwright";
 
 test.describe("Dashboard", () => {
   // storageState from playwright.config.ts is loaded automatically
-  // This suite runs as the authenticated "Klinik Paco" test user
+  // This suite runs as the authenticated "Warung E2E" test user
 
   test("redirects to dashboard after auth", async ({ page }) => {
     await setupClerkTestingToken({ page });
@@ -38,8 +38,8 @@ test.describe("Dashboard", () => {
     await page.goto("/dashboard");
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
-    // Org name "Klinik Paco" should appear somewhere in the dashboard
-    await expect(page.getByText("Klinik Paco")).toBeVisible({ timeout: 10_000 });
+    // Org name "Warung E2E" should appear somewhere in the dashboard
+    await expect(page.getByText("Warung E2E")).toBeVisible({ timeout: 10_000 });
   });
 
   test("unauthenticated user is redirected away from dashboard", async ({ browser }) => {
