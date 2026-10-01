@@ -1,0 +1,1 @@
+ALTER TABLE "orgs" ADD COLUMN "timezone_detected_at" timestamp;

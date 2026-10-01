@@ -53,8 +53,12 @@ export const orgs = pgTable("orgs", {
   ownerEmail: text("owner_email"),
 
   // IANA timezone of the business — drives KUN's "current date/time" and opening-hours answers
-  // Defaults to WIB; set per org in Neon until a settings screen exists
+  // Defaults to WIB; auto-detected once on the owner's first dashboard visit, or set in Settings
   timezone: text("timezone").notNull().default("Asia/Jakarta"),
+
+  // Stamped once auto-detect has run OR the owner picked a timezone manually —
+  // null means never detected; once set, auto-detect never touches `timezone` again
+  timezoneDetectedAt: timestamp("timezone_detected_at"),
 
   // Clerk userId of the org creator — used to fetch owner email for transactional emails
   createdBy: text("created_by"),
