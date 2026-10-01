@@ -10,7 +10,7 @@ import { fadeUp } from "@/lib/animations";
 import type { PlanName } from "@/types/billing";
 import type { CompileProfile, KnowledgeSectionRow } from "@/types/knowledge";
 
-type KnowledgeTab = "dokumen" | "manual";
+type KnowledgeTab = "manual" | "dokumen";
 
 interface KnowledgePageProps {
   isAdmin: boolean;
@@ -25,7 +25,7 @@ const KnowledgePage = ({
   initialSections,
   plan,
 }: KnowledgePageProps) => {
-  const [activeTab, setActiveTab] = useState<KnowledgeTab>("dokumen");
+  const [activeTab, setActiveTab] = useState<KnowledgeTab>("manual");
 
   return (
     <motion.div
@@ -56,6 +56,24 @@ const KnowledgePage = ({
         >
           <TabsList className="p-1.5 gap-1 rounded-[12px] bg-(--color-bg-page) border border-(--color-border)">
             <TabsTrigger
+              value="manual"
+              className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
+              transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
+              data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none 
+              dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) 
+              dark:data-[state=inactive]:hover:text-(--color-text-900)"
+            >
+              {activeTab === "manual" && (
+                <motion.span
+                  layoutId="knowledge-tab-pill"
+                  className="absolute inset-0 rounded-[9px] bg-(--color-bg-card) shadow-sm"
+                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                />
+              )}
+              <span className="relative z-10">Isi Manual</span>
+            </TabsTrigger>
+
+            <TabsTrigger
               value="dokumen"
               className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
                 transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
@@ -75,29 +93,7 @@ const KnowledgePage = ({
                 <DocCountBadge />
               </span>
             </TabsTrigger>
-
-            <TabsTrigger
-              value="manual"
-              className="h-auto relative px-4 rounded-[9px] text-[13.5px] font-medium text-(--color-text-500) 
-              transition-colors duration-200 data-[state=inactive]:hover:text-(--color-text-900) data-[state=active]:bg-transparent 
-              data-[state=active]:text-(--color-brand) data-[state=active]:font-semibold data-[state=active]:shadow-none 
-              dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-transparent dark:text-(--color-text-500) 
-              dark:data-[state=inactive]:hover:text-(--color-text-900)"
-            >
-              {activeTab === "manual" && (
-                <motion.span
-                  layoutId="knowledge-tab-pill"
-                  className="absolute inset-0 rounded-[9px] bg-(--color-bg-card) shadow-sm"
-                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
-                />
-              )}
-              <span className="relative z-10">Isi Manual</span>
-            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="dokumen">
-            <DocumentsPage isAdmin={isAdmin} />
-          </TabsContent>
 
           <TabsContent value="manual">
             <ProfileForm
@@ -106,6 +102,10 @@ const KnowledgePage = ({
               initialSections={initialSections}
               plan={plan}
             />
+          </TabsContent>
+
+          <TabsContent value="dokumen">
+            <DocumentsPage isAdmin={isAdmin} />
           </TabsContent>
         </Tabs>
       </div>
