@@ -11,6 +11,8 @@ import {
   toDateSafe,
   getCurrentDateTime,
   isValidTimeZone,
+  isIndonesianTimeZone,
+  getUtcOffsetLabel,
 } from "./format";
 
 describe("formatRupiah", () => {
@@ -234,5 +236,41 @@ describe("isValidTimeZone", () => {
   it("rejects garbage and empty strings", () => {
     expect(isValidTimeZone("Not/AZone")).toBe(false);
     expect(isValidTimeZone("")).toBe(false);
+  });
+});
+
+describe("isIndonesianTimeZone", () => {
+  it("accepts all four Indonesian IANA zones", () => {
+    for (const zone of [
+      "Asia/Jakarta",
+      "Asia/Pontianak",
+      "Asia/Makassar",
+      "Asia/Jayapura",
+    ]) {
+      expect(isIndonesianTimeZone(zone)).toBe(true);
+    }
+  });
+
+  it("rejects UTC (CI browsers) and other countries", () => {
+    expect(isIndonesianTimeZone("UTC")).toBe(false);
+    expect(isIndonesianTimeZone("Asia/Singapore")).toBe(false);
+  });
+
+  it("rejects inherited object keys and empty strings", () => {
+    expect(isIndonesianTimeZone("toString")).toBe(false);
+    expect(isIndonesianTimeZone("")).toBe(false);
+  });
+});
+
+describe("getUtcOffsetLabel", () => {
+  const instant = new Date("2026-09-20T13:21:00Z");
+
+  it("formats whole-hour and half-hour offsets", () => {
+    expect(getUtcOffsetLabel(instant, "Asia/Makassar")).toBe("UTC+8");
+    expect(getUtcOffsetLabel(instant, "Asia/Kolkata")).toBe("UTC+5:30");
+  });
+
+  it("returns plain UTC for UTC itself", () => {
+    expect(getUtcOffsetLabel(instant, "UTC")).toBe("UTC");
   });
 });

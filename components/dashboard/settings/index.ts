@@ -4,3 +4,4 @@ export { default as ProfileSection } from "./ProfileSection";
 export { default as DeleteOrgDialog } from "./DeleteOrgDialog";
 export { default as SlugChangeDialog } from "./SlugChangeDialog";
 export { default as DangerZoneSection } from "./DangerZoneSection";
+export { default as TimezoneSection } from "./TimezoneSection";

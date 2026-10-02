@@ -9,9 +9,11 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { PusherProvider } from "@/components/providers/pusher-provider";
 import { PostHogProvider } from "@/components/providers/posthog-provider";
 import { AccentColorProvider } from "@/components/providers/accent-color-provider";
+import { TimezoneAutoDetect } from "@/components/providers/timezone-auto-detect";
 
 import { getBotStatus } from "@/lib/db/queries/dashboard";
 import { getBillingData } from "@/lib/db/queries/billing";
+import { getTimezoneDetectionState } from "@/lib/db/queries/org-timezone";
 import type { SubscriptionStatus } from "@/types/billing";
 
 interface DashboardLayoutProps {
@@ -51,6 +53,19 @@ export default async function DashboardLayout({
     console.error("[dashboard/layout] Failed to fetch accent color:", err);
   }
 
+  // Auto-detect runs only for admins on orgs that were never detected —
+  // everyone else pays zero cost, not even a client component
+  let needsTimezoneDetect = false;
+  if (currentOrgRole === "org:admin") {
+    try {
+      const tzState = await getTimezoneDetectionState(orgId);
+      needsTimezoneDetect =
+        tzState !== null && tzState.timezoneDetectedAt === null;
+    } catch (err) {
+      console.error("[dashboard/layout] Failed to fetch timezone state:", err);
+    }
+  }
+
   return (
     <ThemeProvider
       attribute="class"
@@ -63,6 +78,8 @@ export default async function DashboardLayout({
           <AccentColorProvider accentColor={accentColor} />
 
           <PusherProvider orgId={orgId} />
+
+          {needsTimezoneDetect && <TimezoneAutoDetect />}
 
           {/* Skip link — keyboard users jump past sidebar directly to main content */}
           <a

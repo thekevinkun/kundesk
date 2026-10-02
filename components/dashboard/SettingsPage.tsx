@@ -10,6 +10,7 @@ import {
   DangerZoneSection,
   SlugChangeDialog,
   DeleteOrgDialog,
+  TimezoneSection,
 } from "@/components/dashboard/settings";
 import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
 import { fadeUp, staggerContainer } from "@/lib/animations";
@@ -28,6 +29,7 @@ export interface OrgSettings {
   subscriptionStatus: string;
   // Null = no deletion pending. Set = grace period in progress.
   deletionRequestedAt: Date | null;
+  timezone: string;
 }
 
 const profileAction = async (
@@ -275,6 +277,8 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
                 subscriptionStatus={settings.subscriptionStatus}
                 planBadge={planBadge}
               />
+
+              <TimezoneSection timezone={settings.timezone} />
 
               {/* Save profile changes */}
               <div className="flex items-center justify-between pt-2">

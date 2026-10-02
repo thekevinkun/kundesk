@@ -6,13 +6,19 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
-import { eq, and, isNull } from "drizzle-orm";
+import { sql, eq, and, isNull } from "drizzle-orm";
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { orgs } from "@/lib/db/schema";
 import { requireOrg, requireOrgAdmin } from "@/lib/auth";
 import { sendOrgDeletionEmail } from "@/lib/email";
+import { invalidateOrgCache } from "@/lib/redis";
+import {
+  DEFAULT_TIMEZONE,
+  isIndonesianTimeZone,
+  isValidTimeZone,
+} from "@/helpers/format";
 import type { ActionResult } from "@/types/api";
 
 // ── Validation schema for org profile update ──
@@ -32,6 +38,10 @@ const orgProfileSchema = z.object({
     ),
 });
 
+// ── Validation for a timezone string coming from the browser or the picker ──
+// Length cap only — real validity is checked with Intl in each action
+const timezoneSchema = z.string().min(1).max(64);
+
 // ── Get current org settings ──
 // Called by the settings page Server Component
 // Returns only what the settings page needs — not the full orgs row
@@ -42,6 +52,7 @@ export async function getOrgSettings(): Promise<{
   plan: string;
   subscriptionStatus: string;
   deletionRequestedAt: Date | null;
+  timezone: string;
 } | null> {
   const { orgId } = await requireOrg();
 
@@ -53,6 +64,7 @@ export async function getOrgSettings(): Promise<{
       plan: orgs.plan,
       subscriptionStatus: orgs.subscriptionStatus,
       deletionRequestedAt: orgs.deletionRequestedAt,
+      timezone: orgs.timezone,
     })
     .from(orgs)
     .where(eq(orgs.id, orgId))
@@ -193,4 +205,82 @@ export async function cancelOrgDeletion(): Promise<ActionResult> {
   revalidatePath("/dashboard/settings");
 
   return { success: true, data: undefined };
+}
+
+// ── Auto-detect the business timezone (runs once per org) ──
+// Called silently by <TimezoneAutoDetect /> on an admin's first dashboard visit
+// Only Indonesia's four zones are trusted: CI browsers report UTC, and an owner
+// opening the dashboard from abroad must not move the business clock
+export async function autoDetectTimezone(
+  rawTimezone: unknown,
+): Promise<ActionResult<{ updated: boolean }>> {
+  // Admin only — same gate as every other settings mutation
+  const { orgId } = await requireOrgAdmin();
+
+  const parsed = timezoneSchema.safeParse(rawTimezone);
+
+  // Anything outside the four zones is ignored WITHOUT stamping,
+  // so detection retries on a later visit from a normal location
+  if (!parsed.success || !isIndonesianTimeZone(parsed.data)) {
+    return { success: true, data: { updated: false } };
+  }
+
+  const detected = parsed.data;
+
+  // One atomic UPDATE: the stamp is always written (detection is now done),
+  // but the zone changes only if it is still the untouched default —
+  // a value set manually in Neon or Settings is never overwritten
+  const rows = await db
+    .update(orgs)
+    .set({
+      timezone: sql`CASE WHEN ${orgs.timezone} = ${DEFAULT_TIMEZONE} THEN ${detected}::text ELSE ${orgs.timezone} END`,
+      timezoneDetectedAt: new Date(),
+    })
+    // isNull guard makes this run once, even with two tabs racing
+    .where(and(eq(orgs.id, orgId), isNull(orgs.timezoneDetectedAt)))
+    .returning({ id: orgs.id });
+
+  // Already stamped earlier — nothing changed, nothing to invalidate
+  if (rows.length === 0) return { success: true, data: { updated: false } };
+
+  // KUN reads timezone through the cached org — without this it stays stale up to 5 minutes
+  // Don't fail an already-committed write if Redis is down; TTL will expire stale data
+  try {
+    await invalidateOrgCache(orgId);
+  } catch (err) {
+    console.error("Failed to invalidate org cache", err);
+  }
+
+  return { success: true, data: { updated: true } };
+}
+
+// ── Manual timezone change from Settings ──
+// Accepts ANY valid IANA zone (non-Indonesian businesses exist) and stamps
+// timezoneDetectedAt so auto-detect can never undo the owner's explicit choice
+export async function updateOrgTimezone(
+  rawTimezone: unknown,
+): Promise<ActionResult<{ timezone: string }>> {
+  const { orgId } = await requireOrgAdmin();
+
+  const parsed = timezoneSchema.safeParse(rawTimezone);
+  if (!parsed.success || !isValidTimeZone(parsed.data)) {
+    return { success: false, error: "Zona waktu tidak valid" };
+  }
+
+  await db
+    .update(orgs)
+    .set({ timezone: parsed.data, timezoneDetectedAt: new Date() })
+    .where(eq(orgs.id, orgId));
+
+  // Same cache obligation as the auto-detect path
+  try {
+    await invalidateOrgCache(orgId);
+  } catch (err) {
+    console.error("Failed to invalidate org cache", err);
+  }
+
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/dashboard/settings");
+
+  return { success: true, data: { timezone: parsed.data } };
 }

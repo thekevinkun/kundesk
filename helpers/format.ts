@@ -60,12 +60,19 @@ export function formatLocalClock(date: Date): string {
 }
 
 // Well-known Indonesian zone names — every other zone falls back to a "UTC+X" label
-const ID_TIMEZONE_LABELS: Record<string, string> = {
+export const ID_TIMEZONE_LABELS: Record<string, string> = {
   "Asia/Jakarta": "WIB",
   "Asia/Pontianak": "WIB",
   "Asia/Makassar": "WITA",
   "Asia/Jayapura": "WIT",
 };
+
+// True when the zone is one of Indonesia's four IANA zones — the only ones auto-detect trusts
+// Reuses ID_TIMEZONE_LABELS so the list of zones lives in exactly one place
+// hasOwnProperty (not `in`) so inherited keys like "toString" never count as zones
+export function isIndonesianTimeZone(timeZone: string): boolean {
+  return Object.prototype.hasOwnProperty.call(ID_TIMEZONE_LABELS, timeZone);
+}
 
 // Used when an org has no timezone set — most Indonesian SMEs run on WIB
 export const DEFAULT_TIMEZONE = "Asia/Jakarta";
@@ -81,7 +88,7 @@ export function isValidTimeZone(timeZone: string): boolean {
 }
 
 // "UTC+8", "UTC+5:30", "UTC-4", or "UTC" — the zone's offset at one specific moment
-function getUtcOffsetLabel(date: Date, timeZone: string): string {
+export function getUtcOffsetLabel(date: Date, timeZone: string): string {
   const raw =
     new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" })
       .formatToParts(date)
@@ -92,7 +99,11 @@ function getUtcOffsetLabel(date: Date, timeZone: string): string {
   const sign = match?.[1];
   const hours = match?.[2];
   const minutes = match?.[3];
+
   if (!sign || !hours || !minutes) return "UTC";
+
+  // Some ICU versions report UTC as "GMT+00:00" instead of plain "GMT" — normalize both to "UTC"
+  if (hours === "00" && minutes === "00") return "UTC";
 
   return minutes === "00"
     ? `UTC${sign}${Number(hours)}`
@@ -164,6 +175,7 @@ export function getCurrentDateTime(
   // Named zones read "WITA (UTC+8)"; everything else just "UTC+1"
   const offset = getUtcOffsetLabel(now, zone);
   const name = ID_TIMEZONE_LABELS[zone];
+
   const zoneLabel = name ? `${name} (${offset})` : offset;
 
   return `${dayName}, ${get("day")} ${monthName} ${get("year")} — ${get("hour")}.${get("minute")} ${zoneLabel}`;
