@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { getLocalTimezone } from "@/helpers/format";
 import { autoDetectTimezone } from "@/lib/actions/settings";
 
 // Renders nothing — reports the browser's timezone to the server exactly once
@@ -14,8 +13,18 @@ export function TimezoneAutoDetect() {
     if (hasRun.current) return;
     hasRun.current = true;
 
+    // Read Intl directly: getLocalTimezone() returns "Asia/Jakarta" on failure,
+    // and a fallback must never be submitted (the server would stamp it as detected)
+    let zone: string | undefined;
+    try {
+      zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      // Browser can't report a zone — leave the marker null so detection retries later
+    }
+    if (!zone) return;
+
     // Fire-and-forget: a failure here must never disturb the dashboard
-    autoDetectTimezone(getLocalTimezone()).catch((err) => {
+    autoDetectTimezone(zone).catch((err) => {
       console.error("[TimezoneAutoDetect] Failed:", err);
     });
   }, []);

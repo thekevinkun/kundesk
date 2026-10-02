@@ -278,7 +278,7 @@ const SettingsPage = ({ settings }: { settings: OrgSettings }) => {
                 planBadge={planBadge}
               />
 
-              <TimezoneSection timezone={settings.timezone} />
+              <TimezoneSection key={settings.timezone} timezone={settings.timezone} />
 
               {/* Save profile changes */}
               <div className="flex items-center justify-between pt-2">

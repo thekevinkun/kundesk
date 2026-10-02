@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireOrgAdmin: vi.fn(),
   invalidateOrgCache: vi.fn(),
+  revalidatePath: vi.fn(),
   update: vi.fn(),
   set: vi.fn(),
   where: vi.fn(),
@@ -12,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 // Everything settings.ts imports must be mocked so no real env/DB/Clerk is touched
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 vi.mock("@clerk/nextjs/server", () => ({ clerkClient: vi.fn() }));
 vi.mock("@/lib/env", () => ({ env: { appUrl: "http://localhost:3000" } }));
 vi.mock("@/lib/email", () => ({ sendOrgDeletionEmail: vi.fn() }));
@@ -74,6 +75,7 @@ describe("timezone Server Actions", () => {
       mocks.invalidateOrgCache.mockRejectedValue(new Error("redis down"));
       const result = await autoDetectTimezone("Asia/Jayapura");
       expect(result).toEqual({ success: true, data: { updated: true } });
+      expect(mocks.revalidatePath).toHaveBeenCalledWith("/dashboard/settings");
     });
 
     it("rejects non-admins before doing anything", async () => {

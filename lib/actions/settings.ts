@@ -251,6 +251,9 @@ export async function autoDetectTimezone(
     console.error("Failed to invalidate org cache", err);
   }
 
+  // An admin whose first page is Settings would otherwise keep seeing the old default
+  revalidatePath("/dashboard/settings");
+
   return { success: true, data: { updated: true } };
 }
 

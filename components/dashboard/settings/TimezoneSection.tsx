@@ -81,13 +81,20 @@ const TimezoneSection = ({ timezone }: TimezoneSectionProps) => {
 
   const handleSave = () => {
     startTransition(async () => {
-      const result = await updateOrgTimezone(value);
-      if (result.success) {
-        toast.success("Zona waktu disimpan", {
-          description: "KUN akan memakai zona waktu ini mulai sekarang.",
+      try {
+        const result = await updateOrgTimezone(value);
+        if (result.success) {
+          toast.success("Zona waktu disimpan", {
+            description: "KUN akan memakai zona waktu ini mulai sekarang.",
+          });
+        } else {
+          toast.error("Gagal menyimpan", { description: result.error });
+        }
+      } catch {
+        // The action can throw (e.g. session expired, DB down) — never fail silently
+        toast.error("Gagal menyimpan", {
+          description: "Terjadi kesalahan saat menyimpan. Coba lagi.",
         });
-      } else {
-        toast.error("Gagal menyimpan", { description: result.error });
       }
     });
   };
@@ -160,6 +167,10 @@ const TimezoneSection = ({ timezone }: TimezoneSectionProps) => {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter must never submit the surrounding profile form
+                  if (e.key === "Enter") e.preventDefault();
+                }}
                 placeholder="Ketik nama kota, mis. Singapore"
                 className="input-base no-zoom"
                 aria-label="Cari zona waktu"
