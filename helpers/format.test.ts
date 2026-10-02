@@ -8,6 +8,7 @@ import {
   formatDate,
   formatPaymentMethod,
   formatRelativeTime,
+  formatLocalClock,
   toDateSafe,
   getCurrentDateTime,
   isValidTimeZone,
@@ -272,5 +273,15 @@ describe("getUtcOffsetLabel", () => {
 
   it("returns plain UTC for UTC itself", () => {
     expect(getUtcOffsetLabel(instant, "UTC")).toBe("UTC");
+  });
+});
+
+describe("formatLocalClock", () => {
+  const instant = new Date("2026-09-20T13:21:05Z");
+
+  it("renders the clock in the given zone", () => {
+    // Regex because id-ID separators differ between ICU versions
+    expect(formatLocalClock(instant, "Asia/Makassar")).toMatch(/^21\D21\D05$/);
+    expect(formatLocalClock(instant, "Asia/Jakarta")).toMatch(/^20\D21\D05$/);
   });
 });

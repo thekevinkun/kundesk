@@ -251,6 +251,9 @@ export async function autoDetectTimezone(
     console.error("Failed to invalidate org cache", err);
   }
 
+  // Layout too: the Topbar clock reads the org timezone from the layout
+  revalidatePath("/dashboard", "layout");
+
   // An admin whose first page is Settings would otherwise keep seeing the old default
   revalidatePath("/dashboard/settings");
 

@@ -22,19 +22,16 @@ import { saveAccentColor } from "@/lib/actions/chatbot";
 import { fadeIn, dropdownVariants } from "@/lib/animations";
 import { getHumanUnreadConversationIdsAction } from "@/lib/actions/dashboard";
 import { COLOR_PRESETS } from "@/helpers/chatbot";
-import {
-  getLocalTimezone,
-  formatLocalClock,
-  formatUtcOffset,
-} from "@/helpers/format";
+import { formatLocalClock, getUtcOffsetLabel } from "@/helpers/format";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
 
 interface TopbarProps {
   initialAccentColor: string;
   isAdmin: boolean;
+  timezone: string;
 }
 
-const Topbar = ({ initialAccentColor, isAdmin }: TopbarProps) => {
+const Topbar = ({ initialAccentColor, isAdmin, timezone }: TopbarProps) => {
   const {
     unreadCount,
     notificationItems,
@@ -71,6 +68,7 @@ const Topbar = ({ initialAccentColor, isAdmin }: TopbarProps) => {
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [isTinyViewport, setIsTinyViewport] = useState(false);
   const [isCompactSearchOpen, setIsCompactSearchOpen] = useState(false);
+
   // useTransition — keeps UI responsive while Server Action runs in background
   const [, startTransition] = useTransition();
 
@@ -148,26 +146,18 @@ const Topbar = ({ initialAccentColor, isAdmin }: TopbarProps) => {
     void loadUnread();
   }, [setNotifications]);
 
-  // Set timezone cookie on mount — read by dashboard/analytics Server Components
-  // Uses IANA timezone name — e.g. "Asia/Makassar" for WITA
-  useEffect(() => {
-    const tz = getLocalTimezone();
-    // SameSite=Lax — readable server-side, sent on navigation requests
-    document.cookie = `tz=${encodeURIComponent(tz)}; path=/; SameSite=Lax; max-age=31536000`;
-  }, []);
-
-  // Live clock — updates every second using extracted helpers
+  // Live clock — shows the BUSINESS's time (org timezone), not the viewer's device time
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      setClock(formatLocalClock(now));
-      setUtcOffset(formatUtcOffset(now));
+      setClock(formatLocalClock(now, timezone));
+      setUtcOffset(getUtcOffsetLabel(now, timezone));
     };
 
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timezone]);
 
   return (
     <TooltipProvider>
@@ -452,11 +442,11 @@ const Topbar = ({ initialAccentColor, isAdmin }: TopbarProps) => {
                   className="h-7! bg-(--color-border)!"
                 />
 
-                {/* WIB/WITA/WIT clock — live, updates every second, uses device timezone */}
+                {/* Business clock — live, updates every second, uses the org timezone */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
-                      aria-label={`Waktu lokal: ${clock} ${utcOffset}`}
+                      aria-label={`Waktu bisnis: ${clock} ${utcOffset}`}
                       className="hidden md:flex items-center gap-1.5 px-3 py-[7px] bg-(--color-bg-page) 
                         border border-(--color-border) rounded-full"
                     >
@@ -477,7 +467,9 @@ const Topbar = ({ initialAccentColor, isAdmin }: TopbarProps) => {
                       </span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>Waktu lokal perangkat kamu</TooltipContent>
+                  <TooltipContent>
+                    Waktu bisnis kamu ({timezone})
+                  </TooltipContent>
                 </Tooltip>
 
                 <Separator

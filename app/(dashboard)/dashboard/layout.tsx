@@ -14,6 +14,7 @@ import { TimezoneAutoDetect } from "@/components/providers/timezone-auto-detect"
 import { getBotStatus } from "@/lib/db/queries/dashboard";
 import { getBillingData } from "@/lib/db/queries/billing";
 import { getTimezoneDetectionState } from "@/lib/db/queries/org-timezone";
+import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/helpers/format";
 import type { SubscriptionStatus } from "@/types/billing";
 
 interface DashboardLayoutProps {
@@ -53,17 +54,21 @@ export default async function DashboardLayout({
     console.error("[dashboard/layout] Failed to fetch accent color:", err);
   }
 
-  // Auto-detect runs only for admins on orgs that were never detected —
-  // everyone else pays zero cost, not even a client component
+  // One read serves two jobs: the Topbar clock (every role) and auto-detect (admins, first visit only)
+  let orgTimezone = DEFAULT_TIMEZONE;
   let needsTimezoneDetect = false;
-  if (currentOrgRole === "org:admin") {
-    try {
-      const tzState = await getTimezoneDetectionState(orgId);
+  try {
+    const tzState = await getTimezoneDetectionState(orgId);
+    if (tzState) {
+      // A bad value in the DB must never reach the Topbar's Intl calls
+      orgTimezone = isValidTimeZone(tzState.timezone)
+        ? tzState.timezone
+        : DEFAULT_TIMEZONE;
       needsTimezoneDetect =
-        tzState !== null && tzState.timezoneDetectedAt === null;
-    } catch (err) {
-      console.error("[dashboard/layout] Failed to fetch timezone state:", err);
+        currentOrgRole === "org:admin" && tzState.timezoneDetectedAt === null;
     }
+  } catch (err) {
+    console.error("[dashboard/layout] Failed to fetch timezone state:", err);
   }
 
   return (
@@ -103,6 +108,7 @@ export default async function DashboardLayout({
               <Topbar
                 initialAccentColor={accentColor}
                 isAdmin={currentOrgRole === "org:admin"}
+                timezone={orgTimezone}
               />
 
               <main id="main-content" className="flex-1 p-4 md:p-6 lg:p-7">

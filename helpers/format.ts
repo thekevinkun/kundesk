@@ -49,13 +49,14 @@ export function getNextMonthFirstDay(): Date {
   return new Date(now.getFullYear(), now.getMonth() + 1, 1);
 }
 
-// Format local time as HH:MM:SS string in id-ID locale
-export function formatLocalClock(date: Date): string {
+// Format time as HH:MM:SS string in id-ID locale — in the given IANA zone, or the device's when omitted
+export function formatLocalClock(date: Date, timeZone?: string): string {
   return date.toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    timeZone,
   });
 }
 

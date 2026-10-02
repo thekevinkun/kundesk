@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,8 @@ function buildLabel(zone: string, now: Date): string {
 }
 
 const TimezoneSection = ({ timezone }: TimezoneSectionProps) => {
+  const queryClient = useQueryClient();
+
   const [value, setValue] = useState(timezone);
   const [isPending, startTransition] = useTransition();
 
@@ -84,6 +87,9 @@ const TimezoneSection = ({ timezone }: TimezoneSectionProps) => {
       try {
         const result = await updateOrgTimezone(value);
         if (result.success) {
+          // Charts group by day in the org timezone — refetch them with the new zone
+          void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+
           toast.success("Zona waktu disimpan", {
             description: "KUN akan memakai zona waktu ini mulai sekarang.",
           });

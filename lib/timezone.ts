@@ -1,30 +1,20 @@
-// Reads the owner's local timezone from the browser-set cookie
-// Falls back to "Asia/Jakarta" (WIB UTC+7) — most common Indonesian timezone
-// Cookie is set by Topbar on mount via Intl.DateTimeFormat().resolvedOptions().timeZone
+// Returns the BUSINESS's timezone (orgs.timezone) for dashboard queries and charts
+// Previously read a browser cookie, which made the dashboard disagree with KUN
+// whenever the viewer's device was in another zone
 
-import { cookies } from "next/headers";
-
-const FALLBACK_TIMEZONE = "Asia/Jakarta";
-
-// Validates that the value is a real IANA timezone — prevents injection
-function isValidTimezone(tz: string): boolean {
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { getSession } from "@/lib/auth";
+import { getOrgTimezone } from "@/lib/db/queries/org-timezone";
+import { DEFAULT_TIMEZONE } from "@/helpers/format";
 
 export async function getOwnerTimezone(): Promise<string> {
   try {
-    const cookieStore = await cookies();
-    const raw = cookieStore.get("tz")?.value;
-    if (!raw) return FALLBACK_TIMEZONE;
-
-    const decoded = decodeURIComponent(raw);
-    return isValidTimezone(decoded) ? decoded : FALLBACK_TIMEZONE;
-  } catch {
-    return FALLBACK_TIMEZONE;
+    // orgId comes from the server session, never from the client
+    const session = await getSession();
+    if (!session) return DEFAULT_TIMEZONE;
+    return await getOrgTimezone(session.orgId);
+  } catch (err) {
+    // A failed lookup must never take the dashboard down — fall back and log
+    console.error("[getOwnerTimezone] Failed, using default:", err);
+    return DEFAULT_TIMEZONE;
   }
 }
