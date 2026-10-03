@@ -3,7 +3,6 @@
 
 import {
   and,
-  asc,
   eq,
   gte,
   lt,
@@ -453,7 +452,9 @@ export async function expireStalePayments(): Promise<number> {
 //   - "expired" rows created in the last 4 days (our own 24h sweep may have wrongly expired a
 //     paid order whose webhook never came; created within 4 days ≈ expired within ~3 days)
 // Orders already in processedWebhooks are skipped — settled by the webhook, an earlier
-// recovery, or flagged for review. Oldest first; the caller caps the batch.
+// recovery, or flagged for review. Pending rows come first, then expired rows
+// newest-first, so the batch cap never starves the freshest possible lost webhooks.
+// The caller caps the batch.
 export async function getReconcileCandidates(
   limit: number,
 ): Promise<Array<{ orderId: string; status: string }>> {
@@ -461,37 +462,44 @@ export async function getReconcileCandidates(
   const pendingCutoff = new Date(now - 15 * 60 * 1000);
   const expiredWindowStart = new Date(now - 4 * 24 * 60 * 60 * 1000);
 
-  return db
-    .select({ orderId: payments.orderId, status: payments.status })
-    .from(payments)
-    .where(
-      and(
-        // Skip any order that already went through settlement
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(processedWebhooks)
-            .where(
-              and(
-                eq(processedWebhooks.externalId, payments.orderId),
-                eq(processedWebhooks.source, "midtrans"),
+  return (
+    db
+      .select({ orderId: payments.orderId, status: payments.status })
+      .from(payments)
+      .where(
+        and(
+          // Skip any order that already went through settlement
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(processedWebhooks)
+              .where(
+                and(
+                  eq(processedWebhooks.externalId, payments.orderId),
+                  eq(processedWebhooks.source, "midtrans"),
+                ),
               ),
+          ),
+          or(
+            and(
+              eq(payments.status, "pending"),
+              lt(payments.createdAt, pendingCutoff),
             ),
-        ),
-        or(
-          and(
-            eq(payments.status, "pending"),
-            lt(payments.createdAt, pendingCutoff),
-          ),
-          and(
-            eq(payments.status, "expired"),
-            gte(payments.createdAt, expiredWindowStart),
+            and(
+              eq(payments.status, "expired"),
+              gte(payments.createdAt, expiredWindowStart),
+            ),
           ),
         ),
-      ),
-    )
-    .orderBy(asc(payments.createdAt))
-    .limit(limit);
+      )
+      // Pending rows first (freshest possible lost webhooks, still checkable before the
+      // sweep expires them), then expired rows newest-first
+      .orderBy(
+        sql`CASE WHEN ${payments.status} = 'pending' THEN 0 ELSE 1 END`,
+        desc(payments.createdAt),
+      )
+      .limit(limit)
+  );
 }
 
 // Fetches payment history for an org — newest first, max 12 records
