@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { createHash, timingSafeEqual } from "crypto";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 import { PLAN_PRICE } from "@/types/billing";
+import type { MidtransStatusResult } from "@/types/settlement";
 
 // ⚠️ Critical security: verify Midtrans webhook signature on EVERY notification.
 // Signature = SHA512(order_id + status_code + gross_amount + server_key) — plain SHA-512, NOT an HMAC.
@@ -346,4 +347,74 @@ export async function cancelMidtransPayment(
     orderId,
   });
   return false;
+}
+
+// Asks Midtrans for an order's real status (Core API Get Status).
+// Used by the reconcile cron to find payments whose webhook never reached us.
+// Verified live in sandbox: a paid order returns status_code "200" + transaction_status
+// "settlement"; an order that was never paid returns status_code "404" in the body.
+// Throws on anything unclear (network, bad key, unreadable body) — the caller
+// skips that order and tries again on the next run.
+export async function getMidtransTransactionStatus(
+  orderId: string,
+): Promise<MidtransStatusResult> {
+  if (!env.midtransServerKey) {
+    throw new Error(
+      "Midtrans credentials required when KUNDESK_PAYMENT_MODE=midtrans",
+    );
+  }
+
+  // Core API base — sandbox or production, same switch as the other calls
+  const coreBase = env.midtransProduction
+    ? "https://api.midtrans.com/v2"
+    : "https://api.sandbox.midtrans.com/v2";
+
+  const authHeader = Buffer.from(`${env.midtransServerKey}:`).toString(
+    "base64",
+  );
+
+  // 3s timeout: Vercel free functions stop at 10s and the cron checks several orders in parallel
+  const res = await fetch(`${coreBase}/${encodeURIComponent(orderId)}/status`, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${authHeader}`,
+      Accept: "application/json",
+    },
+    signal: AbortSignal.timeout(3000),
+  });
+
+  const body = (await res.json().catch(() => null)) as {
+    status_code?: string;
+    transaction_status?: string;
+    fraud_status?: string;
+    gross_amount?: string;
+    payment_type?: string;
+  } | null;
+
+  if (!body) {
+    throw new Error(
+      `Midtrans status: unreadable response (HTTP ${res.status})`,
+    );
+  }
+
+  // Core reports the real result inside the body, even when the HTTP status is 200.
+  // 404 = Midtrans has no transaction for this order — it was never paid.
+  if (body.status_code === "404") return { found: false };
+
+  // Anything else must carry a transaction_status, otherwise we can't trust it
+  // (e.g. 401 for a bad server key must surface as an error, not as "not paid")
+  if (!body.status_code || !body.transaction_status) {
+    throw new Error(
+      `Midtrans status: unexpected response (HTTP ${res.status}, status_code ${body.status_code ?? "none"})`,
+    );
+  }
+
+  return {
+    found: true,
+    statusCode: body.status_code,
+    transactionStatus: body.transaction_status,
+    fraudStatus: body.fraud_status,
+    grossAmount: body.gross_amount ?? "",
+    paymentType: body.payment_type ?? "unknown",
+  };
 }

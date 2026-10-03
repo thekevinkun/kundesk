@@ -22,6 +22,7 @@ import {
   verifyMidtransSignature,
   generateOrderId,
   cancelMidtransPayment,
+  getMidtransTransactionStatus,
 } from "./index";
 import type { MidtransNotification } from "@/types/billing";
 
@@ -343,5 +344,163 @@ describe("cancelMidtransPayment", () => {
     fetchMock.mockResolvedValueOnce(res(200, { status_code: "200" }));
 
     expect(await cancelMidtransPayment(ORDER_ID, "not-a-url")).toBe(false);
+  });
+});
+
+// ─── getMidtransTransactionStatus ──
+// fetch is stubbed — no real Midtrans calls.
+// Response shapes below were verified live against the sandbox Core API.
+describe("getMidtransTransactionStatus", () => {
+  const ORDER_ID = "KUNDESK-org_3DZH-STARTER-1234567890";
+  const fetchMock = vi.fn();
+
+  // A fake fetch Response with a JSON body
+  function res(status: number, body: object): Response {
+    return new Response(JSON.stringify(body), { status });
+  }
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    mockEnv.midtransServerKey = "test-server-key-12345";
+    mockEnv.midtransProduction = false;
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    // Put everything back so other tests in this file are unaffected
+    mockEnv.midtransServerKey = "test-server-key-12345";
+    mockEnv.midtransProduction = false;
+    vi.unstubAllGlobals();
+  });
+
+  it("returns the parsed status for a paid order", async () => {
+    fetchMock.mockResolvedValueOnce(
+      res(200, {
+        status_code: "200",
+        transaction_status: "settlement",
+        fraud_status: "accept",
+        gross_amount: "99000.00",
+        payment_type: "qris",
+      }),
+    );
+
+    expect(await getMidtransTransactionStatus(ORDER_ID)).toEqual({
+      found: true,
+      statusCode: "200",
+      transactionStatus: "settlement",
+      fraudStatus: "accept",
+      grossAmount: "99000.00",
+      paymentType: "qris",
+    });
+  });
+
+  it("returns found:false when Midtrans has no transaction for the order", async () => {
+    // Real sandbox reply for an order that was never paid
+    fetchMock.mockResolvedValueOnce(
+      res(200, {
+        status_code: "404",
+        status_message: "Transaction doesn't exist.",
+      }),
+    );
+
+    expect(await getMidtransTransactionStatus(ORDER_ID)).toEqual({
+      found: false,
+    });
+  });
+
+  it("falls back to safe defaults when optional fields are missing", async () => {
+    fetchMock.mockResolvedValueOnce(
+      res(200, { status_code: "200", transaction_status: "pending" }),
+    );
+
+    expect(await getMidtransTransactionStatus(ORDER_ID)).toEqual({
+      found: true,
+      statusCode: "200",
+      transactionStatus: "pending",
+      fraudStatus: undefined,
+      grossAmount: "",
+      paymentType: "unknown",
+    });
+  });
+
+  it("calls the sandbox status endpoint with Basic auth", async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { status_code: "404" }));
+
+    await getMidtransTransactionStatus(ORDER_ID);
+
+    const [url, init] = fetchMock.mock.calls[0] as [
+      string,
+      { method: string; headers: Record<string, string> },
+    ];
+    expect(url).toBe(`https://api.sandbox.midtrans.com/v2/${ORDER_ID}/status`);
+    expect(init.method).toBe("GET");
+    expect(init.headers.Authorization).toBe(
+      `Basic ${Buffer.from("test-server-key-12345:").toString("base64")}`,
+    );
+  });
+
+  it("uses the production endpoint when midtransProduction is true", async () => {
+    mockEnv.midtransProduction = true;
+    fetchMock.mockResolvedValueOnce(res(200, { status_code: "404" }));
+
+    await getMidtransTransactionStatus(ORDER_ID);
+
+    expect(fetchMock.mock.calls[0]![0]).toBe(
+      `https://api.midtrans.com/v2/${ORDER_ID}/status`,
+    );
+  });
+
+  it("URL-encodes the order id", async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { status_code: "404" }));
+
+    await getMidtransTransactionStatus("KUNDESK a/b");
+
+    expect(fetchMock.mock.calls[0]![0]).toContain("/v2/KUNDESK%20a%2Fb/status");
+  });
+
+  it("throws when the server key is missing, without calling Midtrans", async () => {
+    mockEnv.midtransServerKey = undefined;
+
+    await expect(getMidtransTransactionStatus(ORDER_ID)).rejects.toThrow(
+      "Midtrans credentials required",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("throws on an unreadable response body", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("<html>bad gateway</html>", { status: 502 }),
+    );
+
+    await expect(getMidtransTransactionStatus(ORDER_ID)).rejects.toThrow(
+      "unreadable response",
+    );
+  });
+
+  it("throws on a bad-key reply instead of treating it as not paid", async () => {
+    // A 401 must surface as an error — never as found:false (that would hide a broken key)
+    fetchMock.mockResolvedValueOnce(
+      res(200, { status_code: "401", status_message: "Access denied" }),
+    );
+
+    await expect(getMidtransTransactionStatus(ORDER_ID)).rejects.toThrow(
+      "unexpected response",
+    );
+  });
+
+  it("throws when the reply has a status_code but no transaction_status", async () => {
+    fetchMock.mockResolvedValueOnce(res(200, { status_code: "200" }));
+
+    await expect(getMidtransTransactionStatus(ORDER_ID)).rejects.toThrow(
+      "unexpected response",
+    );
+  });
+
+  it("propagates a network error", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("network"));
+
+    await expect(getMidtransTransactionStatus(ORDER_ID)).rejects.toThrow(
+      "network",
+    );
   });
 });

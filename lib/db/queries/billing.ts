@@ -1,10 +1,22 @@
 // All billing-related DB queries — imported by Server Actions and webhook handler
 // Every query scopes to orgId first — never query by id alone
 
-import { and, eq, gte, lt, desc, lte, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gte,
+  lt,
+  desc,
+  lte,
+  isNull,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import { invalidateOrgCache } from "@/lib/redis";
-import { orgs, payments, promoCodes } from "@/lib/db/schema";
+import { orgs, payments, processedWebhooks, promoCodes } from "@/lib/db/schema";
 import type {
   BillingPageData,
   PlanName,
@@ -434,6 +446,52 @@ export async function expireStalePayments(): Promise<number> {
     .returning({ id: payments.id });
 
   return updated.length;
+}
+
+// Orders the reconcile cron should ask Midtrans about — a webhook for them may have been lost.
+//   - "pending" rows older than 15 minutes (a normal payment's webhook has long arrived by then)
+//   - "expired" rows created in the last 4 days (our own 24h sweep may have wrongly expired a
+//     paid order whose webhook never came; created within 4 days ≈ expired within ~3 days)
+// Orders already in processedWebhooks are skipped — settled by the webhook, an earlier
+// recovery, or flagged for review. Oldest first; the caller caps the batch.
+export async function getReconcileCandidates(
+  limit: number,
+): Promise<Array<{ orderId: string; status: string }>> {
+  const now = Date.now();
+  const pendingCutoff = new Date(now - 15 * 60 * 1000);
+  const expiredWindowStart = new Date(now - 4 * 24 * 60 * 60 * 1000);
+
+  return db
+    .select({ orderId: payments.orderId, status: payments.status })
+    .from(payments)
+    .where(
+      and(
+        // Skip any order that already went through settlement
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(processedWebhooks)
+            .where(
+              and(
+                eq(processedWebhooks.externalId, payments.orderId),
+                eq(processedWebhooks.source, "midtrans"),
+              ),
+            ),
+        ),
+        or(
+          and(
+            eq(payments.status, "pending"),
+            lt(payments.createdAt, pendingCutoff),
+          ),
+          and(
+            eq(payments.status, "expired"),
+            gte(payments.createdAt, expiredWindowStart),
+          ),
+        ),
+      ),
+    )
+    .orderBy(asc(payments.createdAt))
+    .limit(limit);
 }
 
 // Fetches payment history for an org — newest first, max 12 records
