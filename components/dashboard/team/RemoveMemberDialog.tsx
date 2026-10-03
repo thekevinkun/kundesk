@@ -63,7 +63,7 @@ const RemoveMemberDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[400px]">
+      <DialogContent className="max-w-[440px]">
         <DialogHeader>
           <DialogTitle>{REMOVE_COPY.title}</DialogTitle>
           <DialogDescription>

@@ -79,7 +79,7 @@ const RoleChangeDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[400px]">
+      <DialogContent className="max-w-[440px]">
         <DialogHeader>
           <DialogTitle>{ROLE_CHANGE_COPY.title}</DialogTitle>
           <DialogDescription>

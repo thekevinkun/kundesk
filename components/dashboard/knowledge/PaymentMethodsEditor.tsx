@@ -41,7 +41,9 @@ const PaymentMethodsEditor = ({
       {methods.map((method, index) => (
         <div
           key={method.editorId}
-          className="group grid grid-cols-1 sm:grid-cols-[200px_1fr_auto] gap-3 items-center rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg-page) p-3 transition-colors hover:border-(--color-brand-mid) hover:bg-(--color-bg-card)"
+          className="group grid grid-cols-1 sm:grid-cols-[200px_1fr_auto] gap-3 items-center 
+            rounded-(--radius-sm) border border-(--color-border) bg-(--color-bg-page) p-3 transition-colors 
+          hover:border-(--color-brand-mid) hover:bg-(--color-bg-card)"
         >
           <Input
             value={method.label}
@@ -49,7 +51,7 @@ const PaymentMethodsEditor = ({
             placeholder="Contoh: QRIS"
             maxLength={40}
             disabled={disabled}
-            className="input-base"
+            className="order-2 sm:order-1 input-base font-semibold"
             aria-label={`Metode pembayaran ${index + 1}`}
           />
           <Input
@@ -60,7 +62,7 @@ const PaymentMethodsEditor = ({
             placeholder="Detail (opsional) — contoh: scan di kasir"
             maxLength={120}
             disabled={disabled}
-            className="input-base"
+            className="order-3 sm:order-2 input-base"
             aria-label={`Detail metode ${index + 1}`}
           />
           {!disabled && (
@@ -68,7 +70,8 @@ const PaymentMethodsEditor = ({
               type="button"
               onClick={() => remove(index)}
               aria-label={`Hapus metode ${method.label || index + 1}`}
-              className="justify-self-end rounded-full p-1.5 text-(--color-text-400) transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
+              className="order-1 sm:order-3 justify-self-end rounded-full p-1.5 text-(--color-text-400) transition-colors 
+                hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
             >
               <X className="h-4 w-4" />
             </button>

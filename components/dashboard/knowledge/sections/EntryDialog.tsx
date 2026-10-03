@@ -116,7 +116,7 @@ const EntryDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[520px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-[440px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{entry ? "Edit entri" : "Tambah entri"}</DialogTitle>
           <DialogDescription>

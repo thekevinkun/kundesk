@@ -79,10 +79,13 @@ const stripHours = (hours: EditableHoursSchedule[]): HoursSchedule[] =>
 // top-level Profil/Dokumen tabs in KnowledgePage — two stacked pill bars
 // would blur the hierarchy; pill (outer) + underline (inner) reads clearly
 const subTabTriggerClass =
-  "w-full pb-2 sm:pb-2.5 px-0.5 h-auto rounded-none bg-transparent shadow-none border-b-2 border-transparent " +
-  "text-[12px] sm:text-[13px] font-medium text-(--color-text-500) transition-colors hover:text-(--color-text-900) " +
-  "data-[state=active]:border-(--color-brand) data-[state=active]:text-(--color-brand-dark) " +
-  "data-[state=active]:font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none";
+  "w-full h-auto px-0.5 py-3 sm:py-2 sm:pb-2.5 !text-[13px] font-medium text-(--color-text-500) " +
+  "rounded-none border-0 border-b-2 border-(--color-border) sm:border-transparent bg-transparent shadow-none " +
+  "transition-all duration-150 " +
+  "hover:text-brand hover:bg-(--color-bg-page)/60 " +
+  "data-[state=active]:!border-b-2 data-[state=active]:border-(--color-brand) " +
+  "data-[state=active]:bg-brand/5 data-[state=active]:text-(--color-brand-dark) " +
+  "data-[state=active]:font-semibold data-[state=active]:shadow-none";
 
 const ProfileForm = ({
   isAdmin,
@@ -162,7 +165,9 @@ const ProfileForm = ({
   return (
     <div className="space-y-4 sm:px-1.5 pb-5">
       {!isAdmin && (
-        <div className="px-4 py-3 rounded-(--radius-sm) bg-(--color-bg-page) border border-(--color-border) text-[12.5px] text-(--color-text-500)">
+        <div className="px-4 py-3 rounded-(--radius-sm) bg-(--color-bg-page) 
+          border border-(--color-border) text-[12.5px] text-(--color-text-500)"
+        >
           Hubungi admin untuk mengubah profil bisnis. Kamu masih bisa melihat
           info di bawah.
         </div>
@@ -171,10 +176,10 @@ const ProfileForm = ({
       <Tabs
         value={subTab}
         onValueChange={(value) => setSubTab(value as ManualSubTab)}
-        className="mt-3"
+        className="mt-5"
       >
-        <TabsList className="grid w-full grid-cols-2 items-end justify-start gap-x-4 gap-y-0 
-          h-auto p-0 bg-transparent border-b-2 border-(--color-border) rounded-none sm:flex sm:gap-6"
+        <TabsList className="grid w-full grid-cols-2 items-end justify-start sm:gap-x-4 gap-y-0 
+          h-auto p-0 bg-transparent sm:border-b-2 sm:border-(--color-border) rounded-none sm:flex sm:gap-6"
         >
           <TabsTrigger value="identitas" className={subTabTriggerClass}>
             Identitas & Kontak
@@ -182,10 +187,10 @@ const ProfileForm = ({
           <TabsTrigger value="jam" className={subTabTriggerClass}>
             Jam Operasional
           </TabsTrigger>
-          <TabsTrigger value="pembayaran" className={subTabTriggerClass}>
+          <TabsTrigger value="pembayaran" className={`!border-b-0 ${subTabTriggerClass}`}>
             Metode Pembayaran
           </TabsTrigger>
-          <TabsTrigger value="katalog" className={subTabTriggerClass}>
+          <TabsTrigger value="katalog" className={`!border-b-0 ${subTabTriggerClass}`}>
             <span className="flex items-center gap-1.5">
               Katalog & FAQ
               {totalKnowledgeEntries > 0 && (
@@ -197,14 +202,16 @@ const ProfileForm = ({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="identitas" className="mt-14 sm:mt-5">
+        <TabsContent value="identitas" className="mt-18 sm:mt-5">
           <NumberedSection
             icon={<Store className="h-4 w-4" />}
             title="Identitas & Kontak"
             description="Info dasar yang membantu KUN memperkenalkan bisnismu dan menjawab pertanyaan lokasi/kontak."
             action={
               identityComplete && (
-                <span className="text-[11px] font-medium text-(--color-brand-dark) bg-(--color-brand-light) border border-(--color-brand-mid) px-2 py-0.5 rounded-(--radius-xs)">
+                <span className="w-fit text-[11px] font-medium text-(--color-brand-dark) bg-(--color-brand-light) 
+                  border border-(--color-brand-mid) px-2 py-0.5 rounded-(--radius-xs)"
+                >
                   Lengkap
                 </span>
               )
@@ -266,7 +273,7 @@ const ProfileForm = ({
           {saveBar}
         </TabsContent>
 
-        <TabsContent value="jam" className="mt-14 sm:mt-5">
+        <TabsContent value="jam" className="mt-18 sm:mt-5">
           <NumberedSection
             icon={<Clock className="h-4 w-4" />}
             title="Jam Operasional"
@@ -281,7 +288,7 @@ const ProfileForm = ({
           {saveBar}
         </TabsContent>
 
-        <TabsContent value="pembayaran" className="mt-14 sm:mt-5">
+        <TabsContent value="pembayaran" className="mt-18 sm:mt-5">
           <NumberedSection
             icon={<CreditCard className="h-4 w-4" />}
             title="Metode Pembayaran"
@@ -296,7 +303,7 @@ const ProfileForm = ({
           {saveBar}
         </TabsContent>
 
-        <TabsContent value="katalog" className="mt-14 sm:mt-5">
+        <TabsContent value="katalog" className="mt-18 sm:mt-5">
           <NumberedSection
             icon={<BookOpen className="h-4 w-4" />}
             title="Katalog & FAQ"

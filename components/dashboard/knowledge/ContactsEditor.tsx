@@ -50,7 +50,7 @@ const ContactsEditor = ({
             placeholder="Nama kontak"
             maxLength={40}
             disabled={disabled}
-            className="input-base"
+            className="order-2 sm:order-1 input-base font-semibold"
             aria-label={`Nama kontak ${index + 1}`}
           />
           <Input
@@ -59,7 +59,7 @@ const ContactsEditor = ({
             placeholder="Contoh: 0821-4567-8902"
             maxLength={100}
             disabled={disabled}
-            className="input-base"
+            className="order-3 sm:order-2 input-base"
             aria-label={`Isi kontak ${index + 1}`}
           />
           {!disabled && (
@@ -67,7 +67,8 @@ const ContactsEditor = ({
               type="button"
               onClick={() => remove(index)}
               aria-label={`Hapus kontak ${contact.label || index + 1}`}
-              className="justify-self-end rounded-full p-1.5 text-(--color-text-400) transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
+              className="order-1 sm:order-3 justify-self-end rounded-full p-1.5 text-(--color-text-400) 
+                transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
             >
               <X className="h-4 w-4" />
             </button>

@@ -65,7 +65,7 @@ const HoursScheduleBlock = ({
             placeholder="Nama jadwal — contoh: Klinik, Pet Shop, Darurat"
             maxLength={40}
             disabled={disabled}
-            className="input-base font-semibold"
+            className="order-2 sm:order-1 input-base font-semibold"
             aria-label="Nama jadwal"
           />
           <Input
@@ -76,7 +76,7 @@ const HoursScheduleBlock = ({
             placeholder="Catatan jadwal (opsional)"
             maxLength={150}
             disabled={disabled}
-            className="input-base"
+            className="order-3 sm:order-2 input-base"
             aria-label="Catatan jadwal"
           />
         </div>
@@ -86,7 +86,8 @@ const HoursScheduleBlock = ({
             type="button"
             onClick={onRemove}
             aria-label={`Hapus jadwal ${schedule.label || ""}`}
-            className="rounded-full p-1.5 text-(--color-text-400) transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
+            className="order-1 sm:order-3 rounded-full p-1.5 text-(--color-text-400) transition-colors 
+              hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
           >
             <X className="h-4 w-4" />
           </button>
