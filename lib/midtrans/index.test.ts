@@ -107,6 +107,26 @@ describe("verifyMidtransSignature", () => {
     env.midtransServerKey = original;
   });
 
+  it("returns false (does not throw) when the signature has a different length", () => {
+    const notification = buildValidNotification();
+    // Truncated hash — timingSafeEqual throws on unequal lengths, so this must be a clean false
+    const truncated = {
+      ...notification,
+      signature_key: notification.signature_key.slice(0, 64),
+    };
+    expect(verifyMidtransSignature(truncated)).toBe(false);
+  });
+
+  it("returns false when signature_key is not a string", () => {
+    const notification = buildValidNotification();
+    // A non-string value can never be a valid signature
+    const broken = {
+      ...notification,
+      signature_key: 123 as unknown as string,
+    };
+    expect(verifyMidtransSignature(broken)).toBe(false);
+  });
+
   it("is sensitive to field order in the hash — order_id must come first", () => {
     // If someone accidentally reorders the concatenation, this fails
     // Proves we're computing SHA512(order_id + status_code + gross_amount + key)

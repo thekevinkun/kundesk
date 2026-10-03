@@ -1,88 +1,78 @@
 // Unit tests for the Midtrans webhook handler
-// Tests every layer of the state machine:
-//   signature → idempotency → status → fraud → order_id parsing → activation
+// Layers covered: body shape → signature → idempotency → status → fraud → status_code →
+// order_id → checkout record → org → amount → transaction → post-commit work
 // All DB calls and external functions are mocked — no real DB touched
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
-// ── Mock @/lib/env ──
-// env.ts calls requireEnv() at module load — throws if vars missing in test env
-// We replace the entire module with a stable fake object
-vi.mock("@/lib/env", () => ({
-  env: {
-    databaseUrl: "postgresql://placeholder-host/placeholder-db",
-    clerkSecretKey: "sk_test_fake",
-    clerkWebhookSecret: "whsec_fake",
-    appUrl: "http://localhost:3000",
-    logoUrl: "http://localhost:3000/logo.png",
-    cronSecret: "fake-cron-secret",
-    midtransServerKey: "fake-server-key",
-    midtransClientKey: "fake-client-key",
-    midtransProduction: false,
-    paymentMode: "mock",
-    aiMode: "mock",
-    embeddingMode: "mock",
-    storageMode: "mock",
-    realtimeMode: "mock",
-    emailMode: "mock",
-  },
+// Callbacks the route registers through after() — collected so tests can run them by hand
+const afterCallbacks = vi.hoisted(
+  () => [] as Array<() => Promise<void> | void>,
+);
+
+// Mutable env — vi.hoisted so a test can flip paymentMode (rule 163)
+const mockEnv = vi.hoisted(() => ({
+  databaseUrl: "postgresql://placeholder-host/placeholder-db",
+  clerkSecretKey: "sk_test_fake",
+  clerkWebhookSecret: "whsec_fake",
+  appUrl: "http://localhost:3000",
+  logoUrl: "http://localhost:3000/logo.png",
+  cronSecret: "fake-cron-secret",
+  midtransServerKey: "fake-server-key",
+  midtransClientKey: "fake-client-key",
+  midtransProduction: false,
+  paymentMode: "mock" as string,
+  aiMode: "mock",
+  embeddingMode: "mock",
+  storageMode: "mock",
+  realtimeMode: "mock",
+  emailMode: "mock",
 }));
+vi.mock("@/lib/env", () => ({ env: mockEnv }));
 
-// ── Mock verifyMidtransSignature ──
-// Controls whether signature check passes — default true, overridden per test
-vi.mock("@/lib/midtrans", () => ({
-  verifyMidtransSignature: vi.fn(() => true),
-}));
-
-// ── Mock the database ──
-// db.select().from().where() returns [] by default (not processed yet)
-// db.insert().values() is a no-op
-// Each test overrides the select return value as needed
-vi.mock("@/lib/db", () => {
-  const selectMock = vi.fn();
-
-  // Default select chain
-  selectMock.mockReturnValue({
-    from: vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue([]),
-    }),
-  });
-
-  // Shared insert mock
-  const insertMock = vi.fn().mockReturnValue({
-    values: vi.fn().mockResolvedValue(undefined),
-  });
-
+// Real NextRequest/NextResponse, but after() only records its callback
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
   return {
-    db: {
-      select: selectMock,
-
-      insert: insertMock,
-
-      // Mock transaction wrapper
-      transaction: vi.fn(async (callback) => {
-        // Fake tx object passed into transaction callback
-        const tx = {
-          insert: insertMock,
-
-          update: vi.fn().mockReturnValue({
-            set: vi.fn().mockReturnValue({
-              where: vi.fn().mockResolvedValue(undefined),
-            }),
-          }),
-        };
-
-        return callback(tx);
-      }),
+    ...actual,
+    after: (callback: () => Promise<void> | void) => {
+      afterCallbacks.push(callback);
     },
   };
 });
 
-// ── Mock billing queries ──
-// We verify these get called with correct args on the happy path
+// Sentry — spies only, so tests can assert what gets reported
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage: vi.fn(),
+  captureException: vi.fn(),
+}));
+
+// PostHog and the dashboard notification — no real side effects
+vi.mock("@/lib/posthog", () => ({
+  trackEventImmediate: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/db/queries/dashboard", () => ({
+  createNotification: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Signature check — default true, overridden per test
+vi.mock("@/lib/midtrans", () => ({
+  verifyMidtransSignature: vi.fn(() => true),
+}));
+
+// Database — chains are rebuilt in beforeEach
+vi.mock("@/lib/db", () => ({
+  db: {
+    select: vi.fn(),
+    insert: vi.fn(),
+    transaction: vi.fn(),
+  },
+}));
+
+// Billing queries — real OrgPurgingError class inside the factory (route uses instanceof)
 vi.mock("@/lib/db/queries/billing", () => {
-  // Real class inside the factory — the route uses `instanceof` on it
   class OrgPurgingError extends Error {
     constructor() {
       super("Organization is already being purged");
@@ -106,8 +96,7 @@ vi.mock("@/lib/email", () => ({
   sendPaymentPendingEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
-// ── Mock drizzle operators ──
-// The handler imports { and, eq, sql } from drizzle-orm — just return identity
+// Drizzle operators — identity-style fakes so tests can assert how they were called
 vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: unknown[]) => args),
   eq: vi.fn((a: unknown, b: unknown) => ({ a, b })),
@@ -117,11 +106,11 @@ vi.mock("drizzle-orm", () => ({
   })),
 }));
 
-// ── Mock schema ──
-// Handler imports { processedWebhooks, orgs } — just need the shape
+// Schema — only the shape the handler touches
 vi.mock("@/lib/db/schema", () => ({
   processedWebhooks: { id: "id", source: "source", externalId: "externalId" },
   orgs: { id: "id", name: "name", ownerEmail: "ownerEmail" },
+  promoCodes: { id: "id", usedCount: "usedCount" },
 }));
 
 // ── Import after all mocks are registered ──
@@ -134,10 +123,31 @@ import {
   getPaymentByOrderId,
   OrgPurgingError,
 } from "@/lib/db/queries/billing";
+import { createNotification } from "@/lib/db/queries/dashboard";
+import { trackEventImmediate } from "@/lib/posthog";
+import { sendPlanUpgradedEmail } from "@/lib/email";
 import { db } from "@/lib/db";
+import { eq, sql } from "drizzle-orm";
 
-// ── Helper: build a NextRequest with a JSON body ──
-function makeRequest(body: object): NextRequest {
+// ── Fixtures ──
+const ORG = {
+  id: "org_3DZHfake123",
+  name: "Test Org",
+  ownerEmail: "owner@test.com",
+};
+
+// A checkout row as insertPendingPayment would have written it
+const CHECKOUT_ROW = {
+  orgId: ORG.id,
+  plan: "starter",
+  amount: 149000,
+  status: "pending",
+};
+
+// ── Helpers ──
+
+// Body can be anything — some tests send `null` on purpose
+function makeRequest(body: unknown): NextRequest {
   return new NextRequest("http://localhost:3000/api/webhooks/midtrans", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -145,9 +155,7 @@ function makeRequest(body: object): NextRequest {
   });
 }
 
-// ── Helper: valid Midtrans notification payload ──
-// order_id format: KUNDESK-{orgIdSlice}-{PLAN}-{timestamp}
-// orgIdSlice matches LEFT(orgId, 8) — "org_3DZH" = first 8 chars of a Clerk orgId
+// order_id format: KUNDESK-{first 8 chars of orgId}-{PLAN}-{timestamp}
 function validNotification(overrides: object = {}) {
   return {
     order_id: "KUNDESK-org_3DZH-STARTER-1234567890",
@@ -162,75 +170,124 @@ function validNotification(overrides: object = {}) {
   };
 }
 
+// One result per db.select() call, in call order: [idempotency, org lookup, ...]
+function mockSelectSequence(results: unknown[][]): void {
+  let call = 0;
+  vi.mocked(db.select).mockImplementation(() => {
+    const result = results[call] ?? [];
+    call++;
+    return {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(result),
+      }),
+    } as unknown as ReturnType<typeof db.select>;
+  });
+}
+
+// Idempotency check → not processed, org lookup → found
+function mockOrgFound(): void {
+  mockSelectSequence([[], [ORG]]);
+}
+
+// db.insert chain — both `await values()` and `values().onConflictDoNothing()` work on it
+function mockInsert(): { onConflictDoNothing: ReturnType<typeof vi.fn> } {
+  const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
+  const valuesResult = Object.assign(Promise.resolve(undefined), {
+    onConflictDoNothing,
+  });
+  vi.mocked(db.insert).mockReturnValue({
+    values: vi.fn().mockReturnValue(valuesResult),
+  } as unknown as ReturnType<typeof db.insert>);
+  return { onConflictDoNothing };
+}
+
+// Runs everything the route handed to after() — the email and analytics work
+async function runAfterCallbacks(): Promise<void> {
+  await Promise.all(afterCallbacks.map((callback) => callback()));
+}
+
 describe("POST /api/webhooks/midtrans", () => {
   beforeEach(() => {
-    // Reset all mocks between tests — prevents state leaking between cases
+    // Reset call history between tests — prevents state leaking between cases
     vi.clearAllMocks();
+    afterCallbacks.length = 0;
+    mockEnv.paymentMode = "mock";
 
-    // Restore default: signature valid, not yet processed, org found
+    // Restore defaults: signature valid, nothing processed, no checkout row
     vi.mocked(verifyMidtransSignature).mockReturnValue(true);
+    mockSelectSequence([]);
+    mockInsert();
+    vi.mocked(getPaymentByOrderId).mockResolvedValue(null);
 
-    // Default db.select chain: nothing processed yet
-    vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([]),
-      }),
-    } as unknown as ReturnType<typeof db.select>);
-
-    // Default db.insert: no-op
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ReturnType<typeof db.insert>);
-
+    // Transaction runs its callback with a fake tx handle
     vi.mocked(db.transaction).mockImplementation(async (callback) => {
       const tx = {
         insert: vi.fn().mockReturnValue({
           values: vi.fn().mockResolvedValue(undefined),
         }),
-
         update: vi.fn().mockReturnValue({
           set: vi.fn().mockReturnValue({
             where: vi.fn().mockResolvedValue(undefined),
           }),
         }),
       };
-
       return callback(tx as never);
     });
-
-    vi.mocked(getPaymentByOrderId).mockResolvedValue(null);
   });
 
-  // ── Layer 1: Signature verification ──
+  // ── Body shape ──
+
+  it("returns 400 for invalid JSON body", async () => {
+    const req = new NextRequest("http://localhost:3000/api/webhooks/midtrans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "this is not json {{{",
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("Invalid JSON");
+  });
+
+  it("returns 400 for a null body without crashing", async () => {
+    const res = await POST(makeRequest(null));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("Invalid payload");
+    expect(verifyMidtransSignature).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when a required field is missing", async () => {
+    const body: Record<string, unknown> = validNotification();
+    delete body.signature_key;
+
+    const res = await POST(makeRequest(body));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("Invalid payload");
+  });
+
+  // ── Layer 1: Signature ──
 
   it("returns 401 when signature is invalid", async () => {
-    // Simulate Midtrans sending a tampered notification
     vi.mocked(verifyMidtransSignature).mockReturnValue(false);
 
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.error).toBe("Invalid signature");
+    expect((await res.json()).error).toBe("Invalid signature");
   });
 
   // ── Layer 2: Idempotency ──
 
   it("returns 200 and skips processing when notification already processed", async () => {
-    // Simulate: this order_id already exists in processedWebhooks
-    vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: 1 }]), // already processed
-      }),
-    } as unknown as ReturnType<typeof db.select>);
+    mockSelectSequence([[{ id: 1 }]]);
 
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Already processed");
-
-    // Critical: subscription must NOT be activated on duplicate
+    expect((await res.json()).message).toBe("Already processed");
     expect(activateSubscription).not.toHaveBeenCalled();
     expect(markPaymentSuccess).not.toHaveBeenCalled();
   });
@@ -243,8 +300,7 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("No action required");
+    expect((await res.json()).message).toBe("No action required");
     expect(activateSubscription).not.toHaveBeenCalled();
   });
 
@@ -254,8 +310,7 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Payment closed");
+    expect((await res.json()).message).toBe("Payment closed");
     expect(markPaymentClosed).toHaveBeenCalledWith(
       "KUNDESK-org_3DZH-STARTER-1234567890",
       "expired",
@@ -269,8 +324,7 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Payment closed");
+    expect((await res.json()).message).toBe("Payment closed");
     expect(markPaymentClosed).toHaveBeenCalledWith(
       "KUNDESK-org_3DZH-STARTER-1234567890",
       "failed",
@@ -279,41 +333,18 @@ describe("POST /api/webhooks/midtrans", () => {
   });
 
   it("activates subscription for capture status (credit card)", async () => {
-    // "capture" is credit card equivalent of "settlement"
-    // db.select returns: not processed yet (first call), then org found (second call)
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          // First select: idempotency check → not processed
-          // Second select: org lookup → found
-          where: vi.fn().mockResolvedValue(
-            callCount === 1
-              ? []
-              : [
-                  {
-                    id: "org_3DZHfake123",
-                    name: "Test Org",
-                    ownerEmail: "owner@test.com",
-                  },
-                ],
-          ),
-        }),
-      } as unknown as ReturnType<typeof db.select>;
-    });
+    mockOrgFound();
 
     const res = await POST(
       makeRequest(validNotification({ transaction_status: "capture" })),
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("OK");
+    expect((await res.json()).message).toBe("OK");
     expect(activateSubscription).toHaveBeenCalled();
   });
 
-  // ── Layer 4: Fraud check ──
+  // ── Layer 4: Fraud ──
 
   it("does not activate subscription when fraud_status is challenge", async () => {
     const res = await POST(
@@ -321,14 +352,10 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Flagged for review");
-
-    // Subscription must NOT activate on fraud flag
+    expect((await res.json()).message).toBe("Flagged for review");
     expect(activateSubscription).not.toHaveBeenCalled();
     expect(markPaymentSuccess).not.toHaveBeenCalled();
-
-    // But must be marked as processed so Midtrans stops retrying
+    // Marked processed so Midtrans stops retrying
     expect(db.insert).toHaveBeenCalled();
   });
 
@@ -338,101 +365,236 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Flagged for review");
+    expect((await res.json()).message).toBe("Flagged for review");
     expect(activateSubscription).not.toHaveBeenCalled();
   });
 
-  // ── Layer 5: order_id parsing ──
+  it("still flags fraud when a challenged capture arrives with status_code 201", async () => {
+    // The status_code check must run AFTER the fraud check — 201 is legitimate here
+    const res = await POST(
+      makeRequest(
+        validNotification({
+          transaction_status: "capture",
+          fraud_status: "challenge",
+          status_code: "201",
+        }),
+      ),
+    );
 
-  it("returns 400 for malformed order_id with fewer than 4 parts", async () => {
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe("Flagged for review");
+    expect(activateSubscription).not.toHaveBeenCalled();
+  });
+
+  // ── status_code consistency ──
+
+  it("takes no action when a settlement arrives with status_code other than 200", async () => {
+    const res = await POST(
+      makeRequest(validNotification({ status_code: "201" })),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe("Inconsistent status — no action");
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "midtrans webhook: settlement with unexpected status_code",
+      expect.objectContaining({ level: "warning" }),
+    );
+  });
+
+  // ── order_id parsing (permanent failures answer 200 + Sentry, never 400) ──
+
+  it("answers 200 and alerts Sentry for an order_id with too few parts", async () => {
     const res = await POST(
       makeRequest(validNotification({ order_id: "KUNDESK-org_3DZH" })),
     );
 
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toBe("Malformed order_id");
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe(
+      "Unprocessable order_id — flagged for review",
+    );
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "midtrans webhook: settled payment with unparseable order_id",
+      expect.objectContaining({ level: "error" }),
+    );
   });
 
-  it("returns 400 for unknown plan in order_id", async () => {
+  it("answers 200 and alerts Sentry for an unknown plan in order_id", async () => {
     const res = await POST(
       makeRequest(
         validNotification({ order_id: "KUNDESK-org_3DZH-ENTERPRISE-123" }),
       ),
     );
 
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toBe("Unknown plan");
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe(
+      "Unprocessable order_id — flagged for review",
+    );
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalled();
   });
 
-  // ── Layer 6: Org resolution ──
-
-  it("returns 200 when org not found for the order_id slice", async () => {
-    // First select (idempotency): not processed — Second select (org): not found
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(
-            callCount === 1 ? [] : [], // both return empty
-          ),
+  it("rejects an order_id with trailing junk", async () => {
+    const res = await POST(
+      makeRequest(
+        validNotification({
+          order_id: "KUNDESK-org_3DZH-STARTER-1234567890-X",
         }),
-      } as unknown as ReturnType<typeof db.select>;
+      ),
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe(
+      "Unprocessable order_id — flagged for review",
+    );
+    expect(activateSubscription).not.toHaveBeenCalled();
+  });
+
+  // ── Checkout record ──
+
+  it("refuses a settlement with no checkout record in real mode", async () => {
+    mockEnv.paymentMode = "midtrans";
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe(
+      "No checkout record — flagged for review",
+    );
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "midtrans webhook: settled payment has no checkout record",
+      expect.objectContaining({ level: "error" }),
+    );
+  });
+
+  it("flags a settlement whose order_id org does not match the checkout record", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      ...CHECKOUT_ROW,
+      orgId: "org_ZZZZother99",
+    });
+    const { onConflictDoNothing } = mockInsert();
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe(
+      "Order mismatch — flagged for review",
+    );
+    expect(activateSubscription).not.toHaveBeenCalled();
+    // Marked processed so Midtrans stops retrying
+    expect(onConflictDoNothing).toHaveBeenCalled();
+  });
+
+  it("flags a settlement whose order_id plan does not match the checkout record", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      ...CHECKOUT_ROW,
+      plan: "pro",
     });
 
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.error).toBe("Org resolution failed");
+    expect((await res.json()).message).toBe(
+      "Order mismatch — flagged for review",
+    );
     expect(activateSubscription).not.toHaveBeenCalled();
   });
 
-  // ── Layer 7+8: Happy path ──
+  it("resolves the org by the full orgId on the checkout row, not the 8-char prefix", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue(CHECKOUT_ROW);
+    mockOrgFound();
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect(eq).toHaveBeenCalledWith("id", ORG.id);
+    // The prefix lookup builds its filter with sql`` — it must not run
+    expect(sql).not.toHaveBeenCalled();
+    expect(activateSubscription).toHaveBeenCalled();
+  });
+
+  it("answers 200 and alerts Sentry when the checkout row has no org (purged)", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      ...CHECKOUT_ROW,
+      orgId: null,
+    });
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).error).toBe("Org resolution failed");
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "midtrans webhook: org resolution failed",
+      expect.objectContaining({ level: "error" }),
+    );
+  });
+
+  it("still activates a settlement for a non-pending order, with a Sentry warning", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      ...CHECKOUT_ROW,
+      status: "cancelled",
+    });
+    mockOrgFound();
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    // Real money arrived — activation is not blocked (rule 160)
+    expect(activateSubscription).toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "midtrans webhook: settlement for a non-pending order",
+      expect.objectContaining({ level: "warning" }),
+    );
+  });
+
+  // ── Org resolution (mock-mode fallback, no checkout row) ──
+
+  it("answers 200 and alerts Sentry when no org matches the order_id slice", async () => {
+    mockSelectSequence([[], []]);
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).error).toBe("Org resolution failed");
+    expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      "midtrans webhook: org resolution failed",
+      expect.objectContaining({ level: "error" }),
+    );
+  });
+
+  it("refuses to activate when two orgs share the slice", async () => {
+    mockSelectSequence([[], [ORG, { ...ORG, id: "org_3DZHother99" }]]);
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).error).toBe("Org resolution failed");
+    expect(activateSubscription).not.toHaveBeenCalled();
+  });
+
+  // ── Happy path ──
 
   it("activates subscription and marks payment as success on valid settlement", async () => {
-    // Two db.select calls: idempotency check (empty) then org lookup (found)
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(
-            callCount === 1
-              ? []
-              : [
-                  {
-                    id: "org_3DZHfake123",
-                    name: "Test Org",
-                    ownerEmail: "owner@test.com",
-                  },
-                ],
-          ),
-        }),
-      } as unknown as ReturnType<typeof db.select>;
-    });
+    mockOrgFound();
 
     const notification = validNotification();
     const res = await POST(makeRequest(notification));
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("OK");
-
-    // Subscription activated with correct org and plan, tx handle passed through
-    // for real transactional atomicity (see activateSubscription's dbOrTx param)
+    expect((await res.json()).message).toBe("OK");
+    // tx handle passed through so activation and payment write roll back together
     expect(activateSubscription).toHaveBeenCalledWith(
-      "org_3DZHfake123",
+      ORG.id,
       "starter",
       "bank_transfer",
       expect.anything(),
     );
-    // 6th argument is the transaction handle — payment write now rolls back with activation
     expect(markPaymentSuccess).toHaveBeenCalledWith(
-      "org_3DZHfake123",
+      ORG.id,
       notification.order_id,
       "starter",
       149000,
@@ -442,25 +604,7 @@ describe("POST /api/webhooks/midtrans", () => {
   });
 
   it("activates pro plan when order_id contains PRO", async () => {
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(
-            callCount === 1
-              ? []
-              : [
-                  {
-                    id: "org_3DZHfake123",
-                    name: "Test Org",
-                    ownerEmail: "owner@test.com",
-                  },
-                ],
-          ),
-        }),
-      } as unknown as ReturnType<typeof db.select>;
-    });
+    mockOrgFound();
 
     const res = await POST(
       makeRequest(
@@ -472,150 +616,60 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(res.status).toBe(200);
-
-    // Plan extracted from order_id correctly
     expect(activateSubscription).toHaveBeenCalledWith(
-      "org_3DZHfake123",
+      ORG.id,
       "pro",
       "bank_transfer",
       expect.anything(),
     );
   });
 
-  it("returns 400 for invalid JSON body", async () => {
-    // Send a request with a broken body — can't be parsed as JSON
-    const req = new NextRequest("http://localhost:3000/api/webhooks/midtrans", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "this is not json {{{",
-    });
-
-    const res = await POST(req);
-
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toBe("Invalid JSON");
-  });
-
-  // ── Layer 9: Amount validation ──
+  // ── Amount validation ──
 
   it("rejects activation when reported amount doesn't match the payment record", async () => {
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(
-            callCount === 1
-              ? []
-              : [
-                  {
-                    id: "org_3DZHfake123",
-                    name: "Test Org",
-                    ownerEmail: "owner@test.com",
-                  },
-                ],
-          ),
-        }),
-      } as unknown as ReturnType<typeof db.select>;
-    });
-
-    // Checkout recorded 149000, but the webhook reports only 1000
-    vi.mocked(getPaymentByOrderId).mockResolvedValue({
-      amount: 149000,
-      status: "pending",
-    });
+    mockOrgFound();
+    vi.mocked(getPaymentByOrderId).mockResolvedValue(CHECKOUT_ROW);
 
     const res = await POST(
       makeRequest(validNotification({ gross_amount: "1000" })),
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Amount mismatch — flagged for review");
+    expect((await res.json()).message).toBe(
+      "Amount mismatch — flagged for review",
+    );
     expect(activateSubscription).not.toHaveBeenCalled();
     expect(markPaymentSuccess).not.toHaveBeenCalled();
   });
 
   it("activates normally when reported amount matches the payment record", async () => {
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(
-            callCount === 1
-              ? []
-              : [
-                  {
-                    id: "org_3DZHfake123",
-                    name: "Test Org",
-                    ownerEmail: "owner@test.com",
-                  },
-                ],
-          ),
-        }),
-      } as unknown as ReturnType<typeof db.select>;
-    });
-
-    vi.mocked(getPaymentByOrderId).mockResolvedValue({
-      amount: 149000,
-      status: "pending",
-    });
+    mockOrgFound();
+    vi.mocked(getPaymentByOrderId).mockResolvedValue(CHECKOUT_ROW);
 
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("OK");
+    expect((await res.json()).message).toBe("OK");
     expect(activateSubscription).toHaveBeenCalled();
   });
 
-  // ── Retry safety (Phase 16 — webhook hardening) ──
-
-  // Helper: idempotency select → empty, org lookup → found
-  function mockOrgFound() {
-    let callCount = 0;
-    vi.mocked(db.select).mockImplementation(() => {
-      callCount++;
-      return {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(
-            callCount === 1
-              ? []
-              : [
-                  {
-                    id: "org_3DZHfake123",
-                    name: "Test Org",
-                    ownerEmail: "owner@test.com",
-                  },
-                ],
-          ),
-        }),
-      } as unknown as ReturnType<typeof db.select>;
-    });
-  }
+  // ── Retry safety ──
 
   it("ignores a denied attempt without closing the order or marking it processed", async () => {
-    // A declined card must not end the order — customer can retry with another method
     const res = await POST(
       makeRequest(validNotification({ transaction_status: "deny" })),
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Attempt denied — no action");
+    expect((await res.json()).message).toBe("Attempt denied — no action");
     expect(markPaymentClosed).not.toHaveBeenCalled();
-    // Nothing written to processedWebhooks — a later settlement must still get through
     expect(db.insert).not.toHaveBeenCalled();
   });
 
   it("activates the plan when a payment settles after an earlier denied attempt", async () => {
-    // Attempt 1: card declined
     await POST(makeRequest(validNotification({ transaction_status: "deny" })));
     expect(db.insert).not.toHaveBeenCalled();
 
-    // Attempt 2: same order_id, paid another way
     mockOrgFound();
     const res = await POST(makeRequest(validNotification()));
 
@@ -629,12 +683,10 @@ describe("POST /api/webhooks/midtrans", () => {
     );
 
     expect(markPaymentClosed).toHaveBeenCalled();
-    // Non-payment events must never write to processedWebhooks
     expect(db.insert).not.toHaveBeenCalled();
   });
 
   it("returns 503 when the database fails (so Midtrans retries)", async () => {
-    // Simulate a Neon cold-start timeout on the very first query
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockRejectedValue(new Error("ETIMEDOUT")),
@@ -645,11 +697,11 @@ describe("POST /api/webhooks/midtrans", () => {
 
     expect(res.status).toBe(503);
     expect(activateSubscription).not.toHaveBeenCalled();
+    expect(Sentry.captureException).toHaveBeenCalled();
   });
 
   it("returns 503 and does not mark processed when activation fails with a normal error", async () => {
     mockOrgFound();
-    // Ordinary failure (not the purge race) — Midtrans must retry
     vi.mocked(activateSubscription).mockRejectedValueOnce(
       new Error("ETIMEDOUT"),
     );
@@ -657,29 +709,22 @@ describe("POST /api/webhooks/midtrans", () => {
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(503);
-    // Not marked processed — the retry must be allowed to activate
     expect(db.insert).not.toHaveBeenCalled();
   });
 
   it("returns 200 and marks processed when the org is being purged", async () => {
     mockOrgFound();
-    // The one rare case where retrying is pointless
     vi.mocked(activateSubscription).mockRejectedValueOnce(
       new OrgPurgingError(),
     );
-
-    // insert(...).values(...).onConflictDoNothing() — only a duplicate is ignored
-    const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(db.insert).mockReturnValue({
-      values: vi.fn().mockReturnValue({ onConflictDoNothing }),
-    } as unknown as ReturnType<typeof db.insert>);
+    const { onConflictDoNothing } = mockInsert();
 
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.message).toBe("Activation failed — flagged for review");
-    // Marked processed so Midtrans stops retrying
+    expect((await res.json()).message).toBe(
+      "Activation failed — flagged for review",
+    );
     expect(onConflictDoNothing).toHaveBeenCalled();
   });
 
@@ -688,7 +733,6 @@ describe("POST /api/webhooks/midtrans", () => {
     vi.mocked(activateSubscription).mockRejectedValueOnce(
       new OrgPurgingError(),
     );
-
     // A real DB failure (not a duplicate) must not be swallowed
     vi.mocked(db.insert).mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -699,5 +743,118 @@ describe("POST /api/webhooks/midtrans", () => {
     const res = await POST(makeRequest(validNotification()));
 
     expect(res.status).toBe(503);
+  });
+
+  it("returns 200 when a concurrent retry already finished the order", async () => {
+    // Selects: idempotency (empty), org, then the re-check after the unique violation (found)
+    mockSelectSequence([[], [ORG], [{ id: 1 }]]);
+    vi.mocked(db.transaction).mockRejectedValueOnce(
+      Object.assign(new Error("duplicate key"), { code: "23505" }),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe("Already processed");
+    expect(createNotification).not.toHaveBeenCalled();
+  });
+
+  it("recognises a unique violation wrapped in err.cause (Drizzle style)", async () => {
+    mockSelectSequence([[], [ORG], [{ id: 1 }]]);
+    vi.mocked(db.transaction).mockRejectedValueOnce(
+      new Error("wrapped", { cause: { code: "23505" } }),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe("Already processed");
+  });
+
+  it("returns 503 on a unique violation when the order was NOT finished elsewhere", async () => {
+    // The re-check finds nothing — the violation came from somewhere else, so retry
+    mockSelectSequence([[], [ORG], []]);
+    vi.mocked(db.transaction).mockRejectedValueOnce(
+      Object.assign(new Error("duplicate key"), { code: "23505" }),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(503);
+  });
+
+  // ── Post-commit work ──
+
+  it("still returns 200 and reports to Sentry when the dashboard notification fails", async () => {
+    mockOrgFound();
+    vi.mocked(createNotification).mockRejectedValueOnce(new Error("db down"));
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toBe("OK");
+    expect(Sentry.captureException).toHaveBeenCalled();
+  });
+
+  it("sends the upgrade email and tracks the event through after()", async () => {
+    mockOrgFound();
+
+    await POST(makeRequest(validNotification()));
+    await runAfterCallbacks();
+
+    expect(sendPlanUpgradedEmail).toHaveBeenCalledWith(
+      ORG.ownerEmail,
+      ORG.name,
+      "starter",
+      149000,
+      "bank_transfer",
+      "KUNDESK-org_3DZH-STARTER-1234567890",
+      expect.any(Date),
+      expect.any(Date),
+      "http://localhost:3000/logo.png",
+    );
+    expect(trackEventImmediate).toHaveBeenCalledWith(
+      ORG.id,
+      "plan_upgraded",
+      expect.objectContaining({ plan: "starter", has_promo: false }),
+    );
+  });
+
+  it("skips the email when the org has no owner email", async () => {
+    mockSelectSequence([[], [{ ...ORG, ownerEmail: null }]]);
+
+    const res = await POST(makeRequest(validNotification()));
+    await runAfterCallbacks();
+
+    expect(res.status).toBe(200);
+    expect(sendPlanUpgradedEmail).not.toHaveBeenCalled();
+    // Analytics still runs
+    expect(trackEventImmediate).toHaveBeenCalled();
+  });
+
+  it("survives an email failure and still tracks analytics", async () => {
+    mockOrgFound();
+    vi.mocked(sendPlanUpgradedEmail).mockRejectedValueOnce(
+      new Error("resend down"),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+    await runAfterCallbacks();
+
+    expect(res.status).toBe(200);
+    expect(Sentry.captureException).toHaveBeenCalled();
+    expect(trackEventImmediate).toHaveBeenCalled();
+  });
+
+  it("survives an analytics failure without affecting the response", async () => {
+    mockOrgFound();
+    vi.mocked(trackEventImmediate).mockRejectedValueOnce(
+      new Error("posthog down"),
+    );
+
+    const res = await POST(makeRequest(validNotification()));
+    await expect(runAfterCallbacks()).resolves.toBeUndefined();
+
+    expect(res.status).toBe(200);
   });
 });

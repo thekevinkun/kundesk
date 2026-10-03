@@ -3,9 +3,10 @@
 // This handler is the ONLY place that advances the subscription state machine
 // Security: signature verification + idempotency check + fraud check
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import * as Sentry from "@sentry/nextjs";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
+import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { trackEventImmediate } from "@/lib/posthog";
@@ -31,16 +32,52 @@ import type { MidtransNotification, PlanName } from "@/types/billing";
 // Each layer is critical. Removing any one is a security regression.
 // Processing order: verify → deduplicate → validate status → check fraud → parse → activate.
 
+// Shape check for the incoming body — runs BEFORE any field is read.
+// Values are only bounded here; the real content checks happen later in the handler.
+const notificationSchema = z.object({
+  order_id: z.string().min(1).max(100),
+  status_code: z.string().min(1).max(10),
+  gross_amount: z.string().min(1).max(30),
+  signature_key: z.string().min(1).max(200),
+  transaction_status: z.string().min(1).max(30),
+  payment_type: z.string().min(1).max(50),
+  fraud_status: z.string().max(30).optional(), // absent on some payment types
+});
+
+// Exact order_id format produced by generateOrderId:
+// KUNDESK-{8 chars of orgId}-{STARTER|PRO}-{timestamp}[-P{promoId}]
+// Groups: 1 = org slice, 2 = plan, 3 = timestamp, 4 = promo id (optional)
+const ORDER_ID_PATTERN =
+  /^KUNDESK-([A-Za-z0-9_]{8})-(STARTER|PRO)-(\d+)(?:-P(\d+))?$/;
+
+// True for a Postgres unique-violation (23505) — checks err.code and err.cause.code,
+// because Drizzle may wrap the driver error inside a cause
+function isUniqueViolation(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const direct = (err as { code?: unknown }).code;
+  const cause = (err as { cause?: { code?: unknown } }).cause?.code;
+  return direct === "23505" || cause === "23505";
+}
+
 // Midtrans sends POST — no auth header, verified via signature instead
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let notification: MidtransNotification;
+  // Parse the body as unknown first — nothing is trusted until the shape check passes
+  let rawBody: unknown;
 
-  // Parse notification body — malformed JSON returns 400
   try {
-    notification = (await req.json()) as MidtransNotification;
+    rawBody = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // Shape check — a body like `null` or missing fields is rejected before any field is read
+  if (!notificationSchema.safeParse(rawBody).success) {
+    console.warn("[midtrans webhook] Invalid payload shape — rejected");
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  // Shape is verified, so this cast is now safe
+  const notification = rawBody as MidtransNotification;
 
   // ⚠️ Safety net: any unexpected error below (Neon cold start, dropped connection)
   // returns 503. Midtrans retries a 503 up to 4 times, a plain 500 only once.
@@ -68,8 +105,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 async function processNotification(
   notification: MidtransNotification,
 ): Promise<NextResponse> {
-  // ── Layer 1: Signature verification ──
-
   // ── Layer 1: Signature verification ──
   // SHA512(order_id + status_code + gross_amount + server_key)
   // Reject immediately if mismatch — don't process anything
@@ -198,10 +233,11 @@ async function processNotification(
     });
 
     // Mark processed so Midtrans stops retrying this notification
-    await db.insert(processedWebhooks).values({
-      externalId: order_id,
-      source: "midtrans",
-    });
+    await db
+      .insert(processedWebhooks)
+      .values({ externalId: order_id, source: "midtrans" })
+      .onConflictDoNothing();
+
     // Return 200 — webhook is "handled", just not activated
     // Support team will see the payment in the payment_history with status=pending
     // and can investigate and either manually activate or refund
@@ -211,56 +247,140 @@ async function processNotification(
     );
   }
 
-  // ⚠️ Order ID is a serialized transaction record.
-  // All context needed to process the webhook is embedded here — no extra DB lookup needed.
-  // Format: KUNDESK-{orgSlice}-{PLAN}-{timestamp}[-P{promoId}]
-  //   Example no promo: KUNDESK-org_3DZH-STARTER-1704067200000
-  //   Example with promo: KUNDESK-org_3DZH-STARTER-1704067200000-P42
-  //
-  // Why promo ID is encoded: Midtrans webhook only tells us the order_id.
-  // To know which promo to increment usedCount for, we encode the ID at checkout time.
-  // This avoids a costly DB lookup inside the webhook handler.
-  const parts = order_id.split("-");
-
-  if (parts.length < 4) {
-    console.error("[midtrans webhook] Malformed order_id", { order_id });
-    return NextResponse.json({ error: "Malformed order_id" }, { status: 400 });
+  // A real settlement/capture always carries status_code "200" (status_code is covered by the
+  // signature, transaction_status is not). This runs AFTER the fraud check on purpose:
+  // a card capture flagged "challenge" legitimately arrives with 201 and must hit the fraud branch.
+  if (notification.status_code !== "200") {
+    Sentry.captureMessage(
+      "midtrans webhook: settlement with unexpected status_code",
+      {
+        level: "warning",
+        extra: {
+          orderId: order_id,
+          statusCode: notification.status_code,
+          transactionStatus: transaction_status,
+        },
+      },
+    );
+    return NextResponse.json(
+      { message: "Inconsistent status — no action" },
+      { status: 200 },
+    );
   }
 
-  const orgIdSlice = parts[1] as string;
-  const planRaw = (parts[2] as string).toLowerCase();
+  // Strict order_id parse — must match the exact format generateOrderId produces
+  const orderMatch = ORDER_ID_PATTERN.exec(order_id);
 
-  // Extract promo ID from optional suffix using regex.
-  // Suffix format: -P{digits}. Example: -P42, -P100.
-  // .find() scans parts for one matching /^P\d+$/ — safe pattern, no injection risk.
-  // If found, parseInt removes the "P" prefix to get the numeric ID.
-  const promoSuffix = parts.find((p) => p.startsWith("P") && /^P\d+$/.test(p));
-  const promoId = promoSuffix ? parseInt(promoSuffix.slice(1), 10) : null;
+  if (!orderMatch) {
+    // A retry can never fix a malformed id, so answer 200 — but the money is real, so alert Sentry
+    console.error(
+      "[midtrans webhook] Unparseable order_id on a settled payment",
+      {
+        order_id,
+      },
+    );
+    Sentry.captureMessage(
+      "midtrans webhook: settled payment with unparseable order_id",
+      {
+        level: "error",
+        extra: { orderId: order_id },
+      },
+    );
+    return NextResponse.json(
+      { message: "Unprocessable order_id — flagged for review" },
+      { status: 200 },
+    );
+  }
 
-  if (planRaw !== "starter" && planRaw !== "pro") {
-    console.error("[midtrans webhook] Unknown plan in order_id", {
+  // Pieces of the order_id (regex groups 1, 2 and 4)
+  const orgIdSlice = orderMatch[1]!;
+  // The regex only allows STARTER or PRO, so this cast is safe
+  const plan = orderMatch[2]!.toLowerCase() as PlanName;
+  const promoId = orderMatch[4] ? parseInt(orderMatch[4], 10) : null;
+
+  // The checkout row written at payment creation is the source of truth for this order
+  const paymentRecord = await getPaymentByOrderId(order_id);
+  const reportedAmount = parseInt(notification.gross_amount, 10);
+
+  // Real mode: a settlement for an order we never created is never activated
+  if (!paymentRecord && env.paymentMode !== "mock") {
+    console.error("[midtrans webhook] Settled payment has no checkout record", {
       order_id,
-      planRaw,
     });
-    return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
+    Sentry.captureMessage(
+      "midtrans webhook: settled payment has no checkout record",
+      {
+        level: "error",
+        extra: { orderId: order_id, reportedAmount },
+      },
+    );
+    return NextResponse.json(
+      { message: "No checkout record — flagged for review" },
+      { status: 200 },
+    );
   }
 
-  const plan = planRaw as PlanName;
+  // The row and the order_id must agree on org and plan
+  if (
+    paymentRecord &&
+    ((paymentRecord.orgId !== null &&
+      !paymentRecord.orgId.startsWith(orgIdSlice)) ||
+      paymentRecord.plan !== plan)
+  ) {
+    console.error(
+      "[midtrans webhook] order_id does not match checkout record",
+      {
+        order_id,
+      },
+    );
+    Sentry.captureMessage(
+      "midtrans webhook: order_id does not match checkout record",
+      {
+        level: "error",
+        extra: {
+          orderId: order_id,
+          recordPlan: paymentRecord.plan,
+          orderIdPlan: plan,
+        },
+      },
+    );
+    // Mark processed so Midtrans stops retrying — support handles it from Sentry
+    await db
+      .insert(processedWebhooks)
+      .values({ externalId: order_id, source: "midtrans" })
+      .onConflictDoNothing();
+    return NextResponse.json(
+      { message: "Order mismatch — flagged for review" },
+      { status: 200 },
+    );
+  }
 
-  // ⚠️ Org lookup by LEFT(orgId, 8) — clever but dangerous without validation.
-  // Why prefix lookup? Embedding the full Clerk orgId (e.g. "org_abc123xyz456") in
-  // the order_id makes it too long. Instead, we take the first 8 chars: "org_abc1".
-  // On webhook, we reverse: search for any org whose ID starts with those 8 chars.
-  //
-  // Risk: if two orgs happen to have the same 8-char prefix (astronomically unlikely
-  // with Clerk's random generation, but possible), we'd ambiguously match both.
-  // Solution: check matchingOrgs.length === 1. If not, return 200 (don't activate).
-  // Midtrans will see 200, stop retrying, but no org is activated. Support team
-  // sees a "mystery payment" in order history and investigates.
-  const matchingOrgs = await db
-    .select({ id: orgs.id, name: orgs.name, ownerEmail: orgs.ownerEmail })
-    .from(orgs)
-    .where(sql`LEFT(${orgs.id}, 8) = ${orgIdSlice}`);
+  // Settlement for an order that is no longer pending (cancelled/expired/failed).
+  // Still activated — real money arrived (rule 160) — but a human should know.
+  if (paymentRecord && paymentRecord.status !== "pending") {
+    Sentry.captureMessage(
+      "midtrans webhook: settlement for a non-pending order",
+      {
+        level: "warning",
+        extra: { orderId: order_id, rowStatus: paymentRecord.status },
+      },
+    );
+  }
+
+  // Resolve the org. With a checkout row: by the full orgId stored on it (no prefix guessing).
+  // Without a row (mock mode only — real mode returned above): the old 8-char prefix lookup.
+  const orgFilter: SQL | undefined = paymentRecord
+    ? paymentRecord.orgId
+      ? eq(orgs.id, paymentRecord.orgId)
+      : undefined // org was purged — nothing to activate
+    : sql`LEFT(${orgs.id}, 8) = ${orgIdSlice}`;
+
+  const matchingOrgs = orgFilter
+    ? await db
+        .select({ id: orgs.id, name: orgs.name, ownerEmail: orgs.ownerEmail })
+        .from(orgs)
+        .where(orgFilter)
+    : [];
 
   if (matchingOrgs.length !== 1) {
     console.error("[midtrans webhook] Org resolution failed", {
@@ -268,9 +388,16 @@ async function processNotification(
       orgIdSlice,
       matches: matchingOrgs.length,
     });
-    // Return 200 — webhook is "handled" (we attempted), just couldn't process
-    // If 0 matches: org doesn't exist (checkout used deleted org?)
-    // If 2+ matches: prefix collision (should never happen, but we're safe)
+    // The payment is real but we can't activate anyone — this must never be silent
+    Sentry.captureMessage("midtrans webhook: org resolution failed", {
+      level: "error",
+      extra: {
+        orderId: order_id,
+        orgIdSlice,
+        matches: matchingOrgs.length,
+        hasCheckoutRecord: paymentRecord !== null,
+      },
+    });
     return NextResponse.json(
       { error: "Org resolution failed" },
       { status: 200 },
@@ -279,18 +406,7 @@ async function processNotification(
 
   const org = matchingOrgs[0]!;
 
-  // ⚠️ Amount validation — gross_amount reported by Midtrans must match what
-  // we recorded at checkout. Signature verification only proves Midtrans sent
-  // this notification — it does NOT prove the amount matches what we expected
-  // to charge, since a caller with the public client key could create their
-  // own Snap transaction using our order_id format at a lower price.
-  //
-  // If no pending row exists (synthetic/test notifications or legacy flows), we can't
-  // validate and fall back to trusting the webhook. Renewal-cron checkouts DO insert a
-  // pending row, so they are validated like any other payment.
-  const paymentRecord = await getPaymentByOrderId(order_id);
-  const reportedAmount = parseInt(notification.gross_amount, 10);
-
+  // Amount validation — the signature proves Midtrans sent this, not that the amount is right
   if (paymentRecord && paymentRecord.amount !== reportedAmount) {
     console.error("[midtrans webhook] Amount mismatch — refusing to activate", {
       order_id,
@@ -308,10 +424,11 @@ async function processNotification(
       },
     });
 
-    await db.insert(processedWebhooks).values({
-      externalId: order_id,
-      source: "midtrans",
-    });
+    // Mark processed so Midtrans stops retrying — support handles it from Sentry
+    await db
+      .insert(processedWebhooks)
+      .values({ externalId: order_id, source: "midtrans" })
+      .onConflictDoNothing();
 
     return NextResponse.json(
       { message: "Amount mismatch — flagged for review" },
@@ -366,6 +483,31 @@ async function processNotification(
       });
     });
   } catch (err) {
+    // A concurrent retry may have finished this order a moment earlier, so our own
+    // processedWebhooks insert hit the unique constraint. Confirm that before answering 200 —
+    // a unique violation from anywhere else must still become a 503.
+    if (isUniqueViolation(err)) {
+      const [finished] = await db
+        .select({ id: processedWebhooks.id })
+        .from(processedWebhooks)
+        .where(
+          and(
+            eq(processedWebhooks.source, "midtrans"),
+            eq(processedWebhooks.externalId, order_id),
+          ),
+        );
+
+      if (finished) {
+        console.log("[midtrans webhook] Finished by a concurrent retry", {
+          order_id,
+        });
+        return NextResponse.json(
+          { message: "Already processed" },
+          { status: 200 },
+        );
+      }
+    }
+
     // ⚠️ Only the purge race gets the "mark processed, stop retrying" treatment below.
     // Any other error (timeout, dropped connection) is rethrown → POST returns 503 →
     // Midtrans retries, and the customer still gets activated.
@@ -415,49 +557,67 @@ async function processNotification(
     order_id,
   });
 
-  // ⚠️ Async pattern: dashboard notification MUST be awaited, email/analytics can fire-and-forget.
-  // Why?
-  //   - createNotification: owner sees the bell instantly, blocks webhook return. If this fails,
-  //     we've already activated the subscription (tx committed), so rollback is impossible.
-  //     Better to retry createNotification than silently lose the notification.
-  //   - sendPlanUpgradedEmail: nice-to-have, doesn't affect core state. Retry in background.
-  //   - trackEventImmediate: analytics are mission-critical for product metrics, so we await.
-  //
-  // Rationale: webhook must return 200 to Midtrans within ~15 seconds (varies by platform).
-  // We've already done the hard work (activated subscription, recorded payment). At this point,
-  // email delays and analytics can safely be async without blocking the 200 response.
+  // Everything below runs AFTER the commit. The customer is already activated, so nothing
+  // here may turn the response into a 503 — each step handles its own failure.
   const planLabel = plan === "pro" ? "Pro" : "Starter";
 
-  // Notification MUST succeed — owner needs to see the bell immediately on dashboard
-  await createNotification(
-    org.id,
-    "plan_upgraded",
-    `Plan berhasil diupgrade ke ${planLabel}`,
-    `Pembayaran dikonfirmasi · ${order_id}`,
-  ).catch(console.error);
+  // Dashboard bell — awaited so the owner sees it immediately; a failure is reported, not thrown
+  try {
+    await createNotification(
+      org.id,
+      "plan_upgraded",
+      `Plan berhasil diupgrade ke ${planLabel}`,
+      `Pembayaran dikonfirmasi · ${order_id}`,
+    );
+  } catch (err) {
+    console.error("[midtrans webhook] Failed to create notification:", err);
+    Sentry.captureException(err, {
+      extra: { orgId: org.id, orderId: order_id },
+    });
+  }
 
-  // Email is fire-and-forget — doesn't block webhook response
-  // If it fails, the error is logged and swallowed. Owner still has activated subscription.
-  sendPlanUpgradedEmail(
-    org.ownerEmail ?? "",
-    org.name,
-    plan,
-    parseInt(notification.gross_amount, 10),
-    payment_type,
-    order_id,
-    new Date(),
-    periodEnd,
-    env.logoUrl,
-  ).catch((err) =>
-    console.error("[midtrans webhook] Failed to send upgrade email:", err),
-  );
+  // Email + analytics run via after(): the response goes out first, and Vercel keeps
+  // the function alive until they finish (fire-and-forget can be cut off on Vercel)
+  after(async () => {
+    if (org.ownerEmail) {
+      try {
+        await sendPlanUpgradedEmail(
+          org.ownerEmail,
+          org.name,
+          plan,
+          reportedAmount,
+          payment_type,
+          order_id,
+          new Date(),
+          periodEnd,
+          env.logoUrl,
+        );
+      } catch (err) {
+        console.error("[midtrans webhook] Failed to send upgrade email:", err);
+        Sentry.captureException(err, {
+          extra: { orgId: org.id, orderId: order_id },
+        });
+      }
+    } else {
+      // No address on file — nothing to send to
+      console.warn(
+        "[midtrans webhook] No owner email — upgrade email skipped",
+        {
+          orgId: org.id,
+        },
+      );
+    }
 
-  // Analytics: await so we're sure the event is recorded before returning
-  // Product metrics depend on this — don't lose events to async failures
-  await trackEventImmediate(org.id, "plan_upgraded", {
-    plan,
-    payment_type,
-    has_promo: promoId !== null,
+    try {
+      await trackEventImmediate(org.id, "plan_upgraded", {
+        plan,
+        payment_type,
+        has_promo: promoId !== null,
+      });
+    } catch (err) {
+      // Analytics must never affect a payment that is already recorded
+      console.error("[midtrans webhook] Failed to track plan_upgraded:", err);
+    }
   });
 
   return NextResponse.json({ message: "OK" }, { status: 200 });

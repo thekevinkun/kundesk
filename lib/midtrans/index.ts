@@ -3,12 +3,12 @@
 // Real mode creates actual Midtrans transactions
 
 import { env } from "@/lib/env";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import type { MidtransNotification, PlanName } from "@/types/billing";
 import { PLAN_PRICE } from "@/types/billing";
 
 // ⚠️ Critical security: verify Midtrans webhook signature on EVERY notification.
-// Signature = HMAC-SHA512(order_id + status_code + gross_amount + server_key).
+// Signature = SHA512(order_id + status_code + gross_amount + server_key) — plain SHA-512, NOT an HMAC.
 // Why this matters:
 //   1. Proves the webhook came from Midtrans, not an attacker
 //   2. Prevents subscription fraud: attacker can't forge a "payment settled" webhook
@@ -21,12 +21,24 @@ export function verifyMidtransSignature(
 ): boolean {
   if (!env.midtransServerKey) return false;
 
-  // Signature is the HMAC of the concatenated payload + server key.
+  // Signature is a plain SHA-512 hash of the concatenated payload + server key.
   // Order of concatenation is critical — must match Midtrans's exact formula.
   const raw = `${notification.order_id}${notification.status_code}${notification.gross_amount}${env.midtransServerKey}`;
-  const expected = createHash("sha512").update(raw).digest("hex");
 
-  return expected === notification.signature_key;
+  // Hex digest of our own computation — what Midtrans should have sent
+  const expected = Buffer.from(createHash("sha512").update(raw).digest("hex"));
+
+  // A missing or non-string signature can never be valid
+  if (typeof notification.signature_key !== "string") return false;
+
+  // Received signature as bytes, so both sides can be compared in constant time
+  const received = Buffer.from(notification.signature_key);
+
+  // timingSafeEqual throws on different lengths — a wrong length is simply invalid
+  if (expected.length !== received.length) return false;
+
+  // Constant-time comparison: response time can't leak how many leading characters matched
+  return timingSafeEqual(expected, received);
 }
 
 // ⚠️ Clever encoding: promo ID is baked into the order_id, not stored separately.
@@ -192,7 +204,7 @@ export async function fireMockWebhook(
     status_code: "200",
   };
 
-  // Generate a valid HMAC-SHA512 signature using the server key.
+  // Generate a valid SHA-512 signature (same plain-hash formula as verifyMidtransSignature).
   // This signature is critical — without it, the webhook handler rejects the notification.
   // Even in mock mode, we must pass this check (forged but valid).
   const raw = `${notification.order_id}${notification.status_code}${notification.gross_amount}${env.midtransServerKey ?? "mock-server-key"}`;

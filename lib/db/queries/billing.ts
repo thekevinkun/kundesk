@@ -346,11 +346,19 @@ export async function markPaymentClosed(
 // checkout (payments.amount, promo discount already applied server-side).
 // Returns null if no row exists (synthetic/test notifications, legacy flows).
 // Renewal-cron checkouts insert their own pending row, so they are found here too.
-export async function getPaymentByOrderId(
-  orderId: string,
-): Promise<{ amount: number; status: string } | null> {
+export async function getPaymentByOrderId(orderId: string): Promise<{
+  orgId: string | null;
+  plan: string;
+  amount: number;
+  status: string;
+} | null> {
   const [row] = await db
-    .select({ amount: payments.amount, status: payments.status })
+    .select({
+      orgId: payments.orgId, // nullable — anonymized when an org is purged
+      plan: payments.plan, // cross-checked against the plan encoded in order_id
+      amount: payments.amount,
+      status: payments.status,
+    })
     .from(payments)
     .where(eq(payments.orderId, orderId))
     .limit(1);
