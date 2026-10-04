@@ -1,8 +1,9 @@
 # Midtrans smoke test
 
 Run this against the **sandbox** after any change to the payment path, and run the
-production section once when real keys are approved. Everything here is safe to run:
-no command prints a key, and the sandbox moves no real money.
+production section once when real keys are approved. No command here prints a key.
+The sandbox does not need real money, but see the QRIS warning below: Midtrans itself
+warns never to pay a sandbox transaction with a real payment.
 
 ## Rules for every command
 
@@ -10,6 +11,11 @@ no command prints a key, and the sandbox moves no real money.
   printed once this way). Read single values with `grep '^NAME=' .env.local | cut -d= -f2-`.
 - Never paste a key, a signature or a connection string into chat or a PR.
 - Run `unset KEY` after any command that loads the server key into a shell variable.
+- **Pay sandbox transactions only through the Midtrans simulator.** Never scan a sandbox
+  QRIS code, or pay a sandbox reference, with a real wallet or bank app. Midtrans warns
+  against paying sandbox transactions with a real payment.
+- Keep secrets out of curl arguments (they can be briefly visible in the process list).
+  The commands below pass them through stdin with `printf ... | curl -K -`.
 
 ## Setup
 
@@ -40,18 +46,17 @@ the three variables at the top:
    STATUS='settlement'
    KEY=$(grep '^MIDTRANS_SERVER_KEY=' .env.local | cut -d= -f2-)
    SIG=$(printf '%s' "${ORDER}200${AMOUNT}${KEY}" | openssl dgst -sha512 | awk '{print $NF}')
-   curl -s -X POST http://localhost:3000/api/webhooks/midtrans \
-     -H 'Content-Type: application/json' \
-     -d "{\"order_id\":\"${ORDER}\",\"status_code\":\"200\",\"gross_amount\":\"${AMOUNT}\",\"transaction_status\":\"${STATUS}\",\"fraud_status\":\"accept\",\"payment_type\":\"qris\",\"signature_key\":\"${SIG}\"}"
+   printf '{"order_id":"%s","status_code":"200","gross_amount":"%s","transaction_status":"%s","fraud_status":"accept","payment_type":"qris","signature_key":"%s"}' "$ORDER" "$AMOUNT" "$STATUS" "$SIG" \
+     | curl -s -X POST http://localhost:3000/api/webhooks/midtrans -H 'Content-Type: application/json' --data-binary @-
    unset KEY SIG
 ```
 
-For scenario 3, replace `${SIG}` in the `-d` body with the text `wrong`.
+For scenario 3, replace `"$SIG"` in the `printf` arguments with `wrong`.
 
 ## Reconcile cron (scenario 8)
 
 ```bash
-   curl -s -H "Authorization: Bearer $(grep '^CRON_SECRET=' .env.local | cut -d= -f2-)" http://localhost:3000/api/cron/payment-reconcile
+  printf 'header = "Authorization: Bearer %s"\n' "$(grep '^CRON_SECRET=' .env.local | cut -d= -f2-)" | curl -s -K - http://localhost:3000/api/cron/payment-reconcile
 ```
 
 Output shape: `{"checked":N,"recovered":N,"flagged":N,"errors":N,"expiredPayments":N}`.
@@ -65,10 +70,10 @@ Output shape: `{"checked":N,"recovered":N,"flagged":N,"errors":N,"expiredPayment
 
 ```bash
       KEY=$(grep '^MIDTRANS_SERVER_KEY=' .env.production.local | cut -d= -f2-)
-      curl -s -u "$KEY:" https://api.midtrans.com/v2/KUNDESK-NOPE0000-STARTER-1/status
+      printf 'user = "%s:"\n' "$KEY" | curl -s -K - https://api.midtrans.com/v2/KUNDESK-NOPE0000-STARTER-1/status
       unset KEY
 ```
-
+      **Do not skip this step.** The startup guard cannot tell your sandbox keys from your production keys (neither has a prefix), so this call is the only thing that proves the keys match the production endpoint.
       Expected: `"status_code":"404"` ("Transaction doesn't exist"). `"status_code":"401"` means
       the key is not valid for production. **Not yet verified:** this is how the sandbox
       endpoint behaved; check it the first time against production.

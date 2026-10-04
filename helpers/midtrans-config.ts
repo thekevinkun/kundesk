@@ -4,9 +4,11 @@
 
 import type { MidtransConfigInput } from "@/types/midtrans-config";
 
-// Sandbox keys from older accounts start with "SB-". Current sandbox keys may have NO
-// prefix at all (the project's own sandbox keys don't), so the absence of "SB-" proves
-// nothing — only its PRESENCE is a reliable signal.
+// LIMITED HEURISTIC, not environment validation. Sandbox keys from older accounts start
+// with "SB-"; this project's sandbox AND production keys have no prefix at all, so for them
+// both prefix checks below can never fire. Only the PRESENCE of "SB-" is a signal. The real
+// check that a key matches the selected endpoint is an authenticated call to that endpoint,
+// done by hand at rollout (see docs/midtrans-smoke-test.md).
 const SANDBOX_PREFIX = "SB-";
 
 export function validateMidtransConfig(input: MidtransConfigInput): void {
