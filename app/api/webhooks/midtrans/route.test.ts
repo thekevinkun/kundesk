@@ -532,6 +532,29 @@ describe("POST /api/webhooks/midtrans", () => {
     );
   });
 
+  it("marks the order processed when the org was purged, so it isn't re-alerted daily", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue({
+      ...CHECKOUT_ROW,
+      orgId: null,
+    });
+
+    await POST(makeRequest(validNotification()));
+
+    // Checkout row has no org: nothing can ever fix it, so it is marked processed
+    expect(db.insert).toHaveBeenCalled();
+  });
+
+  it("does NOT mark the order processed when the org should exist but wasn't found", async () => {
+    vi.mocked(getPaymentByOrderId).mockResolvedValue(CHECKOUT_ROW);
+    mockSelectSequence([[], []]);
+
+    const res = await POST(makeRequest(validNotification()));
+
+    expect((await res.json()).error).toBe("Org resolution failed");
+    // An org that should exist is a real problem, not a purge — keep it visible
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
   it("still activates a settlement for a non-pending order, with a Sentry warning", async () => {
     vi.mocked(getPaymentByOrderId).mockResolvedValue({
       ...CHECKOUT_ROW,

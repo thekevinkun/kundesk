@@ -167,6 +167,14 @@ export async function settlePaidOrder(
         hasCheckoutRecord: paymentRecord !== null,
       },
     });
+
+    // The org was purged (the checkout row's orgId is null): no retry and no later cron run
+    // can ever fix this. Mark it processed so it isn't re-checked and re-alerted every day —
+    // the Sentry error above is the alert.
+    if (paymentRecord && paymentRecord.orgId === null) {
+      await markProcessed(orderId);
+    }
+
     return { kind: "flagged", body: { error: "Org resolution failed" } };
   }
 

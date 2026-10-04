@@ -10,6 +10,7 @@ import {
   getRealtimeMode,
   getEmailMode,
 } from "@/types/config";
+import { validateMidtransConfig } from "@/helpers/midtrans-config";
 
 // Throws immediately with a clear message if a required var is missing
 function requireEnv(key: string): string {
@@ -80,3 +81,12 @@ export const env = {
   realtimeMode: getRealtimeMode(),
   emailMode: getEmailMode(),
 } as const;
+
+// Fail fast on a missing, swapped or half-changed Midtrans setup — at startup, not at a
+// customer's first payment. Does nothing in mock mode (CI and local dev).
+validateMidtransConfig({
+  paymentMode: env.paymentMode,
+  serverKey: env.midtransServerKey,
+  clientKey: env.midtransClientKey,
+  isProduction: env.midtransProduction,
+});
