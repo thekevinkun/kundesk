@@ -9,7 +9,6 @@ import {
   UsageWarningEmail,
   PastDueEmail,
   OrgDeletionEmail,
-  SuspendedWarningEmail,
   HandoffEmail,
   PaymentPendingEmail,
   PlanUpgradedEmail,
@@ -255,34 +254,6 @@ export async function sendOrgDeletionEmail(
   await sendEmail({
     to,
     subject: `Penghapusan akun ${orgName} dijadwalkan pada ${formattedPurgeDate}`,
-    html,
-  });
-}
-
-export async function sendSuspendedWarningEmail(
-  to: string,
-  orgName: string,
-  purgeDate: Date,
-  logoUrl: string,
-): Promise<void> {
-  const formattedPurgeDate = purgeDate.toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  const html = await render(
-    SuspendedWarningEmail({
-      orgName,
-      logoUrl,
-      billingUrl: `${env.appUrl}/dashboard/billing`,
-      purgeDate: formattedPurgeDate,
-    }),
-  );
-
-  await sendEmail({
-    to,
-    subject: `Akun ${orgName} akan dihapus pada ${formattedPurgeDate}`,
     html,
   });
 }
