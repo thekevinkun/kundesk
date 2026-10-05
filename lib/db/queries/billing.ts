@@ -8,6 +8,7 @@ import {
   lt,
   desc,
   lte,
+  ne,
   isNull,
   notExists,
   or,
@@ -183,6 +184,61 @@ export async function downgradeToFree(orgId: string): Promise<boolean> {
     return false;
   }
 
+  await invalidateOrgCache(orgId);
+  return true;
+}
+
+// Finds cancelled orgs whose paid period is over but who still hold a paid plan.
+// cancelSubscription() only flips the status and keeps plan/messagesLimit "until period end" —
+// this is what finally ends that period. A null currentPeriodEnd on a paid cancelled org
+// counts as expired: there is no paid time left to honor.
+export async function getExpiredCancelledOrgs(): Promise<
+  Array<{ id: string }>
+> {
+  const now = new Date();
+
+  return db
+    .select({ id: orgs.id })
+    .from(orgs)
+    .where(
+      and(
+        eq(orgs.subscriptionStatus, "cancelled"),
+        ne(orgs.plan, "free"),
+        or(isNull(orgs.currentPeriodEnd), lt(orgs.currentPeriodEnd, now)),
+      ),
+    );
+}
+
+// Real downgrade to Free for a cancelled org after its paid period ended — the same end
+// state as downgradeToFree, but guarded on status = "cancelled". The WHERE re-checks every
+// condition, so an org that re-subscribed (status "active") or cancelled again with time
+// left (period end in the future) between the candidate query and this update is untouched.
+// Returns true only when a row was actually updated — callers must check it.
+export async function downgradeCancelledToFree(
+  orgId: string,
+): Promise<boolean> {
+  const now = new Date();
+
+  const updated = await db
+    .update(orgs)
+    .set({
+      plan: "free",
+      subscriptionStatus: "free",
+      messagesLimit: PLAN_LIMITS.free.messagesPerMonth,
+      nextBillingDate: null,
+    })
+    .where(
+      and(
+        eq(orgs.id, orgId),
+        eq(orgs.subscriptionStatus, "cancelled"),
+        or(isNull(orgs.currentPeriodEnd), lt(orgs.currentPeriodEnd, now)),
+      ),
+    )
+    .returning({ id: orgs.id });
+
+  if (updated.length === 0) return false;
+
+  // Plan and limit changed — drop the cached org so chat sees Free limits right away
   await invalidateOrgCache(orgId);
   return true;
 }

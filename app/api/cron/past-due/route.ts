@@ -1,18 +1,73 @@
 // Daily cron — finds orgs that are past_due and handles escalation
 // Day 3: send past due email warning
 // Day 7: downgrade to Free — plan, quota, and features all revert for real
+// Also: cancelled orgs are downgraded to Free once their paid period (currentPeriodEnd) ends
 // Vercel calls this every day at 09:00 WIB (02:00 UTC)
 // Protected by CRON_SECRET header
 
 import { NextRequest, NextResponse } from "next/server";
 import { eq, lte, and } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
 import { sendPastDueEmail } from "@/lib/email";
 import { processedWebhooks } from "@/lib/db/schema";
-import { downgradeToFree } from "@/lib/db/queries/billing";
+import {
+  downgradeToFree,
+  getExpiredCancelledOrgs,
+  downgradeCancelledToFree,
+} from "@/lib/db/queries/billing";
 import { PLAN_PRICE, type PlanName } from "@/types/billing";
+
+// Ends the paid period of cancelled orgs: cancelSubscription() keeps plan and limit "until
+// period end", and nothing else ever ends it. Runs in its own try/catch so a failure here
+// can never block the past_due warnings and downgrades below.
+async function sweepExpiredCancelledOrgs(): Promise<{
+  checked: number;
+  downgraded: number;
+  errors: number;
+  queryFailed: boolean;
+}> {
+  let candidates: Array<{ id: string }>;
+
+  try {
+    candidates = await getExpiredCancelledOrgs();
+  } catch (err) {
+    // The whole step failed — alert, and let the route answer 500 so "no alerts"
+    // can never silently mean "the sweep is broken"
+    console.error(
+      "[cron/past-due] Cancelled sweep: candidate query failed:",
+      err,
+    );
+    Sentry.captureException(err);
+    return { checked: 0, downgraded: 0, errors: 0, queryFailed: true };
+  }
+
+  let downgraded = 0;
+  let errors = 0;
+
+  for (const org of candidates) {
+    try {
+      // false = the org re-subscribed or got new paid time meanwhile — leave it alone
+      if (await downgradeCancelledToFree(org.id)) {
+        downgraded++;
+        console.log(
+          `[cron/past-due] Cancelled org ${org.id} downgraded to Free`,
+        );
+      }
+    } catch (err) {
+      // One org failing must not stop the others — tomorrow's run retries it
+      errors++;
+      console.error(
+        `[cron/past-due] Cancelled sweep failed for org ${org.id}:`,
+        err,
+      );
+    }
+  }
+
+  return { checked: candidates.length, downgraded, errors, queryFailed: false };
+}
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   // ── Auth ──
@@ -21,6 +76,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     console.warn("[cron/past-due] Unauthorized request rejected");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Cancelled-org sweep first — the "No past_due orgs" early return below must not skip it
+  const cancelledSweep = await sweepExpiredCancelledOrgs();
 
   const now = new Date();
 
@@ -46,7 +104,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   if (pastDueOrgs.length === 0) {
     console.log("[cron/past-due] No past_due orgs found");
-    return NextResponse.json({ message: "No past_due orgs", processed: 0 });
+    return NextResponse.json(
+      { message: "No past_due orgs", processed: 0, cancelledSweep },
+      { status: cancelledSweep.queryFailed ? 500 : 200 },
+    );
   }
 
   const results: Array<{
@@ -142,9 +203,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({
-    message: "Past due run complete",
-    processed: results.length,
-    results,
-  });
+  return NextResponse.json(
+    {
+      message: "Past due run complete",
+      processed: results.length,
+      results,
+      cancelledSweep,
+    },
+    { status: cancelledSweep.queryFailed ? 500 : 200 },
+  );
 }

@@ -1,9 +1,14 @@
 // Tests for the past-due cron — day 3 warning email, day 7 real downgrade
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { PLAN_PRICE } from "@/types/billing";
 import { sendPastDueEmail } from "@/lib/email";
-import { downgradeToFree } from "@/lib/db/queries/billing";
+import {
+  downgradeToFree,
+  getExpiredCancelledOrgs,
+  downgradeCancelledToFree,
+} from "@/lib/db/queries/billing";
 import { GET } from "./route";
 
 // Hoisted so the vi.mock factories below can reference them (rule 163)
@@ -15,13 +20,21 @@ const mockDb = vi.hoisted(() => ({ select: vi.fn(), insert: vi.fn() }));
 const insertValues = vi.hoisted(() => vi.fn());
 const onConflictDoNothing = vi.hoisted(() => vi.fn());
 
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 vi.mock("@/lib/env", () => ({ env: mockEnv }));
 vi.mock("@/lib/db", () => ({ db: mockDb }));
 vi.mock("@/lib/email", () => ({ sendPastDueEmail: vi.fn() }));
-vi.mock("@/lib/db/queries/billing", () => ({ downgradeToFree: vi.fn() }));
+vi.mock("@/lib/db/queries/billing", () => ({
+  downgradeToFree: vi.fn(),
+  getExpiredCancelledOrgs: vi.fn(),
+  downgradeCancelledToFree: vi.fn(),
+}));
 
 const mockSendEmail = vi.mocked(sendPastDueEmail);
 const mockDowngrade = vi.mocked(downgradeToFree);
+const mockExpiredCancelled = vi.mocked(getExpiredCancelledOrgs);
+const mockDowngradeCancelled = vi.mocked(downgradeCancelledToFree);
+const mockCaptureException = vi.mocked(Sentry.captureException);
 
 // Fixed "now" so day counting is deterministic
 const NOW = new Date("2026-10-05T02:00:00.000Z");
@@ -94,6 +107,9 @@ describe("GET /api/cron/past-due", () => {
     // Happy defaults
     mockSendEmail.mockResolvedValue(undefined);
     mockDowngrade.mockResolvedValue(true);
+    // Sweep defaults: no expired cancelled orgs, downgrade succeeds
+    mockExpiredCancelled.mockResolvedValue([]);
+    mockDowngradeCancelled.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -301,6 +317,110 @@ describe("GET /api/cron/past-due", () => {
         { orgId: "org_warn", status: "warned" },
         { orgId: "org_down", status: "downgraded" },
       ]);
+    });
+  });
+
+  describe("cancelled-org sweep", () => {
+    type SweepBody = RouteBody & {
+      cancelledSweep: {
+        checked: number;
+        downgraded: number;
+        errors: number;
+        queryFailed: boolean;
+      };
+    };
+
+    async function runFull(): Promise<{ status: number; body: SweepBody }> {
+      const res = await GET(makeReq(mockEnv.cronSecret));
+      return { status: res.status, body: (await res.json()) as SweepBody };
+    }
+
+    it("does not run for an unauthorized request", async () => {
+      const res = await GET(makeReq("wrong-secret"));
+      expect(res.status).toBe(401);
+      expect(mockExpiredCancelled).not.toHaveBeenCalled();
+    });
+
+    it("runs even when no org is past_due (the early return must not skip it)", async () => {
+      mockSelectSequence([[]]);
+      mockExpiredCancelled.mockResolvedValueOnce([{ id: "org_c" }]);
+      const { status, body } = await runFull();
+
+      expect(status).toBe(200);
+      expect(body.processed).toBe(0);
+      expect(body.cancelledSweep).toEqual({
+        checked: 1,
+        downgraded: 1,
+        errors: 0,
+        queryFailed: false,
+      });
+      expect(mockDowngradeCancelled).toHaveBeenCalledWith("org_c");
+    });
+
+    it("touches neither the past_due downgrade nor the warning email", async () => {
+      mockSelectSequence([[]]);
+      mockExpiredCancelled.mockResolvedValueOnce([{ id: "org_c" }]);
+      await runFull();
+      expect(mockDowngrade).not.toHaveBeenCalled();
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+
+    it("handles cancelled orgs and past_due orgs in the same run", async () => {
+      mockSelectSequence([[orgOverdue(8, { id: "org_a" })]]);
+      mockExpiredCancelled.mockResolvedValueOnce([{ id: "org_c" }]);
+      const { body } = await runFull();
+
+      expect(body.results).toEqual([{ orgId: "org_a", status: "downgraded" }]);
+      expect(body.cancelledSweep.downgraded).toBe(1);
+      expect(mockDowngrade).toHaveBeenCalledWith("org_a");
+      expect(mockDowngradeCancelled).toHaveBeenCalledWith("org_c");
+    });
+
+    it("does not count an org that re-subscribed meanwhile (downgrade returns false)", async () => {
+      mockSelectSequence([[]]);
+      mockExpiredCancelled.mockResolvedValueOnce([{ id: "org_c" }]);
+      mockDowngradeCancelled.mockResolvedValueOnce(false);
+      const { body } = await runFull();
+      expect(body.cancelledSweep).toEqual({
+        checked: 1,
+        downgraded: 0,
+        errors: 0,
+        queryFailed: false,
+      });
+    });
+
+    it("one failing org does not stop the next", async () => {
+      mockSelectSequence([[]]);
+      mockExpiredCancelled.mockResolvedValueOnce([
+        { id: "org_c" },
+        { id: "org_d" },
+      ]);
+      mockDowngradeCancelled
+        .mockRejectedValueOnce(new Error("neon timeout"))
+        .mockResolvedValueOnce(true);
+      const { status, body } = await runFull();
+
+      expect(status).toBe(200);
+      expect(body.cancelledSweep).toEqual({
+        checked: 2,
+        downgraded: 1,
+        errors: 1,
+        queryFailed: false,
+      });
+      expect(mockDowngradeCancelled).toHaveBeenLastCalledWith("org_d");
+    });
+
+    it("a failing candidate query returns 500 and alerts Sentry, but the past_due step still runs", async () => {
+      const boom = new Error("neon timeout");
+      mockExpiredCancelled.mockRejectedValueOnce(boom);
+      mockSelectSequence([[orgOverdue(8)]]);
+      const { status, body } = await runFull();
+
+      expect(status).toBe(500);
+      expect(body.cancelledSweep.queryFailed).toBe(true);
+      expect(mockCaptureException).toHaveBeenCalledWith(boom);
+      // The independent past_due job is not blocked by the sweep's failure
+      expect(body.results).toEqual([{ orgId: "org_a", status: "downgraded" }]);
     });
   });
 });
