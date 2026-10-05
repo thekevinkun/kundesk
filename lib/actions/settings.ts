@@ -125,6 +125,16 @@ export async function updateOrgProfile(
     throw error;
   }
 
+  // Name and slug live in the cached org (5-min TTL) that /chat/[slug] and KUN read —
+  // without this the old slug keeps resolving and the old name keeps showing in KUN's prompt.
+  // Runs right after the committed write and BEFORE the Clerk call, so a Clerk failure can't skip it.
+  // Never fail an already-committed write because Redis is down (rule 245).
+  try {
+    await invalidateOrgCache(orgId);
+  } catch (err) {
+    console.error("Failed to invalidate org cache", err);
+  }
+
   // Sync name change to Clerk org so org switcher stays in sync
   const client = await clerkClient();
   await client.organizations.updateOrganization(orgId, { name });
