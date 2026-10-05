@@ -16,8 +16,8 @@ export function TimezoneAutoDetect() {
     if (hasRun.current) return;
     hasRun.current = true;
 
-    // Read Intl directly: getLocalTimezone() returns "Asia/Jakarta" on failure,
-    // and a fallback must never be submitted (the server would stamp it as detected)
+    // Read Intl directly and never submit a fallback zone: the server would stamp it
+    // as "detected" and detection would never retry
     let zone: string | undefined;
     try {
       zone = Intl.DateTimeFormat().resolvedOptions().timeZone;

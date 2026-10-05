@@ -201,8 +201,8 @@ export async function getChatbotConfig(): Promise<{
   return chatbot ?? null;
 }
 
-// ── Get document count — for sidebar badge ──
-// Separate from full dashboard queries — called independently by sidebar
+// ── Get document count — used by DocCountBadge on the Info Bisnis page ──
+// Separate from full dashboard queries — called independently by the badge
 export async function getDocumentCount(): Promise<number> {
   const { orgId } = await requireOrg();
 

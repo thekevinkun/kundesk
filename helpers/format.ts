@@ -31,18 +31,6 @@ export function formatDate(date: Date | null): string {
   });
 }
 
-// ── Timezone helpers ──
-// Returns the device's IANA timezone string — e.g. "Asia/Makassar", "Asia/Jakarta"
-// Used to pass local timezone to server-side analytics queries
-// Falls back to "Asia/Jakarta" (WIB UTC+7) if browser API unavailable
-export function getLocalTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch {
-    return "Asia/Jakarta";
-  }
-}
-
 // Get every 1st day on next month from current month
 export function getNextMonthFirstDay(): Date {
   const now = new Date();
@@ -180,17 +168,6 @@ export function getCurrentDateTime(
   const zoneLabel = name ? `${name} (${offset})` : offset;
 
   return `${dayName}, ${get("day")} ${monthName} ${get("year")} — ${get("hour")}.${get("minute")} ${zoneLabel}`;
-}
-
-// Format UTC offset string — e.g. "UTC+8", "UTC+7", "UTC+5:30"
-export function formatUtcOffset(date: Date): string {
-  const offsetMinutes = -date.getTimezoneOffset();
-  const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
-  const offsetMins = Math.abs(offsetMinutes) % 60;
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  return offsetMins > 0
-    ? `UTC${sign}${offsetHours}:${String(offsetMins).padStart(2, "0")}`
-    : `UTC${sign}${offsetHours}`;
 }
 
 // Formats a date as relative time in Indonesian —
