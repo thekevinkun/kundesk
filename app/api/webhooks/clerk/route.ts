@@ -86,7 +86,9 @@ export async function POST(req: Request) {
 
       // Handle org sync based on event type
       if (type === "organization.created" || type === "organization.updated") {
-        // Upsert org — insert if new, update name/slug if already exists
+        // Upsert org — insert if new, update ONLY the name if it already exists.
+        // The slug is never rewritten after creation: Settings owns it (the owner can
+        // set a custom one), and Clerk's own slug would silently overwrite it on every update.
         await tx
           .insert(orgs)
           .values({
@@ -102,10 +104,7 @@ export async function POST(req: Request) {
           })
           .onConflictDoUpdate({
             target: orgs.id,
-            set: {
-              name: data.name,
-              slug: `${data.slug ?? data.id}-${data.id.slice(-8)}`,
-            },
+            set: { name: data.name },
           });
 
         // On new org creation — seed a default chatbot row automatically.

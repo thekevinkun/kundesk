@@ -333,27 +333,24 @@ describe("POST /api/webhooks/clerk", () => {
       expect(insertedTables).toEqual([processedWebhooks, orgs]);
     });
 
-    // The conflict branch must touch name and slug ONLY — otherwise a re-sent event would
-    // reset a paid org back to Free.
-    it("on conflict updates ONLY name and slug, never the plan or quota", async () => {
+    // The conflict branch must touch the name ONLY — otherwise a re-sent event would
+    // reset a paid org back to Free, or overwrite the owner's custom slug.
+    it("on conflict updates ONLY the name, never the slug, plan or quota", async () => {
       await send();
       expect(orgConflictArg).toHaveBeenCalledWith({
         target: orgs.id,
-        set: { name: "Warung A", slug: "warung-a-12345678" },
+        set: { name: "Warung A" },
       });
     });
 
-    // CHARACTERIZATION — the slug is rewritten from Clerk's slug on every update, so a custom
-    // slug the owner set in Kundesk Settings would be overwritten if Clerk fires this event
-    // after updateOrgProfile syncs the name to Clerk. Not verified live (see PR notes).
-    it("rewrites the slug from Clerk's data on every update event", async () => {
+    // Regression: a custom slug saved in Settings must survive Clerk's update events
+    it("never overwrites the slug on an update event", async () => {
       arrange("organization.updated", { slug: "from-clerk" });
       await send();
-      expect(orgConflictArg).toHaveBeenCalledWith(
-        expect.objectContaining({
-          set: expect.objectContaining({ slug: "from-clerk-12345678" }),
-        }),
-      );
+      const arg = orgConflictArg.mock.calls[0]?.[0] as {
+        set: Record<string, unknown>;
+      };
+      expect(arg.set).not.toHaveProperty("slug");
     });
 
     it("does not look up the owner email or send a welcome email", async () => {
