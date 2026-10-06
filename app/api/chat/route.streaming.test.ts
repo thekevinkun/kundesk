@@ -906,11 +906,10 @@ describe("POST /api/chat — streaming and completion", () => {
       expect(counterUpdates()).toHaveLength(1);
     });
 
-    // CHARACTERIZATION (suspected bug) — if the client goes away WHILE the save is running, the
-    // done event cannot be enqueued; that throw lands in the error path, which runs the completion
-    // handler a SECOND time: the customer's message is stored twice and counted twice.
-    // This test was written to find out whether that really happens.
-    it("while the save is in flight: the completion handler runs twice (message stored and counted twice)", async () => {
+    // Regression: if the client goes away WHILE the save is running, the done event cannot be
+    // enqueued and the stream's error path calls the completion handler again. The handler is
+    // one-shot, so the customer's message is stored and counted exactly once.
+    it("while the save is in flight: the message is stored and counted once", async () => {
       const { gate, release } = makeGate();
       m.transaction.mockImplementationOnce(
         async (callback: (handle: typeof tx) => Promise<unknown>) => {
@@ -927,13 +926,14 @@ describe("POST /api/chat — streaming and completion", () => {
       await reader.cancel(); // the client goes away while the save is running
       release();
 
-      await until(() => m.transaction.mock.calls.length >= 2);
+      // Give the error path time to (not) run the handler a second time
+      await flush();
       await flush();
 
-      expect(m.transaction).toHaveBeenCalledTimes(2);
-      expect(savedWithRole("user")).toHaveLength(2);
+      expect(m.transaction).toHaveBeenCalledTimes(1);
+      expect(savedWithRole("user")).toHaveLength(1);
       expect(savedWithRole("assistant")).toHaveLength(1);
-      expect(counterUpdates()).toHaveLength(2);
+      expect(counterUpdates()).toHaveLength(1);
     });
   });
 

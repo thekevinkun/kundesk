@@ -765,10 +765,18 @@ export async function POST(request: NextRequest) {
   );
 
   // ── 13. Stream ──
+  // The handler must run ONCE per request. If the client disconnects while the save is running,
+  // the stream's `done` event can't be sent; that throw lands in the stream's error path, which
+  // calls this handler again and would store and count the customer's message twice.
+  let completionStarted = false;
+
   const handleStreamComplete = async (
     assistantResponse: string,
     responseTimeMs?: number,
   ) => {
+    if (completionStarted) return;
+    completionStarted = true;
+
     try {
       const newMessagesUsed = freshOrgQuota.messagesUsed + 1;
 
