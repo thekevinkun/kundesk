@@ -3,7 +3,14 @@
 // No "use server" here — a "use server" file can only export async functions
 
 import { z } from "zod/v4";
-import { MAX_KNOWLEDGE_SECTIONS } from "@/types/knowledge";
+import { countNonEmptyLines } from "@/helpers/knowledge-import";
+import {
+  MAX_IMPORT_BATCH_CHARS,
+  MAX_IMPORT_DESCRIPTION_CHARS,
+  MAX_IMPORT_EXTRACT_LINES,
+  MAX_IMPORT_SAVE_ROWS,
+  MAX_KNOWLEDGE_SECTIONS,
+} from "@/types/knowledge";
 import type { HoursSchedule } from "@/types/knowledge";
 
 // Whole rupiah, no decimals — same unit as the rest of the billing code
@@ -184,3 +191,93 @@ export function parseStoredHours(value: unknown): {
 
   return { hours, dropped: value.length - hours.length };
 }
+
+// ─── Catalog import ───
+
+// Collapses newlines, tabs and other control characters into single spaces.
+// A newline inside a title would let imported text add fake lines to the section summary chunk.
+export function toSingleLine(value: string): string {
+  // Control characters (code < 32 and DEL 127) become spaces — checked by code, not by regex,
+  // because ESLint's no-control-regex rule forbids control characters inside a pattern
+  let cleaned = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    cleaned += code < 32 || code === 127 ? " " : value[i];
+  }
+
+  // \s already covers tabs, line/paragraph separators (U+2028, U+2029) and non-breaking spaces,
+  // so this collapses every run of whitespace into one space
+  return cleaned.replace(/\s+/g, " ").trim();
+}
+
+// Import prices: no "variants" in v1 — those stay manual
+const importPriceSchema = z
+  .discriminatedUnion("mode", [
+    z.object({ mode: z.literal("fixed"), amount: rupiah }),
+    z.object({ mode: z.literal("range"), min: rupiah, max: rupiah }),
+    z.object({ mode: z.literal("contact") }),
+  ])
+  .refine((price) => price.mode !== "range" || price.max >= price.min, {
+    message: "Harga maksimum harus sama atau lebih besar dari harga minimum",
+  });
+
+// One row as the SERVER accepts it on save — the client is never trusted, even if the
+// row came from our own extraction step
+export const importRowSchema = z.object({
+  title: z
+    .string()
+    .transform(toSingleLine)
+    .pipe(
+      z
+        .string()
+        .min(1, "Nama item wajib diisi")
+        .max(120, "Nama item maksimal 120 karakter"),
+    ),
+  // Optional — empty becomes "", stored in the entry's body
+  description: z
+    .string()
+    .nullish()
+    .transform((value) => (value ? toSingleLine(value) : ""))
+    .pipe(
+      z
+        .string()
+        .max(
+          MAX_IMPORT_DESCRIPTION_CHARS,
+          `Deskripsi maksimal ${MAX_IMPORT_DESCRIPTION_CHARS} karakter`,
+        ),
+    ),
+  // Required at save time — a row with an unreadable price must be fixed or set to "contact" in review
+  price: importPriceSchema,
+});
+
+// The whole save call: target section + one batch of rows
+export const importRowsSchema = z.object({
+  sectionId: idSchema,
+  rows: z
+    .array(importRowSchema)
+    .min(1, "Tidak ada item untuk disimpan")
+    .max(
+      MAX_IMPORT_SAVE_ROWS,
+      `Maksimal ${MAX_IMPORT_SAVE_ROWS} item per simpan`,
+    ),
+});
+
+// Input to the extraction step: the target catalog section + ONE batch of pasted text.
+// The client splits long text with splitIntoBatches, but the server enforces the bounds itself.
+export const extractTextSchema = z.object({
+  sectionId: idSchema,
+  text: z
+    .string()
+    .max(
+      MAX_IMPORT_BATCH_CHARS,
+      `Teks terlalu panjang (maksimal ${MAX_IMPORT_BATCH_CHARS} karakter per proses)`,
+    )
+    .refine(
+      (text) => countNonEmptyLines(text) >= 1,
+      "Tempel teks yang ingin diimpor",
+    )
+    .refine(
+      (text) => countNonEmptyLines(text) <= MAX_IMPORT_EXTRACT_LINES,
+      `Maksimal ${MAX_IMPORT_EXTRACT_LINES} baris per proses`,
+    ),
+});

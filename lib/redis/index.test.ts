@@ -47,12 +47,14 @@ vi.mock("@/lib/env", () => ({
 }));
 
 // Import after mocks are registered
+import { Ratelimit } from "@upstash/ratelimit";
 import {
   checkChatRateLimit,
   checkOrgMessageLimit,
   checkUploadRateLimit,
   checkAuthRateLimit,
   checkKnowledgeWriteLimit,
+  checkKnowledgeImportLimit,
   getCachedProfile,
   cacheGet,
   cacheSet,
@@ -252,6 +254,98 @@ describe("checkKnowledgeWriteLimit", () => {
     await checkKnowledgeWriteLimit("org_knowledge");
 
     expect(mockLimit).toHaveBeenCalledWith("org_knowledge");
+  });
+});
+
+describe("checkKnowledgeImportLimit", () => {
+  beforeEach(() => {
+    mockLimit.mockClear();
+  });
+
+  it("checks both windows with the orgId and returns success when both pass", async () => {
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 19,
+        reset: Date.now() + 3600000,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 59,
+        reset: Date.now() + 86400000,
+      });
+
+    const result = await checkKnowledgeImportLimit("org_import");
+
+    expect(result.success).toBe(true);
+    expect(mockLimit).toHaveBeenCalledTimes(2);
+    expect(mockLimit).toHaveBeenNthCalledWith(1, "org_import");
+    expect(mockLimit).toHaveBeenNthCalledWith(2, "org_import");
+  });
+
+  it("uses a 20/hour window and a 60/day window", async () => {
+    await checkKnowledgeImportLimit("org_import");
+
+    expect(vi.mocked(Ratelimit.slidingWindow)).toHaveBeenCalledWith(20, "1 h");
+    expect(vi.mocked(Ratelimit.slidingWindow)).toHaveBeenCalledWith(60, "1 d");
+  });
+
+  it("blocks on the hourly limit without touching the daily counter", async () => {
+    const hourlyReset = Date.now() + 3600000;
+    mockLimit.mockResolvedValueOnce({
+      success: false,
+      remaining: 0,
+      reset: hourlyReset,
+    });
+
+    const result = await checkKnowledgeImportLimit("org_import");
+
+    expect(result).toEqual({
+      success: false,
+      remaining: 0,
+      reset: hourlyReset,
+    });
+    // A blocked request must not use up the day's allowance
+    expect(mockLimit).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks on the daily limit and reports the daily reset time", async () => {
+    const dailyReset = Date.now() + 86400000;
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 5,
+        reset: Date.now() + 3600000,
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        remaining: 0,
+        reset: dailyReset,
+      });
+
+    const result = await checkKnowledgeImportLimit("org_import");
+
+    expect(result.success).toBe(false);
+    expect(result.remaining).toBe(0);
+    expect(result.reset).toBe(dailyReset);
+  });
+
+  it("reports whichever window has fewer requests remaining", async () => {
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 3,
+        reset: Date.now() + 3600000,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 40,
+        reset: Date.now() + 86400000,
+      });
+
+    const result = await checkKnowledgeImportLimit("org_import");
+
+    expect(result.remaining).toBe(3);
   });
 });
 

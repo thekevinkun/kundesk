@@ -29,6 +29,41 @@ export function detectInjection(message: string): boolean {
   return INJECTION_PATTERNS.some((pattern) => pattern.test(message));
 }
 
+// ─── Import injection check ───
+// Stricter check for catalog import: imported text becomes entries that KUN reads for EVERY
+// customer, so hostile text pasted here is stored, not just answered once.
+// Used only to FLAG rows in the review screen — a regex is a speed bump, the owner's review is the real defense.
+// Kept separate from detectInjection so the customer-chat behaviour stays unchanged.
+const IMPORT_INJECTION_PATTERNS = [
+  // Indonesian versions of the override / extraction attempts
+  /abaikan\s+(semua\s+)?(instruksi|perintah|aturan|petunjuk)/i,
+  /lupakan\s+(semua\s+)?(instruksi|perintah|aturan|petunjuk)/i,
+  /instruksi\s+(sebelumnya|di\s+atas)/i,
+  /kamu\s+sekarang\s+(adalah|jadi|menjadi)/i,
+  /berpura-?pura\s+(jadi|menjadi|kamu)/i,
+  /prompt\s+sistem/i,
+  /(tampilkan|tunjukkan|ungkapkan|beritahu)\s+(instruksi|aturan|perintah)\s*(mu|kamu|sistem)/i,
+  // Text that talks TO the assistant about what to tell customers — a product list never does
+  /(katakan|bilang(kan)?|beritahu)\s+(kepada\s+|ke\s+|pada\s+)?(pelanggan|customer|pembeli)/i,
+  /tell\s+(the\s+)?(customers?|users?)/i,
+  // Mentioning the assistant by name — case-sensitive on purpose, so "Kunci" and "kun" never match
+  /\bKUN\b/,
+] as const;
+
+// Returns true if imported text looks like an attempt to instruct the AI
+export function detectImportInjection(text: string): boolean {
+  // NFKC turns full-width and look-alike characters into plain ones; zero-width characters are
+  // removed so "ig\u200Bnore" can't slip past the patterns (alternation, not a character class)
+  const cleaned = text
+    .normalize("NFKC")
+    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, "");
+
+  return (
+    detectInjection(cleaned) ||
+    IMPORT_INJECTION_PATTERNS.some((pattern) => pattern.test(cleaned))
+  );
+}
+
 // ─── Human handoff request patterns ───
 // Detects when a customer explicitly wants to speak with a human agent
 // Covers Indonesian and English phrasing — bilingual SME customer base

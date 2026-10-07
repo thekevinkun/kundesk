@@ -180,6 +180,18 @@ export function syncSection(
   return syncSectionChunks(orgId, sectionId, "all");
 }
 
+// Rebuilds ONLY the listed entries + the section summary (the summary always covers every entry).
+// For bulk import: each save batch embeds just its own rows, not the whole section again.
+// Ids that don't belong to this section (or this org) silently drop out, same as in syncEntry.
+// An empty list rebuilds the summary only.
+export function syncEntries(
+  orgId: string,
+  sectionId: number,
+  entryIds: number[],
+): Promise<SyncResult> {
+  return syncSectionChunks(orgId, sectionId, entryIds);
+}
+
 // After an entry is deleted or reordered: only the section summary needs rebuilding
 // (the deleted entry's own chunks are removed by the FK cascade)
 export function syncSectionSummary(

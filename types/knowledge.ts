@@ -94,6 +94,73 @@ export const MAX_KNOWLEDGE_SECTIONS = 30;
 // Max characters of the compiled profile block — it rides along on EVERY chat message
 export const MAX_PROFILE_BLOCK_CHARS = 2500;
 
+// ─── Catalog import limits ───
+
+// Rows saved per Server Action call — keeps each call (insert + embed) well under Vercel's 10s cap
+// Tunable: confirm with a live test before raising
+export const MAX_IMPORT_SAVE_ROWS = 25;
+
+// Max lines of pasted text per extraction call — same reason
+export const MAX_IMPORT_EXTRACT_LINES = 30;
+
+// Max rows one import can produce in total (Rumah Paco has ~190 items)
+export const MAX_IMPORT_TOTAL_ROWS = 200;
+
+// Max characters of pasted text per import — bounds OpenAI cost before any call is made
+export const MAX_IMPORT_INPUT_CHARS = 20_000;
+
+// Max characters of an imported description — far below the manual 2000 limit on purpose
+export const MAX_IMPORT_DESCRIPTION_CHARS = 300;
+
+// Max characters of pasted text in ONE extraction call (a batch of ~30 lines)
+export const MAX_IMPORT_BATCH_CHARS = 10_000;
+
+// ─── Catalog import shapes ───
+
+// Price shapes import can produce — "variants" stays manual in v1
+export type ImportPrice = Exclude<EntryPrice, { mode: "variants" }>;
+
+// One row coming out of extraction, before the owner reviews it.
+// price null = no readable price — the review screen must make the owner fix it or pick "hubungi kami"
+export interface ExtractedRow {
+  title: string;
+  description: string;
+  price: ImportPrice | null;
+}
+
+// A row as the save action accepts it: the owner has reviewed it and every field is final
+export interface ImportRow {
+  title: string;
+  description: string;
+  price: ImportPrice; // required — a row with no readable price must be fixed in review first
+}
+
+// Warnings shown on a review row — advisory, the owner decides
+export interface RowFlags {
+  injection: boolean; // text looks like an instruction to the AI
+  suspiciousPrice: boolean; // very small or very large amount — often a missing "k" / "rb"
+  duplicate: boolean; // name already exists in the target section, or earlier in this batch
+}
+
+// An extracted row plus its warnings, as the review screen receives it
+export interface ReviewRow extends ExtractedRow {
+  flags: RowFlags;
+}
+
+// Returned by the extraction step
+export interface ExtractResult {
+  rows: ReviewRow[];
+  remainingSlots: number; // free entry slots left on the plan
+}
+
+// Returned by the save step
+export interface ImportSaveData {
+  saved: number;
+  skippedDuplicates: number;
+  syncStatus: SyncStatus;
+  remainingSlots: number;
+}
+
 // ─── Server Action result data ───
 
 // Returned after creating/updating one entry

@@ -8,7 +8,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as Sentry from "@sentry/nextjs";
 import { chunks, knowledgeEntries, knowledgeSections } from "@/lib/db/schema";
-import { syncEntry, syncSection, syncSectionSummary } from "./sync";
+import {
+  syncEntries,
+  syncEntry,
+  syncSection,
+  syncSectionSummary,
+} from "./sync";
 
 // Hoisted so the vi.mock factories below can reference them (rule 163)
 const mockDb = vi.hoisted(() => ({ select: vi.fn(), transaction: vi.fn() }));
@@ -468,6 +473,130 @@ describe("knowledge sync", () => {
         deleteFilter(summaryOnlyFilter),
       );
       expect(spies.updateSet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("syncEntries (a chosen batch + the summary)", () => {
+    it("returns not_found for a missing section, without embedding", async () => {
+      queueSelect([]);
+
+      const result = await syncEntries(ORG, SECTION_ID, [1, 2]);
+
+      expect(result).toEqual({ status: "not_found" });
+      expect(mockEmbed).not.toHaveBeenCalled();
+      expect(mockDb.transaction).not.toHaveBeenCalled();
+    });
+
+    it("scopes the section load to the org (tenant isolation)", async () => {
+      arrange(sectionRow(), [entryRow(1, "Nasi Uduk")]);
+
+      await syncEntries(ORG, SECTION_ID, [1]);
+
+      expect(spies.outerWhere).toHaveBeenNthCalledWith(1, sectionLoadFilter);
+      expect(spies.outerWhere).toHaveBeenNthCalledWith(2, entriesLoadFilter);
+    });
+
+    it("embeds only the listed entries plus the summary of ALL entries, in one batch", async () => {
+      arrange(sectionRow(), [
+        entryRow(1, "Nasi Uduk"),
+        entryRow(2, "Lontong Sayur"),
+        entryRow(3, "Bubur Ayam"),
+      ]);
+
+      const result = await syncEntries(ORG, SECTION_ID, [1, 3]);
+
+      expect(result).toEqual({ status: "synced", chunkCount: 3 });
+      expect(mockEmbed).toHaveBeenCalledTimes(1);
+      const texts = mockEmbed.mock.calls[0]?.[0] as string[];
+      expect(texts).toHaveLength(3);
+      expect(texts[0]).toContain("Nasi Uduk");
+      expect(texts[1]).toContain("Bubur Ayam");
+      // Entry 2 is not rebuilt, but still appears in the summary list
+      expect(texts[2]).toContain("Daftar lengkap Menu Sarapan");
+      expect(texts[2]).toContain("Lontong Sayur");
+    });
+
+    it("deletes and marks synced only the listed entries, never the others", async () => {
+      arrange(sectionRow(), [
+        entryRow(1, "Nasi Uduk"),
+        entryRow(2, "Lontong Sayur"),
+        entryRow(3, "Bubur Ayam"),
+      ]);
+
+      await syncEntries(ORG, SECTION_ID, [1, 3]);
+
+      expect(spies.deleteWhere).toHaveBeenCalledWith(
+        deleteFilter(entriesOrSummaryFilter([1, 3])),
+      );
+      expect(spies.updateSet).toHaveBeenCalledWith({ syncStatus: "synced" });
+      expect(spies.updateWhere).toHaveBeenCalledWith({
+        op: "and",
+        args: [
+          { op: "eq", a: knowledgeEntries.orgId, b: ORG },
+          { op: "inArray", a: knowledgeEntries.id, b: [1, 3] },
+        ],
+      });
+    });
+
+    it("ids that are not in this section or org drop out instead of being rebuilt", async () => {
+      arrange(sectionRow(), [
+        entryRow(1, "Nasi Uduk"),
+        entryRow(2, "Lontong Sayur"),
+      ]);
+
+      const result = await syncEntries(ORG, SECTION_ID, [2, 99]);
+
+      expect(result).toEqual({ status: "synced", chunkCount: 2 });
+      expect(spies.deleteWhere).toHaveBeenCalledWith(
+        deleteFilter(entriesOrSummaryFilter([2])),
+      );
+      expect(spies.updateWhere).toHaveBeenCalledWith({
+        op: "and",
+        args: [
+          { op: "eq", a: knowledgeEntries.orgId, b: ORG },
+          { op: "inArray", a: knowledgeEntries.id, b: [2] },
+        ],
+      });
+    });
+
+    it("an empty list rebuilds the summary only and marks no entry synced", async () => {
+      arrange(sectionRow(), [
+        entryRow(1, "Nasi Uduk"),
+        entryRow(2, "Lontong Sayur"),
+      ]);
+
+      const result = await syncEntries(ORG, SECTION_ID, []);
+
+      expect(result).toEqual({ status: "synced", chunkCount: 1 });
+      expect(spies.deleteWhere).toHaveBeenCalledWith(
+        deleteFilter(summaryOnlyFilter),
+      );
+      expect(spies.updateSet).not.toHaveBeenCalled();
+    });
+
+    it("still returns superseded and writes nothing when the data changed while embedding", async () => {
+      arrange(sectionRow(), [entryRow(1, "Nasi Uduk")], {
+        entries: [{ id: 1, updatedAt: T1 }],
+      });
+
+      const result = await syncEntries(ORG, SECTION_ID, [1]);
+
+      expect(result).toEqual({ status: "superseded" });
+      expect(spies.deleteWhere).not.toHaveBeenCalled();
+      expect(spies.insertValues).not.toHaveBeenCalled();
+      expect(spies.updateSet).not.toHaveBeenCalled();
+    });
+
+    it("returns embed_failed and leaves old chunks alone when embedding fails", async () => {
+      queueSelect([sectionRow()]);
+      queueSelect([entryRow(1, "Nasi Uduk")]);
+      mockEmbed.mockRejectedValueOnce(new Error("openai down"));
+
+      const result = await syncEntries(ORG, SECTION_ID, [1]);
+
+      expect(result).toEqual({ status: "embed_failed" });
+      expect(mockDb.transaction).not.toHaveBeenCalled();
+      expect(spies.deleteWhere).not.toHaveBeenCalled();
     });
   });
 
