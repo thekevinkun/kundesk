@@ -106,8 +106,10 @@ export const MAX_IMPORT_EXTRACT_LINES = 30;
 // Max rows one import can produce in total (Rumah Paco has ~190 items)
 export const MAX_IMPORT_TOTAL_ROWS = 200;
 
-// Max characters of pasted text per import — bounds OpenAI cost before any call is made
-export const MAX_IMPORT_INPUT_CHARS = 20_000;
+// Max characters of pasted text per import — bounds OpenAI cost before any call is made.
+// Equal to the per-call cap on purpose: the client splits text by LINES only, so a larger total
+// could produce one batch above the server's per-call character limit.
+export const MAX_IMPORT_INPUT_CHARS = 10_000;
 
 // Max characters of an imported description — far below the manual 2000 limit on purpose
 export const MAX_IMPORT_DESCRIPTION_CHARS = 300;

@@ -13,6 +13,7 @@ import {
   StaleSyncBanner,
 } from "@/components/dashboard/knowledge/sections";
 import { listKnowledgeSections } from "@/lib/actions/knowledge";
+import { ImportDialog } from "@/components/dashboard/knowledge/sections/catalog-import";
 import { PLAN_LIMITS } from "@/types/billing";
 import { MAX_KNOWLEDGE_SECTIONS } from "@/types/knowledge";
 import { staggerContainer, staggerItem } from "@/lib/animations";
@@ -51,6 +52,10 @@ const KnowledgeSectionsPanel = ({
   const [removeEntryTarget, setRemoveEntryTarget] =
     useState<KnowledgeEntryRow | null>(null);
 
+  // Only the id is stored: the dialog always gets the CURRENT section, so entries saved by an
+  // import show up in its duplicate check as soon as the list refreshes
+  const [importSectionId, setImportSectionId] = useState<number | null>(null);
+
   // Full refetch after any mutation — same pattern as TeamPage.refreshMembers
   const refresh = useCallback(() => {
     startRefresh(async () => {
@@ -73,6 +78,8 @@ const KnowledgeSectionsPanel = ({
     (sum, s) => sum + s.entries.filter((e) => e.syncStatus === "stale").length,
     0,
   );
+
+  const importSection = sections.find((s) => s.id === importSectionId) ?? null;
 
   return (
     <div className="space-y-4">
@@ -142,6 +149,7 @@ const KnowledgeSectionsPanel = ({
                     entry: null,
                   })
                 }
+                onImport={() => setImportSectionId(section.id)}
                 onEditEntry={(entry) =>
                   setEntryDialogTarget({
                     sectionId: section.id,
@@ -188,6 +196,15 @@ const KnowledgeSectionsPanel = ({
         entry={removeEntryTarget}
         onRemoved={refresh}
       />
+
+      {importSection && (
+        <ImportDialog
+          section={importSection}
+          remainingSlots={Math.max(0, entryLimit - totalEntries)}
+          onClose={() => setImportSectionId(null)}
+          onImported={refresh}
+        />
+      )}
     </div>
   );
 };

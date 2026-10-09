@@ -14,6 +14,7 @@ interface SectionRowProps {
   onEditSection: () => void;
   onDeleteSection: () => void;
   onAddEntry: () => void;
+  onImport: () => void;
   onEditEntry: (entry: KnowledgeEntryRow) => void;
   onDeleteEntry: (entry: KnowledgeEntryRow) => void;
   onRefresh: () => void;
@@ -26,6 +27,7 @@ const SectionRow = ({
   onEditSection,
   onDeleteSection,
   onAddEntry,
+  onImport,
   onEditEntry,
   onDeleteEntry,
   onRefresh,
@@ -107,7 +109,7 @@ const SectionRow = ({
             )}
 
             {isAdmin && (
-              <div className="px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2 px-4 py-3">
                 <Button
                   type="button"
                   variant="outline"
@@ -117,6 +119,18 @@ const SectionRow = ({
                 >
                   + Tambah entri
                 </Button>
+                {/* Import fills a CATALOG section only — the server refuses any other kind */}
+                {section.kind === "catalog" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onImport}
+                    disabled={entryLimitReached}
+                    className="btn-outline hover:!bg-brand/75 text-[12px]"
+                  >
+                    Impor dari teks
+                  </Button>
+                )}
               </div>
             )}
           </motion.div>
