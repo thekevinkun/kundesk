@@ -96,11 +96,12 @@ export const MAX_PROFILE_BLOCK_CHARS = 2500;
 
 // ─── Catalog import limits ───
 
-// Rows saved per Server Action call — keeps each call (insert + embed) well under Vercel's 10s cap
-// Tunable: confirm with a live test before raising
+// Rows saved per Server Action call — keeps each call (insert + embed) short, so a failure loses
+// little and progress moves visibly. Tunable.
 export const MAX_IMPORT_SAVE_ROWS = 25;
 
-// Max lines of pasted text per extraction call — same reason
+// Max lines of pasted text per extraction call — same reason: reading time grows with the number
+// of rows, because the model writes each one out
 export const MAX_IMPORT_EXTRACT_LINES = 30;
 
 // Max rows one import can produce in total (Rumah Paco has ~190 items)

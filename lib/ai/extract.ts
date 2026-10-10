@@ -15,8 +15,10 @@ const MAX_ROWS_PER_CALL = 60;
 // Title cap matches the save schema, so a row we return can never fail on length alone
 const MAX_TITLE_CHARS = 120;
 
-// Under Vercel's 10s function limit, so a slow call fails cleanly instead of being killed
-const EXTRACT_TIMEOUT_MS = 8_000;
+// A full 30-line batch can take 10+ seconds: the model writes every row out as JSON. The first live
+// test hit the old 8s limit exactly. This project runs with Fluid Compute (300s per function), so
+// 45s leaves room for a slow call and still fails cleanly if OpenAI hangs.
+const EXTRACT_TIMEOUT_MS = 45_000;
 
 const SYSTEM_PROMPT = `You extract product or service items from messy Indonesian business text (WhatsApp catalogs, price lists, menus).
 
