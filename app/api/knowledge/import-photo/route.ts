@@ -23,6 +23,7 @@ import {
   getSectionKind,
 } from "@/lib/db/queries/knowledge-import";
 import { flagRows } from "@/helpers/knowledge-import";
+import { readBodyWithLimit } from "@/helpers/read-body-limit";
 import {
   MAX_IMPORT_PHOTO_BYTES,
   validateImportPhoto,
@@ -55,7 +56,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // ── Early size check: refuse an oversized body BEFORE reading it into memory ──
+    // ── Fast path only: Content-Length can be missing (chunked) or wrong, so the real limit is the
+    // byte counter below. This just refuses an honestly declared huge body before reading anything ──
     const declaredSize = Number(request.headers.get("content-length"));
     if (
       Number.isFinite(declaredSize) &&
@@ -64,11 +66,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return fail("Foto terlalu besar. Maksimal 3MB.", 413);
     }
 
-    // ── Read the form ──
+    // ── Read the body, counting the bytes actually received. Stops at the cap, so a body with no
+    // Content-Length (or a lying one) can never be buffered whole. The multipart parser runs only
+    // on bytes already known to fit ──
     let form: FormData;
     try {
-      form = await request.formData();
+      const body = await readBodyWithLimit(
+        request.body,
+        MAX_IMPORT_PHOTO_BYTES + FORM_OVERHEAD_BYTES,
+      );
+      if (body === null) return fail("Foto terlalu besar. Maksimal 3MB.", 413);
+
+      form = await new Response(body, {
+        headers: { "content-type": request.headers.get("content-type") ?? "" },
+      }).formData();
     } catch {
+      // Not a form, or the connection dropped mid-upload — the owner's request, not our bug
       return fail("Permintaan tidak valid.", 400);
     }
 

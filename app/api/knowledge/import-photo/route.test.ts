@@ -74,6 +74,37 @@ function buildRequest(parts: RequestParts = {}): NextRequest {
   });
 }
 
+// A request whose body is a plain stream: no Content-Length, like a chunked upload.
+// Used instead of FormData for the oversized case, because cancelling Node's own FormData
+// body stream makes its internal pump throw after the fact.
+function streamingRequest(chunks: Uint8Array[]): NextRequest {
+  let next = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const chunk = chunks[next];
+      if (chunk === undefined) {
+        controller.close();
+        return;
+      }
+      next += 1;
+      controller.enqueue(chunk);
+    },
+  });
+
+  // Node requires duplex: "half" for a streamed request body. The intersection type lets us set it
+  // without a cast, which is also what clashed with NextRequest's own RequestInit type.
+  const init: RequestInit & { duplex: "half" } = {
+    method: "POST",
+    body,
+    headers: { "content-type": "multipart/form-data; boundary=test" },
+    duplex: "half",
+  };
+
+  return new NextRequest(
+    new Request("http://localhost/api/knowledge/import-photo", init),
+  );
+}
+
 interface JsonBody {
   success: boolean;
   error?: string;
@@ -171,6 +202,21 @@ describe("POST /api/knowledge/import-photo — the request", () => {
         },
       }),
     );
+
+    expect(response.status).toBe(413);
+    expect(m.getSectionKind).not.toHaveBeenCalled();
+    expectNoSpend();
+  });
+
+  it("refuses an oversized body even with NO content-length, by counting the bytes it reads", async () => {
+    // 10 chunks of 512KB = 5MB, well over the cap plus form overhead
+    const request = streamingRequest(
+      Array.from({ length: 10 }, () => jpegBytes(512 * 1024)),
+    );
+    // Guard: the test only means something if the header really is absent
+    expect(request.headers.get("content-length")).toBeNull();
+
+    const response = await POST(request);
 
     expect(response.status).toBe(413);
     expect(m.getSectionKind).not.toHaveBeenCalled();
