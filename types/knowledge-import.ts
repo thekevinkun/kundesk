@@ -8,8 +8,10 @@ import type {
   ImportPrice,
   ImportRow,
   ImportSaveData,
+  PhotoExtractResult,
   RowFlags,
 } from "@/types/knowledge";
+import type { CompressResult } from "@/types/image-compress";
 
 // One row in the review screen — editable by the owner until they confirm
 export interface DraftRow {
@@ -31,6 +33,19 @@ export type SaveFn = (input: {
   sectionId: number;
   rows: ImportRow[];
 }) => Promise<ActionResult<ImportSaveData>>;
+
+// Photo import: shrinks the owner's photo into an uploadable JPEG (compressPhotoForImport in production)
+export type CompressFn = (file: File) => Promise<CompressResult>;
+
+// Photo import: sends the JPEG to the photo route and returns its answer in the same shape as the text action
+export type PhotoUploadFn = (input: {
+  sectionId: number;
+  photo: Blob;
+  signal?: AbortSignal | undefined;
+}) => Promise<ActionResult<PhotoExtractResult>>;
+
+// Which part of a photo read is running — the dialog shows a different label for each
+export type PhotoStage = "compressing" | "reading";
 
 // One save call: the rows plus the editorIds they came from (same order)
 export interface SaveBatch {
@@ -71,6 +86,9 @@ export interface SaveOutcome {
 export type DraftPatch = Partial<
   Pick<DraftRow, "title" | "description" | "price" | "selected">
 >;
+
+// Where the rows come from: pasted text, or a photo of a menu
+export type ImportSource = "text" | "photo";
 
 // Which screen of the import dialog is showing
 export type ImportStep = "paste" | "reading" | "review" | "saving" | "result";

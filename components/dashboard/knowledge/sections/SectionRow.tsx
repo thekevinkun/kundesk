@@ -128,7 +128,7 @@ const SectionRow = ({
                     disabled={entryLimitReached}
                     className="btn-outline hover:!bg-brand/75 text-[12px]"
                   >
-                    Impor dari teks
+                    Impor dari teks/foto
                   </Button>
                 )}
               </div>

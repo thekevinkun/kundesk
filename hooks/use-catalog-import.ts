@@ -19,13 +19,18 @@ import {
   updateRow,
 } from "@/helpers/knowledge-import-draft";
 import { runExtraction, runSave } from "@/helpers/knowledge-import-runner";
+import { runPhotoExtraction } from "@/helpers/knowledge-import-photo-runner";
+import { uploadImportPhoto } from "@/helpers/knowledge-import-photo-upload";
+import { compressPhotoForImport } from "@/helpers/image-compress";
 import { MAX_IMPORT_INPUT_CHARS } from "@/types/knowledge";
 import type {
   DraftPatch,
   DraftRow,
   ImportProgressState,
+  ImportSource,
   ImportStep,
   ImportTotals,
+  PhotoStage,
 } from "@/types/knowledge-import";
 
 interface UseCatalogImportOptions {
@@ -51,6 +56,9 @@ export function useCatalogImport({
 }: UseCatalogImportOptions) {
   const [step, setStep] = useState<ImportStep>("paste");
   const [text, setText] = useState("");
+  const [source, setSource] = useState<ImportSource>("text");
+  const [file, setFile] = useState<File | null>(null);
+  const [photoStage, setPhotoStage] = useState<PhotoStage>("compressing");
   const [rows, setRows] = useState<DraftRow[]>([]);
   const [remainingSlots, setRemainingSlots] = useState(initialRemainingSlots);
   const [truncated, setTruncated] = useState(false);
@@ -70,8 +78,22 @@ export function useCatalogImport({
   const confirm = getConfirmState(rows, remainingSlots);
   const overLimit = text.length > MAX_IMPORT_INPUT_CHARS;
 
+  // Whether "Baca ..." may be pressed for the chosen source
+  const canRead =
+    source === "text" ? text.trim().length > 0 && !overLimit : file !== null;
+
   const changeText = (value: string) => {
     setText(value);
+    setError(null);
+  };
+
+  const changeSource = (next: ImportSource) => {
+    setSource(next);
+    setError(null);
+  };
+
+  const changeFile = (next: File) => {
+    setFile(next);
     setError(null);
   };
 
@@ -113,6 +135,47 @@ export function useCatalogImport({
     setError(
       outcome.error ? `Sebagian teks belum terbaca. ${outcome.error}` : null,
     );
+    setStep("review");
+  };
+
+  // ── Step 1 → 2 for a photo: shrink, upload, read ──
+  const handleReadPhoto = async () => {
+    if (!file) return;
+
+    setError(null);
+    setPhotoStage("compressing");
+    setStep("reading");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const outcome = await runPhotoExtraction({
+      sectionId,
+      file,
+      compress: compressPhotoForImport,
+      upload: uploadImportPhoto,
+      existingKeys,
+      onStage: setPhotoStage,
+      signal: controller.signal,
+    });
+
+    // Cancelled or closed while reading — the cancel handler already moved the screen
+    if (controller.signal.aborted) return;
+
+    // Back to step 1 with the photo still chosen, so the owner can retry or pick another
+    if (outcome.drafts.length === 0) {
+      setError(
+        outcome.error ??
+          "Tidak ada item yang bisa dibaca dari foto ini. Pastikan fotonya terang dan memuat daftar harga.",
+      );
+      setStep("paste");
+      return;
+    }
+
+    setRows(outcome.drafts);
+    setRemainingSlots(outcome.remainingSlots ?? remainingSlots);
+    setTruncated(outcome.truncated);
+    setError(null);
     setStep("review");
   };
 
@@ -201,6 +264,12 @@ export function useCatalogImport({
     step,
     text,
     changeText,
+    source,
+    changeSource,
+    file,
+    changeFile,
+    photoStage,
+    canRead,
     rows,
     remainingSlots,
     truncated,
@@ -209,7 +278,8 @@ export function useCatalogImport({
     totals,
     confirm,
     overLimit,
-    handleRead,
+    // One entry point for the footer button; the chosen source decides which read runs
+    handleRead: source === "photo" ? handleReadPhoto : handleRead,
     handleCancelReading,
     changeRow,
     deleteRow,

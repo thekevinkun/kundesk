@@ -10,6 +10,7 @@ import type {
   ConfirmState,
   DraftPatch,
   DraftRow,
+  ImportSource,
 } from "@/types/knowledge-import";
 
 interface ImportReviewProps {
@@ -17,6 +18,7 @@ interface ImportReviewProps {
   remainingSlots: number;
   confirm: ConfirmState;
   truncated: boolean;
+  source: ImportSource;
   disabled: boolean;
   onChangeRow: (editorId: string, patch: DraftPatch) => void;
   onRemoveRow: (editorId: string) => void;
@@ -29,6 +31,7 @@ const ImportReview = ({
   remainingSlots,
   confirm,
   truncated,
+  source,
   disabled,
   onChangeRow,
   onRemoveRow,
@@ -80,8 +83,9 @@ const ImportReview = ({
 
       {truncated && (
         <p className="text-[12px] text-(--color-text-500)">
-          Hanya {MAX_IMPORT_TOTAL_ROWS} item pertama yang ditampilkan. Impor
-          sisanya setelah ini selesai.
+          {source === "photo"
+            ? "Foto ini berisi lebih banyak item daripada yang bisa dibaca sekaligus, jadi item di bagian akhir tidak ditampilkan. Potret sisanya per halaman, lalu impor lagi."
+            : `Hanya ${MAX_IMPORT_TOTAL_ROWS} item pertama yang ditampilkan. Impor sisanya setelah ini selesai.`}
         </p>
       )}
 

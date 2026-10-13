@@ -207,6 +207,48 @@ export async function checkKnowledgeImportLimit(
   };
 }
 
+// knowledgeImportPhotoLimit — protects OpenAI credits from photo import (image → items extraction).
+// Separate from the text limiter on purpose: a photo read costs far more (about 25,000 image tokens
+// plus a long answer), so it gets a smaller allowance and never uses up the text one.
+// One count = one photo read. Two windows: 10/hour stops a script hammering the endpoint;
+// 30/day caps what one org can spend. The hourly check runs first so a request blocked by it
+// never uses up the day's allowance. Both numbers are starting guesses.
+export async function checkKnowledgeImportPhotoLimit(
+  orgId: string,
+): Promise<RateLimitResult> {
+  const redis = await getRedis();
+  const { Ratelimit } = await import("@upstash/ratelimit");
+
+  const hourly = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 h"),
+    prefix: "kundesk:rl:knowledge-import-photo:hour:org",
+  });
+
+  const hourlyResult = await hourly.limit(orgId);
+  if (!hourlyResult.success) {
+    return {
+      success: false,
+      remaining: hourlyResult.remaining,
+      reset: hourlyResult.reset,
+    };
+  }
+
+  const daily = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 d"),
+    prefix: "kundesk:rl:knowledge-import-photo:day:org",
+  });
+
+  const dailyResult = await daily.limit(orgId);
+  return {
+    success: dailyResult.success,
+    // Report whichever window is closer to running out
+    remaining: Math.min(hourlyResult.remaining, dailyResult.remaining),
+    reset: dailyResult.success ? hourlyResult.reset : dailyResult.reset,
+  };
+}
+
 // Generic cache get/set — used for response caching
 export async function cacheGet(key: string): Promise<string | null> {
   const redis = await getRedis();

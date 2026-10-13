@@ -1,7 +1,7 @@
 "use client";
 
-// Dialog shell for catalog import: paste → reading → review → saving → result.
-// Mounted only while open (the panel renders it conditionally), so it always starts fresh.
+// Dialog shell for catalog import: first screen (paste text OR pick a photo) → reading → review →
+// saving → result. Mounted only while open (the panel renders it conditionally), so it always starts fresh.
 
 import {
   Dialog,
@@ -17,9 +17,14 @@ import {
   ImportPasteStep,
   ImportFooter,
 } from "./";
+import ImportPhotoStep from "./ImportPhotoStep";
+import ImportSourceSwitch from "./ImportSourceSwitch";
 import { useCatalogImport } from "@/hooks/use-catalog-import";
+import {
+  getReadingLabel,
+  getStepDescription,
+} from "@/helpers/knowledge-import-labels";
 import type { KnowledgeSectionRow } from "@/types/knowledge";
-import type { ImportStep } from "@/types/knowledge-import";
 
 interface ImportDialogProps {
   section: KnowledgeSectionRow;
@@ -27,15 +32,6 @@ interface ImportDialogProps {
   onClose: () => void;
   onImported: () => void;
 }
-
-const DESCRIPTIONS: Record<ImportStep, string> = {
-  paste:
-    "Tempel daftar item dari WhatsApp, Excel, atau catatan. KUN membacanya, lalu kamu cek dulu sebelum disimpan.",
-  reading: "Sedang membaca teks kamu.",
-  review: "Cek nama dan harga. Item yang ditandai perlu diperiksa dulu.",
-  saving: "Sedang menyimpan item.",
-  result: "Impor selesai.",
-};
 
 const ImportDialog = ({
   section,
@@ -51,13 +47,6 @@ const ImportDialog = ({
     onClose,
   });
 
-  // A short paste is one round, so a counter would only confuse. "Tahap" rather than "bagian",
-  // because "bagian" already means a section everywhere else in this app.
-  const readingLabel =
-    imp.progress.total > 1
-      ? `Membaca teks (tahap ${Math.min(imp.progress.done + 1, imp.progress.total)} dari ${imp.progress.total})`
-      : "Membaca teks...";
-
   return (
     <Dialog
       open
@@ -68,23 +57,45 @@ const ImportDialog = ({
       <DialogContent className="max-w-[440px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Impor ke {section.title}</DialogTitle>
-          <DialogDescription>{DESCRIPTIONS[imp.step]}</DialogDescription>
+          <DialogDescription>
+            {getStepDescription(imp.step, imp.source)}
+          </DialogDescription>
         </DialogHeader>
 
         {imp.step === "paste" && (
-          <ImportPasteStep
-            text={imp.text}
-            onTextChange={imp.changeText}
-            overLimit={imp.overLimit}
-            error={imp.error}
-          />
+          <div className="space-y-3">
+            <ImportSourceSwitch
+              source={imp.source}
+              onChange={imp.changeSource}
+            />
+            {imp.source === "text" ? (
+              <ImportPasteStep
+                text={imp.text}
+                onTextChange={imp.changeText}
+                overLimit={imp.overLimit}
+                error={imp.error}
+              />
+            ) : (
+              <ImportPhotoStep
+                file={imp.file}
+                onFileChange={imp.changeFile}
+                error={imp.error}
+              />
+            )}
+          </div>
         )}
 
         {imp.step === "reading" && (
           <ImportProgressStep
-            label={readingLabel}
+            label={getReadingLabel({
+              source: imp.source,
+              stage: imp.photoStage,
+              progress: imp.progress,
+            })}
             done={imp.progress.done}
             total={imp.progress.total}
+            // A photo is one call — there is no real progress to show
+            indeterminate={imp.source === "photo"}
           />
         )}
 
@@ -100,6 +111,7 @@ const ImportDialog = ({
               remainingSlots={imp.remainingSlots}
               confirm={imp.confirm}
               truncated={imp.truncated}
+              source={imp.source}
               disabled={false}
               onChangeRow={imp.changeRow}
               onRemoveRow={imp.deleteRow}
@@ -136,7 +148,8 @@ const ImportDialog = ({
 
         <ImportFooter
           step={imp.step}
-          canRead={imp.text.trim().length > 0 && !imp.overLimit}
+          source={imp.source}
+          canRead={imp.canRead}
           confirm={imp.confirm}
           onRead={imp.handleRead}
           onCancelReading={imp.handleCancelReading}

@@ -55,6 +55,7 @@ import {
   checkAuthRateLimit,
   checkKnowledgeWriteLimit,
   checkKnowledgeImportLimit,
+  checkKnowledgeImportPhotoLimit,
   getCachedProfile,
   cacheGet,
   cacheSet,
@@ -346,6 +347,122 @@ describe("checkKnowledgeImportLimit", () => {
     const result = await checkKnowledgeImportLimit("org_import");
 
     expect(result.remaining).toBe(3);
+  });
+});
+
+describe("checkKnowledgeImportPhotoLimit", () => {
+  beforeEach(() => {
+    mockLimit.mockClear();
+    // Calls from earlier tests must not satisfy this block's window assertions
+    vi.mocked(Ratelimit.slidingWindow).mockClear();
+  });
+
+  it("checks both windows with the orgId and returns success when both pass", async () => {
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 9,
+        reset: Date.now() + 3600000,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 29,
+        reset: Date.now() + 86400000,
+      });
+
+    const result = await checkKnowledgeImportPhotoLimit("org_photo");
+
+    expect(result.success).toBe(true);
+    expect(mockLimit).toHaveBeenCalledTimes(2);
+    expect(mockLimit).toHaveBeenNthCalledWith(1, "org_photo");
+    expect(mockLimit).toHaveBeenNthCalledWith(2, "org_photo");
+  });
+
+  it("uses a 10/hour window and a 30/day window, not the text limiter's numbers", async () => {
+    await checkKnowledgeImportPhotoLimit("org_photo");
+
+    const calls = vi.mocked(Ratelimit.slidingWindow).mock.calls;
+    expect(calls).toEqual([
+      [10, "1 h"],
+      [30, "1 d"],
+    ]);
+  });
+
+  it("blocks on the hourly limit without touching the daily counter", async () => {
+    const hourlyReset = Date.now() + 3600000;
+    mockLimit.mockResolvedValueOnce({
+      success: false,
+      remaining: 0,
+      reset: hourlyReset,
+    });
+
+    const result = await checkKnowledgeImportPhotoLimit("org_photo");
+
+    expect(result).toEqual({
+      success: false,
+      remaining: 0,
+      reset: hourlyReset,
+    });
+    // A blocked request must not use up the day's allowance
+    expect(mockLimit).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks on the daily limit and reports the daily reset time", async () => {
+    const dailyReset = Date.now() + 86400000;
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 4,
+        reset: Date.now() + 3600000,
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        remaining: 0,
+        reset: dailyReset,
+      });
+
+    const result = await checkKnowledgeImportPhotoLimit("org_photo");
+
+    expect(result.success).toBe(false);
+    expect(result.remaining).toBe(0);
+    expect(result.reset).toBe(dailyReset);
+  });
+
+  it("reports the hourly reset time when both windows pass", async () => {
+    const hourlyReset = Date.now() + 3600000;
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 8,
+        reset: hourlyReset,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 25,
+        reset: Date.now() + 86400000,
+      });
+
+    const result = await checkKnowledgeImportPhotoLimit("org_photo");
+
+    expect(result.reset).toBe(hourlyReset);
+  });
+
+  it("reports whichever window has fewer requests remaining", async () => {
+    mockLimit
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 7,
+        reset: Date.now() + 3600000,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        remaining: 2,
+        reset: Date.now() + 86400000,
+      });
+
+    const result = await checkKnowledgeImportPhotoLimit("org_photo");
+
+    expect(result.remaining).toBe(2);
   });
 });
 

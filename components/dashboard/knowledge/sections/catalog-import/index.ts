@@ -6,3 +6,5 @@ export { default as ImportPasteStep } from "./ImportPasteStep";
 export { default as ImportProgressStep } from "./ImportProgressStep";
 export { default as ImportResultStep } from "./ImportResultStep";
 export { default as ImportDialog } from "./ImportDialog";
+export { default as ImportSourceSwitch } from "./ImportSourceSwitch";
+export { default as ImportPhotoStep } from "./ImportPhotoStep";

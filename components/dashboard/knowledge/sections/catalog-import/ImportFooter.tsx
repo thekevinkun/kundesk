@@ -4,10 +4,15 @@
 
 import { DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { ConfirmState, ImportStep } from "@/types/knowledge-import";
+import type {
+  ConfirmState,
+  ImportSource,
+  ImportStep,
+} from "@/types/knowledge-import";
 
 interface ImportFooterProps {
   step: ImportStep;
+  source: ImportSource;
   canRead: boolean;
   confirm: ConfirmState;
   onRead: () => void;
@@ -23,6 +28,7 @@ const CANCEL_CLASS =
 
 const ImportFooter = ({
   step,
+  source,
   canRead,
   confirm,
   onRead,
@@ -40,7 +46,7 @@ const ImportFooter = ({
             Batal
           </Button>
           <Button onClick={onRead} disabled={!canRead} className="btn-brand">
-            Baca teks
+            {source === "photo" ? "Baca foto" : "Baca teks"}
           </Button>
         </>
       )}

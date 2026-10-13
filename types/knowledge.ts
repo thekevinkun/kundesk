@@ -156,6 +156,12 @@ export interface ExtractResult {
   remainingSlots: number; // free entry slots left on the plan
 }
 
+// Returned by the photo extraction route: the same as text extraction, plus a flag for rows
+// that were cut because the photo held more items than one read may return
+export interface PhotoExtractResult extends ExtractResult {
+  truncated: boolean;
+}
+
 // Returned by the save step
 export interface ImportSaveData {
   saved: number;
