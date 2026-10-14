@@ -59,11 +59,12 @@ const RemoveEntryDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
+            className="border-(--color-border) text-(--color-text-700) hover:bg-(--color-brand)/75"
           >
             {REMOVE_ENTRY_COPY.cancelLabel}
           </Button>

@@ -132,7 +132,7 @@ const DeleteOrgDialog = ({
           <Button
             onClick={onConfirm}
             disabled={!isConfirmed || isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white border-0 min-w-[120px]"
+            className="bg-(--color-danger) text-white hover:bg-red-600"
             aria-busy={isDeleting}
           >
             {isDeleting ? "Menghapus..." : "Hapus Permanen"}
