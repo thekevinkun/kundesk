@@ -90,26 +90,9 @@ const SectionRow = ({
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-(--color-border-sm) overflow-hidden"
           >
-            {section.entries.length === 0 ? (
-              <div className="py-8 text-center text-[12.5px] text-(--color-text-400)">
-                Belum ada entri di bagian ini.
-              </div>
-            ) : (
-              section.entries.map((entry) => (
-                <EntryRow
-                  key={entry.id}
-                  entry={entry}
-                  sectionKind={section.kind}
-                  isAdmin={isAdmin}
-                  onEdit={() => onEditEntry(entry)}
-                  onDelete={() => onDeleteEntry(entry)}
-                  onToggled={onRefresh}
-                />
-              ))
-            )}
-
+            {/* Toolbar sits ABOVE the scroll area, so the buttons stay visible however long the list is */}
             {isAdmin && (
-              <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-(--color-border-sm)">
                 <Button
                   type="button"
                   variant="outline"
@@ -131,6 +114,34 @@ const SectionRow = ({
                     Impor dari teks/foto
                   </Button>
                 )}
+              </div>
+            )}
+
+            {section.entries.length === 0 ? (
+              <div className="py-8 text-center text-[12.5px] text-(--color-text-400)">
+                Belum ada entri di bagian ini.
+              </div>
+            ) : (
+              // Inner scroller is a separate element from the animated motion.div above,
+              // so the open/close height animation and the scrollbar never fight each other.
+              // tabIndex + role + aria-label make the scrollable region keyboard-reachable.
+              <div
+                role="region"
+                tabIndex={0}
+                aria-label={`Daftar entri ${section.title}`}
+                className="max-h-[min(60vh,420px)] overflow-y-auto"
+              >
+                {section.entries.map((entry) => (
+                  <EntryRow
+                    key={entry.id}
+                    entry={entry}
+                    sectionKind={section.kind}
+                    isAdmin={isAdmin}
+                    onEdit={() => onEditEntry(entry)}
+                    onDelete={() => onDeleteEntry(entry)}
+                    onToggled={onRefresh}
+                  />
+                ))}
               </div>
             )}
           </motion.div>
