@@ -16,9 +16,11 @@ const mockDb = vi.hoisted(() => ({
 const claimSet = vi.hoisted(() => vi.fn());
 const deleteOrganization = vi.hoisted(() => vi.fn());
 const txDeleteWhere = vi.hoisted(() => vi.fn());
+const captureException = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/env", () => ({ env: mockEnv }));
 vi.mock("@/lib/db", () => ({ db: mockDb }));
+vi.mock("@sentry/nextjs", () => ({ captureException }));
 // clerkClient is async in the route (`await clerkClient()`) — a plain async fn is enough
 vi.mock("@clerk/nextjs/server", () => ({
   clerkClient: async () => ({ organizations: { deleteOrganization } }),
@@ -27,11 +29,21 @@ vi.mock("@clerk/nextjs/server", () => ({
 // Fixed "now" so the purgingAt stamp is deterministic
 const NOW = new Date("2026-10-05T20:00:00.000Z");
 
-// Queue the candidate snapshot (the first db.select() in the route)
-function mockCandidates(ids: string[]): void {
+// A claim older than the 6-hour cutoff — what an abandoned claim looks like in the snapshot
+const STALE_CLAIM = new Date("2026-10-05T06:00:00.000Z");
+
+// Queue the candidate snapshot (the first db.select() in the route).
+// staleIds = candidates that already carry an old claim (a takeover)
+function mockCandidates(ids: string[], staleIds: string[] = []): void {
   mockDb.select.mockReturnValueOnce({
     from: () => ({
-      where: () => Promise.resolve(ids.map((id) => ({ id }))),
+      where: () =>
+        Promise.resolve(
+          ids.map((id) => ({
+            id,
+            purgingAt: staleIds.includes(id) ? STALE_CLAIM : null,
+          })),
+        ),
     }),
   });
 }
@@ -55,7 +67,12 @@ function makeReq(secret?: string): NextRequest {
   });
 }
 
-type RouteBody = { message: string; processed: number };
+type RouteBody = {
+  message: string;
+  processed: number;
+  failed: number;
+  retriedStale: number;
+};
 
 async function run(): Promise<RouteBody> {
   const res = await GET(makeReq(mockEnv.cronSecret));
@@ -121,6 +138,9 @@ describe("GET /api/cron/org-purge", () => {
       const body = await run();
 
       expect(body.processed).toBe(1);
+      expect(body.failed).toBe(0);
+      // A fresh claim is not a takeover
+      expect(body.retriedStale).toBe(0);
       // The claim stamps purgingAt with the current time
       expect(claimSet).toHaveBeenCalledWith({ purgingAt: NOW });
       expect(deleteOrganization).toHaveBeenCalledWith("org_a");
@@ -150,6 +170,42 @@ describe("GET /api/cron/org-purge", () => {
       expect(deleteOrganization).not.toHaveBeenCalled();
       expect(mockDb.transaction).not.toHaveBeenCalled();
     });
+
+    it("takes over an abandoned claim and counts it", async () => {
+      // org_a already carries an old purgingAt in the snapshot
+      mockCandidates(["org_a"], ["org_a"]);
+      queueClaims([[{ id: "org_a" }]]);
+      const body = await run();
+      expect(body.processed).toBe(1);
+      expect(body.retriedStale).toBe(1);
+      expect(deleteOrganization).toHaveBeenCalledWith("org_a");
+    });
+
+    it("does not count a takeover that lost the race", async () => {
+      // Another run took the stale claim first, so ours matches no row
+      mockCandidates(["org_a"], ["org_a"]);
+      queueClaims([[]]);
+      const body = await run();
+      expect(body.processed).toBe(0);
+      expect(body.retriedStale).toBe(0);
+      expect(deleteOrganization).not.toHaveBeenCalled();
+    });
+
+    it("a failing claim UPDATE is reported with step 'claim' and nothing is deleted", async () => {
+      mockCandidates(["org_a"]);
+      mockDb.update.mockImplementationOnce(() => {
+        throw new Error("neon timeout");
+      });
+      const body = await run();
+      expect(body.failed).toBe(1);
+      expect(deleteOrganization).not.toHaveBeenCalled();
+      expect(captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          tags: { cron: "org-purge", step: "claim" },
+        }),
+      );
+    });
   });
 
   describe("Clerk errors", () => {
@@ -160,21 +216,29 @@ describe("GET /api/cron/org-purge", () => {
       const body = await run();
       expect(body.processed).toBe(1);
       expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(captureException).not.toHaveBeenCalled();
     });
 
-    // CHARACTERIZATION — pins today's behavior, not necessarily the desired one.
-    // The org stays claimed (purgingAt set): the candidate query skips it on every later
-    // run and cancelOrgDeletion refuses it, so it is stuck until fixed by hand.
-    it("on a non-404 Clerk error: no DB delete, org stays claimed, error is logged", async () => {
+    // Flipped from CHARACTERIZATION (rule 281). The claim is KEPT on purpose — releasing it could
+    // let cancelOrgDeletion restore an org that is already gone from Clerk. The next run takes it
+    // over once it is stale, and the failure is reported to Sentry now.
+    it("on a non-404 Clerk error: no DB delete, claim kept, failure sent to Sentry with step 'clerk'", async () => {
       mockCandidates(["org_a"]);
       queueClaims([[{ id: "org_a" }]]);
       deleteOrganization.mockRejectedValueOnce(clerkError(500));
       const body = await run();
       expect(body.processed).toBe(0);
+      expect(body.failed).toBe(1);
       expect(mockDb.transaction).not.toHaveBeenCalled();
-      // Only the claim UPDATE ran — nothing releases the claim
+      // Only the claim UPDATE ran — the claim is deliberately not released
       expect(mockDb.update).toHaveBeenCalledTimes(1);
-      expect(console.error).toHaveBeenCalled();
+      expect(captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          tags: { cron: "org-purge", step: "clerk" },
+          extra: { orgId: "org_a", action: "org-purge" },
+        }),
+      );
     });
 
     it("does not treat an error without a 404 status as already-deleted", async () => {
@@ -188,15 +252,22 @@ describe("GET /api/cron/org-purge", () => {
   });
 
   describe("DB errors", () => {
-    // CHARACTERIZATION — same stuck-claim consequence, and here Clerk is already gone
-    it("when the DB transaction fails after Clerk deletion: not counted, error logged", async () => {
+    // Flipped from CHARACTERIZATION (rule 281): Clerk is already gone here, so the claim must
+    // stay — the next run retries safely (the Clerk 404 counts as success) after it goes stale
+    it("when the DB transaction fails after Clerk deletion: not counted, reported with step 'db'", async () => {
       mockCandidates(["org_a"]);
       queueClaims([[{ id: "org_a" }]]);
       mockDb.transaction.mockRejectedValueOnce(new Error("neon timeout"));
       const body = await run();
       expect(body.processed).toBe(0);
+      expect(body.failed).toBe(1);
       expect(deleteOrganization).toHaveBeenCalledWith("org_a");
-      expect(console.error).toHaveBeenCalled();
+      expect(captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          tags: { cron: "org-purge", step: "db" },
+        }),
+      );
     });
   });
 
@@ -209,6 +280,7 @@ describe("GET /api/cron/org-purge", () => {
         .mockResolvedValueOnce(undefined);
       const body = await run();
       expect(body.processed).toBe(1);
+      expect(body.failed).toBe(1);
       expect(deleteOrganization).toHaveBeenCalledTimes(2);
       expect(deleteOrganization).toHaveBeenLastCalledWith("org_b");
       expect(mockDb.transaction).toHaveBeenCalledTimes(1);
@@ -229,6 +301,26 @@ describe("GET /api/cron/org-purge", () => {
       const body = await run();
       expect(body.processed).toBe(3);
       expect(mockDb.transaction).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("candidate query failure", () => {
+    it("alerts Sentry and answers 500 instead of looking like 'nothing to do'", async () => {
+      mockDb.select.mockReturnValueOnce({
+        from: () => ({
+          where: () => Promise.reject(new Error("neon down")),
+        }),
+      });
+      const res = await GET(makeReq(mockEnv.cronSecret));
+      expect(res.status).toBe(500);
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(deleteOrganization).not.toHaveBeenCalled();
+      expect(captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          tags: { cron: "org-purge", step: "candidates" },
+        }),
+      );
     });
   });
 });
