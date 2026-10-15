@@ -41,6 +41,7 @@ const m = vi.hoisted(() => ({
   getBusinessProfileData: vi.fn(),
   openaiCreate: vi.fn(),
   openaiCtor: vi.fn(),
+  captureException: vi.fn(),
   // Spies on what the fake chains receive
   selectWhere: vi.fn(),
   historyOrderBy: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 vi.mock("@/lib/posthog", () => ({ trackEvent: m.trackEvent }));
+vi.mock("@sentry/nextjs", () => ({ captureException: m.captureException }));
 vi.mock("@/lib/email", () => ({
   sendUsageWarningEmail: m.sendUsageWarningEmail,
 }));
@@ -654,28 +656,46 @@ describe("POST /api/chat — building the AI request", () => {
       );
     });
 
-    // CHARACTERIZATION — unlike the profile, a failing retrieval has no fallback: the request
-    // throws, after a new conversation was already created and announced
-    it("a retrieval failure fails the request, with no prompt built and no model call", async () => {
-      m.retrieveContext.mockRejectedValueOnce(new Error("rag down"));
+    // Flipped from CHARACTERIZATION (rule 283c): a retrieval failure degrades to "no context",
+    // like the profile does — KUN answers from its normal fallback instead of the chat breaking
+    it("a retrieval failure never breaks chat: it falls back to no context, logs it and alerts Sentry", async () => {
+      const boom = new Error("rag down");
+      m.retrieveContext.mockRejectedValueOnce(boom);
 
-      await expect(POST(chatReq())).rejects.toThrow("rag down");
+      const { res } = await send();
 
-      expect(m.buildSystemPrompt).not.toHaveBeenCalled();
-      expect(m.openaiCreate).not.toHaveBeenCalled();
-      expect(m.transaction).not.toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(console.error).toHaveBeenCalledWith(
+        "[chat] Failed to retrieve context:",
+        boom,
+      );
+      expect(m.captureException).toHaveBeenCalledWith(boom, {
+        tags: { area: "chat-retrieval" },
+        extra: { orgId: "org_a" },
+      });
+      // The prompt is built with an EMPTY chunk list and the model is still called
+      expect(m.buildSystemPrompt).toHaveBeenCalledWith(
+        expect.anything(),
+        [],
+        expect.anything(),
+      );
+      expect(m.openaiCreate).toHaveBeenCalledTimes(1);
     });
 
-    it("a retrieval failure on a first message leaves the new conversation created and announced", async () => {
+    it("a retrieval failure on a first message still answers on the conversation that was just created", async () => {
       m.select.mockReset();
       state.conversationRows = [NEW_CONVERSATION];
       setup(null, []);
       m.retrieveContext.mockRejectedValueOnce(new Error("rag down"));
 
-      await expect(POST(chatReq())).rejects.toThrow("rag down");
+      const { events } = await send();
 
       expect(m.conversationValues).toHaveBeenCalledTimes(1);
-      expect(secondArgs(m.triggerOrgEvent)).toContain("conversation:new");
+      expect(events[events.length - 1]).toEqual({
+        done: true,
+        conversationId: 42,
+        channelToken: "tok-new",
+      });
     });
   });
 

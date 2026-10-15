@@ -45,6 +45,7 @@ const m = vi.hoisted(() => ({
   getBusinessProfileData: vi.fn(),
   openaiCreate: vi.fn(),
   openaiCtor: vi.fn(),
+  captureException: vi.fn(),
   // Spies on what the fake chains receive
   selectWhere: vi.fn(),
   markerValues: vi.fn(),
@@ -69,6 +70,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 vi.mock("@/lib/posthog", () => ({ trackEvent: m.trackEvent }));
+vi.mock("@sentry/nextjs", () => ({ captureException: m.captureException }));
 vi.mock("@/lib/email", () => ({
   sendUsageWarningEmail: m.sendUsageWarningEmail,
 }));
@@ -786,19 +788,22 @@ describe("POST /api/chat — streaming and completion", () => {
       );
     });
 
-    // CHARACTERIZATION — with no owner email the usage warning is still "sent", to an empty address
-    it("an org with no owner email still calls the email sender, with an empty address", async () => {
+    // Flipped from CHARACTERIZATION (rule 283j): with no owner email there is nobody to warn
+    it("an org with no owner email sends no usage email and logs a warning, but still notifies in-app", async () => {
       withFreshQuota(79);
       m.cachedOrg.mockResolvedValue({ ...ORG, ownerEmail: null });
 
       await sendAndSettle();
 
-      expect(m.sendUsageWarningEmail).toHaveBeenCalledWith(
-        "",
-        "Warung A",
-        80,
-        100,
-        mockEnv.logoUrl,
+      expect(m.sendUsageWarningEmail).not.toHaveBeenCalled();
+      expect(console.warn).toHaveBeenCalledWith(
+        "[chat] Usage warning not emailed — org org_a has no owner email",
+      );
+      expect(m.createNotification).toHaveBeenCalledWith(
+        "org_a",
+        "quota_warning",
+        "Kuota pesan hampir habis",
+        "80 dari 100 pesan telah digunakan bulan ini",
       );
     });
   });
@@ -832,22 +837,24 @@ describe("POST /api/chat — streaming and completion", () => {
       },
     );
 
-    // CHARACTERIZATION — the failure path calls the same completion handler with an empty
-    // answer, so a failed model call still saves AND COUNTS the customer's message
-    it("a failed model call still saves and counts the customer's message, with no assistant row", async () => {
+    // Flipped from CHARACTERIZATION (rule 283b, decision C): a failed turn leaves no trace
+    it("a failed model call saves nothing, counts nothing and announces nothing", async () => {
       m.openaiCreate.mockRejectedValueOnce(new Error("boom"));
 
       await sendAndSettle();
 
-      expect(savedWithRole("user")).toEqual([
-        { orgId: "org_a", conversationId: 7, role: "user", content: MESSAGE },
-      ]);
-      expect(savedWithRole("assistant")).toHaveLength(0);
-      expect(counterUpdates()).toHaveLength(1);
+      expect(m.transaction).not.toHaveBeenCalled();
+      expect(savedMessages()).toHaveLength(0);
+      expect(counterUpdates()).toHaveLength(0);
+      expect(m.triggerOrgEvent).not.toHaveBeenCalled();
+      expect(m.triggerUsageUpdated).not.toHaveBeenCalled();
+      expect(m.trackEvent).not.toHaveBeenCalled();
+      expect(m.markerValues).not.toHaveBeenCalled();
     });
 
-    // CHARACTERIZATION — the customer already saw the tokens, but the partial answer is discarded
-    it("a stream that breaks halfway delivers the tokens, then the error, and saves no answer", async () => {
+    // Flipped from CHARACTERIZATION — the customer already saw the tokens, the partial answer is
+    // discarded, and now the customer's message is not saved or counted either
+    it("a stream that breaks halfway delivers the tokens, then the error, and saves and counts nothing", async () => {
       m.openaiCreate.mockResolvedValue(
         failingStream(["Halo"], new Error("stream broke")),
       );
@@ -855,39 +862,31 @@ describe("POST /api/chat — streaming and completion", () => {
       const { events } = await sendAndSettle();
 
       expect(events).toEqual([{ token: "Halo" }, { error: GENERIC_ERROR }]);
-      expect(savedWithRole("user")).toHaveLength(1);
-      expect(savedWithRole("assistant")).toHaveLength(0);
+      expect(m.transaction).not.toHaveBeenCalled();
+      expect(savedMessages()).toHaveLength(0);
+      expect(counterUpdates()).toHaveLength(0);
     });
 
-    // CHARACTERIZATION — the completion handler runs the same post-commit work after a failure:
-    // the dashboard is told about an assistant message that was never saved, and analytics
-    // counts a sent message
-    it("after an error the dashboard is still told about an assistant message that was never saved", async () => {
+    it("a retry after a failed turn saves and counts the customer's message exactly once", async () => {
       m.openaiCreate.mockRejectedValueOnce(new Error("boom"));
-
       await sendAndSettle();
 
-      expect(m.triggerOrgEvent).toHaveBeenCalledWith(
-        "org_a",
-        "conversation:message",
-        {
-          conversationId: 7,
-          role: "assistant",
-          handoffStatus: "ai",
-        },
-      );
-      expect(m.trackEvent).toHaveBeenCalledWith(
-        "org_a",
-        "chat_message_sent",
-        expect.anything(),
-      );
+      // The retry: same conversation, fresh selects, and a model that now answers
+      setup(EXISTING_AI, []);
+      await sendAndSettle();
+
+      expect(m.transaction).toHaveBeenCalledTimes(1);
+      expect(savedWithRole("user")).toHaveLength(1);
+      expect(savedWithRole("assistant")).toHaveLength(1);
+      expect(counterUpdates()).toHaveLength(1);
     });
   });
 
   describe("the client disconnects", () => {
-    // CHARACTERIZATION — a client that goes away mid-stream makes the next enqueue throw, which
-    // lands in the error path: the customer's message is saved and counted, the answer is lost
-    it("mid-stream: the customer's message is saved and counted once, with no assistant row", async () => {
+    // Flipped from CHARACTERIZATION (decision C): a client that goes away mid-stream makes the
+    // next enqueue throw, which lands in the error path. The turn never completed, so it leaves
+    // no trace: nothing is saved or counted.
+    it("mid-stream: nothing is saved or counted, because the turn never completed", async () => {
       const { gate, release } = makeGate();
       m.openaiCreate.mockResolvedValue(gatedStream("Halo", " kak", gate));
 
@@ -897,18 +896,18 @@ describe("POST /api/chat — streaming and completion", () => {
       await reader.cancel(); // the client goes away
       release();
 
-      await until(() => m.transaction.mock.calls.length >= 1);
+      // Give the stream's error path time to run
+      await flush();
       await flush();
 
-      expect(m.transaction).toHaveBeenCalledTimes(1);
-      expect(savedWithRole("user")).toHaveLength(1);
-      expect(savedWithRole("assistant")).toHaveLength(0);
-      expect(counterUpdates()).toHaveLength(1);
+      expect(m.transaction).not.toHaveBeenCalled();
+      expect(savedMessages()).toHaveLength(0);
+      expect(counterUpdates()).toHaveLength(0);
     });
 
     // Regression: if the client goes away WHILE the save is running, the done event cannot be
-    // enqueued and the stream's error path calls the completion handler again. The handler is
-    // one-shot, so the customer's message is stored and counted exactly once.
+    // enqueued and the stream's error path runs. A failed turn is never saved (decision C) and
+    // the handler is one-shot, so the customer's message is stored and counted exactly once.
     it("while the save is in flight: the message is stored and counted once", async () => {
       const { gate, release } = makeGate();
       m.transaction.mockImplementationOnce(

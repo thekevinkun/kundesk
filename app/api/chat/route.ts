@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import { db } from "@/lib/db";
@@ -125,7 +126,12 @@ function createOpenAIStream(
         );
         controller.close();
       } catch (err) {
-        await onComplete("", undefined);
+        // A failed turn leaves NO trace: nothing is saved, counted or announced.
+        // The customer saw an error bubble and will retry. Saving only their half of the
+        // exchange would charge quota for a reply that never came and make Total Pesan drift
+        // away from Kuota Pesan (both count role = 'user' rows).
+        // If the save already ran before this error (e.g. the client disconnected right after it),
+        // there is nothing to undo — onComplete is one-shot.
 
         // Use OpenAI SDK error classes — more reliable than string matching
         const { APIConnectionError, APIConnectionTimeoutError } =
@@ -724,7 +730,17 @@ export async function POST(request: NextRequest) {
   // Independent lookups — run in parallel so the profile adds no extra latency.
   // A profile failure must never break chat: fall back to "no profile" (the prompt is then unchanged)
   const [contextChunks, profile] = await Promise.all([
-    retrieveContext(message, org.id),
+    // Same rule as the profile below: a retrieval failure must not break chat. KUN answers with
+    // no context (its normal "I don't have that information" path) and Sentry gets the error.
+    retrieveContext(message, org.id).catch((err: unknown) => {
+      console.error("[chat] Failed to retrieve context:", err);
+      Sentry.captureException(err, {
+        tags: { area: "chat-retrieval" },
+        extra: { orgId: org.id },
+      });
+      return [];
+    }),
+
     getCachedProfile(org.id, () => getBusinessProfileData(org.id)).catch(
       (err: unknown) => {
         console.error("[chat] Failed to load business profile:", err);
@@ -843,8 +859,15 @@ export async function POST(request: NextRequest) {
       )
         .then(async (shouldSendEmail) => {
           if (shouldSendEmail) {
+            // No owner email on file: nobody to warn, so skip instead of mailing an empty address
+            if (!org.ownerEmail) {
+              console.warn(
+                `[chat] Usage warning not emailed — org ${org.id} has no owner email`,
+              );
+              return;
+            }
             sendUsageWarningEmail(
-              org.ownerEmail ?? "",
+              org.ownerEmail,
               org.name ?? "",
               newMessagesUsed,
               freshOrgQuota.messagesLimit,

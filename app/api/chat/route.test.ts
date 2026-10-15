@@ -65,6 +65,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 vi.mock("@/lib/posthog", () => ({ trackEvent: m.trackEvent }));
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 vi.mock("@/lib/email", () => ({
   sendUsageWarningEmail: m.sendUsageWarningEmail,
 }));
