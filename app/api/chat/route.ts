@@ -23,6 +23,7 @@ import {
   getCachedChatbot,
   getCachedProfile,
 } from "@/lib/redis";
+import { failOpenRateLimit } from "@/lib/redis/fail-open";
 import {
   triggerOrgEvent,
   triggerConversationMessage,
@@ -264,7 +265,11 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "127.0.0.1";
 
-  const ipLimit = await checkChatRateLimit(ip);
+  // Fails OPEN: if Redis is down or slow the request is allowed (the plan quota in step 8 still
+  // comes from Neon). A real "blocked" answer from a working Redis is unchanged.
+  const ipLimit = await failOpenRateLimit("chat-ip-limit", () =>
+    checkChatRateLimit(ip),
+  );
   if (!ipLimit.success) {
     return errorResponse(
       "Terlalu banyak permintaan. Coba lagi dalam 1 menit.",
@@ -321,7 +326,9 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 5. Org rate limit ──
-  const orgLimit = await checkOrgMessageLimit(org.id);
+  const orgLimit = await failOpenRateLimit("chat-org-limit", () =>
+    checkOrgMessageLimit(org.id),
+  );
   if (!orgLimit.success) {
     return errorResponse(
       "Batas pesan organisasi tercapai. Coba lagi nanti.",

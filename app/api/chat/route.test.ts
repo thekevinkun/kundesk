@@ -9,13 +9,14 @@
 // SQL behaviour (the atomic increment guard, constraints) cannot be verified with mocks (rule 262).
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { POST } from "./route";
 import {
   chatbots,
   conversations,
   orgs,
   processedWebhooks,
 } from "@/lib/db/schema";
-import { POST } from "./route";
+import { resetRedisFailOpenState } from "@/lib/redis/fail-open";
 
 // Hoisted so the vi.mock factories below can reference them (rule 163)
 const mockEnv = vi.hoisted(() => ({
@@ -686,6 +687,47 @@ describe("POST /api/chat — front door and quota gate", () => {
 
         expect(res.status).toBe(402);
       });
+    });
+  });
+
+  // The route wraps both limiters in failOpenRateLimit (lib/redis/fail-open.ts, tested on its own)
+  describe("Redis outage — rate limiters fail open", () => {
+    // The breaker is module state, and the clock is frozen in these tests — reset it every time
+    beforeEach(() => {
+      resetRedisFailOpenState();
+    });
+    afterEach(() => {
+      resetRedisFailOpenState();
+    });
+
+    it("an IP limiter outage lets the request through, and the breaker then skips the org limiter too", async () => {
+      m.chatLimit.mockRejectedValueOnce(new Error("redis down"));
+      queueLookups([], OK_QUOTA);
+
+      await POST(chatReq());
+
+      // Past every gate: it went on to create the conversation (step 9, see the header note)
+      expect(m.conversationValues).toHaveBeenCalledTimes(1);
+      // One Redis failure opened the breaker, so the org limiter never touched Redis
+      expect(m.orgLimit).not.toHaveBeenCalled();
+    });
+
+    it("an org limiter outage lets the request through", async () => {
+      m.orgLimit.mockRejectedValueOnce(new Error("redis down"));
+      queueLookups([], OK_QUOTA);
+
+      await POST(chatReq());
+
+      expect(m.chatLimit).toHaveBeenCalledTimes(1);
+      expect(m.conversationValues).toHaveBeenCalledTimes(1);
+    });
+
+    it("a limiter that works and says BLOCKED still blocks (fail open is only for outages)", async () => {
+      m.chatLimit.mockResolvedValueOnce(BLOCKED);
+
+      const res = await POST(chatReq());
+
+      expect(res.status).toBe(429);
     });
   });
 });

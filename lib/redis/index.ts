@@ -3,6 +3,7 @@
 // Rate limiters are initialized lazily — only when first called
 
 import { env } from "@/lib/env";
+import { redisOrFallback } from "./fail-open";
 import { parseStoredHours } from "@/helpers/knowledge-schemas";
 import type { ProfileData } from "@/types/knowledge";
 
@@ -273,6 +274,26 @@ export async function cacheDelete(key: string): Promise<void> {
   await redis.del(key);
 }
 
+// Cache read that never throws: if Redis fails or hangs it counts as a MISS, so the caller loads
+// from Neon. Only the cached getters below use it — strict callers keep using cacheGet.
+async function cacheGetOrMiss(key: string): Promise<string | null> {
+  return redisOrFallback("cache-get", () => cacheGet(key), null);
+}
+
+// Cache write that never throws: the data was already loaded, so a failed write only costs a
+// future cache miss
+async function cacheSetOrSkip(
+  key: string,
+  value: string,
+  ttlSeconds: number,
+): Promise<void> {
+  await redisOrFallback(
+    "cache-set",
+    () => cacheSet(key, value, ttlSeconds),
+    undefined,
+  );
+}
+
 // Cache key helpers — centralized so naming is never inconsistent
 export const CacheKeys = {
   // Keyed by slug — used in chat route (entry point is always slug)
@@ -352,7 +373,7 @@ export async function getCachedOrg(
   const slugKey = CacheKeys.orgBySlug(slug);
 
   // Try cache first
-  const cached = await cacheGet(slugKey);
+  const cached = await cacheGetOrMiss(slugKey);
   if (cached) {
     try {
       return JSON.parse(cached) as CachedOrg;
@@ -368,8 +389,8 @@ export async function getCachedOrg(
   // Store under both keys so invalidation works from orgId side too
   const serialized = JSON.stringify(org);
   await Promise.all([
-    cacheSet(slugKey, serialized, ORG_TTL),
-    cacheSet(CacheKeys.orgById(org.id), serialized, ORG_TTL),
+    cacheSetOrSkip(slugKey, serialized, ORG_TTL),
+    cacheSetOrSkip(CacheKeys.orgById(org.id), serialized, ORG_TTL),
   ]);
 
   return org;
@@ -382,7 +403,7 @@ export async function getCachedChatbot(
 ): Promise<CachedChatbot | null> {
   const key = CacheKeys.chatbot(orgId);
 
-  const cached = await cacheGet(key);
+  const cached = await cacheGetOrMiss(key);
   if (cached) {
     try {
       return JSON.parse(cached) as CachedChatbot;
@@ -394,7 +415,7 @@ export async function getCachedChatbot(
   const chatbot = await fetchFn();
   if (!chatbot) return null;
 
-  await cacheSet(key, JSON.stringify(chatbot), CHATBOT_TTL);
+  await cacheSetOrSkip(key, JSON.stringify(chatbot), CHATBOT_TTL);
   return chatbot;
 }
 
@@ -411,7 +432,7 @@ export async function getCachedProfile(
 ): Promise<ProfileData> {
   const key = CacheKeys.profile(orgId);
 
-  const cached: unknown = await cacheGet(key);
+  const cached: unknown = await cacheGetOrMiss(key);
   if (cached !== null && cached !== undefined) {
     try {
       // The client may hand back an already-parsed object — parse only when it is still a string
@@ -440,6 +461,6 @@ export async function getCachedProfile(
   }
 
   const data = await fetchFn();
-  await cacheSet(key, JSON.stringify(data), PROFILE_TTL);
+  await cacheSetOrSkip(key, JSON.stringify(data), PROFILE_TTL);
   return data;
 }

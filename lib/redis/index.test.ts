@@ -2,7 +2,7 @@
 // Mocks @upstash/redis and @upstash/ratelimit — no real network calls
 // Covers: all 4 rate limiters, cacheGet, cacheSet
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ── Shared mock functions — defined before vi.mock calls ──
 // Arrow functions cannot be used with `new` — must use plain vi.fn() references
@@ -46,6 +46,9 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
+// index.ts imports the fail-open helpers, which report to Sentry — keep the real SDK out
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+
 // Import after mocks are registered
 import { Ratelimit } from "@upstash/ratelimit";
 import {
@@ -57,9 +60,13 @@ import {
   checkKnowledgeImportLimit,
   checkKnowledgeImportPhotoLimit,
   getCachedProfile,
+  getCachedOrg,
+  getCachedChatbot,
+  invalidateOrgCache,
   cacheGet,
   cacheSet,
 } from "@/lib/redis";
+import { resetRedisFailOpenState } from "@/lib/redis/fail-open";
 
 describe("checkChatRateLimit", () => {
   beforeEach(() => {
@@ -601,5 +608,105 @@ describe("getCachedProfile", () => {
 
     expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
     expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("cache fallback when Redis fails", () => {
+  const org = {
+    id: "org_1",
+    slug: "warung-a",
+    name: "Warung A",
+    plan: "starter",
+    subscriptionStatus: "active",
+    messagesUsed: 1,
+    messagesLimit: 100,
+    ownerEmail: null,
+    timezone: "Asia/Jakarta",
+  };
+  const chatbot = {
+    id: 1,
+    orgId: "org_1",
+    language: "id",
+    systemPrompt: null,
+    accentColor: "#069494",
+    quickReplies: null,
+    isActive: true,
+  };
+  const profile = { block: "Alamat: Jalan Pramuka", hours: [] };
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockGet.mockClear();
+    mockSet.mockClear();
+    // The breaker is module state — every test starts with it closed
+    resetRedisFailOpenState();
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    resetRedisFailOpenState();
+    errorSpy.mockRestore();
+  });
+
+  it("getCachedOrg: a failed cache read counts as a miss and loads from the database", async () => {
+    mockGet.mockRejectedValueOnce(new Error("redis down"));
+    const fetchFn = vi.fn().mockResolvedValue(org);
+
+    expect(await getCachedOrg("warung-a", fetchFn)).toEqual(org);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    // The failure opened the breaker, so the write after the load is skipped too
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it("getCachedOrg: a failed cache write is ignored and the org is still returned", async () => {
+    mockGet.mockResolvedValueOnce(null);
+    // Two writes (slug key and id key)
+    mockSet
+      .mockRejectedValueOnce(new Error("redis down"))
+      .mockRejectedValueOnce(new Error("redis down"));
+    const fetchFn = vi.fn().mockResolvedValue(org);
+
+    expect(await getCachedOrg("warung-a", fetchFn)).toEqual(org);
+  });
+
+  it("getCachedChatbot: a failed cache read loads from the database", async () => {
+    mockGet.mockRejectedValueOnce(new Error("redis down"));
+    const fetchFn = vi.fn().mockResolvedValue(chatbot);
+
+    expect(await getCachedChatbot("org_1", fetchFn)).toEqual(chatbot);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("getCachedProfile: a failed cache read loads from the database", async () => {
+    mockGet.mockRejectedValueOnce(new Error("redis down"));
+    const fetchFn = vi.fn().mockResolvedValue(profile);
+
+    expect(await getCachedProfile("org_1", fetchFn)).toEqual(profile);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("a database failure still surfaces: only Redis failures are swallowed", async () => {
+    mockGet.mockRejectedValueOnce(new Error("redis down"));
+    const fetchFn = vi.fn().mockRejectedValue(new Error("neon down"));
+
+    await expect(getCachedOrg("warung-a", fetchFn)).rejects.toThrow(
+      "neon down",
+    );
+  });
+
+  it("after one failure, later cached getters skip Redis instead of waiting on it", async () => {
+    mockGet.mockRejectedValueOnce(new Error("redis down"));
+    await getCachedOrg("warung-a", vi.fn().mockResolvedValue(org));
+
+    await getCachedChatbot("org_1", vi.fn().mockResolvedValue(chatbot));
+
+    // Only the first call reached Redis
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidateOrgCache stays strict: a Redis failure is NOT swallowed", async () => {
+    mockGet.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(invalidateOrgCache("org_1")).rejects.toThrow("redis down");
   });
 });
