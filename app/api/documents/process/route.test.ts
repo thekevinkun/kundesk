@@ -13,13 +13,15 @@ import { POST } from "./route";
 
 // Hoisted so the vi.mock factories below can reference them (rule 163)
 const m = vi.hoisted(() => ({
-  requireOrg: vi.fn(),
+  requireOrgAdmin: vi.fn(),
   uploadLimit: vi.fn(),
   select: vi.fn(),
   update: vi.fn(),
-  insert: vi.fn(),
+  transaction: vi.fn(),
   updateSet: vi.fn(),
   insertValues: vi.fn(),
+  deleteChunks: vi.fn(),
+  updateWhere: vi.fn(),
   downloadFromS3: vi.fn(),
   getS3ObjectSize: vi.fn(),
   embedText: vi.fn(),
@@ -31,17 +33,25 @@ const m = vi.hoisted(() => ({
   captureMessage: vi.fn(),
 }));
 
+// Mutable state the fakes read
+const state = vi.hoisted(() => ({
+  // What the row lock in the storing transaction reads: a status, or null = no such row
+  lockedStatus: "processing" as string | null,
+  // Rows markFailed's guarded UPDATE reports as changed ([] = the document was no longer "processing")
+  failedRows: [{ id: 5 }] as Array<{ id: number }>,
+}));
+
 vi.mock("@sentry/nextjs", () => ({
   captureException: m.captureException,
   captureMessage: m.captureMessage,
 }));
 vi.mock("@/lib/db", () => ({
-  db: { select: m.select, update: m.update, insert: m.insert },
+  db: { select: m.select, update: m.update, transaction: m.transaction },
 }));
 vi.mock("@/lib/env", () => ({
   env: { aiMode: "mock", openaiApiKey: "sk-test" },
 }));
-vi.mock("@/lib/auth", () => ({ requireOrg: m.requireOrg }));
+vi.mock("@/lib/auth", () => ({ requireOrgAdmin: m.requireOrgAdmin }));
 vi.mock("@/lib/posthog", () => ({ trackEvent: m.trackEvent }));
 vi.mock("@/lib/ai/embed", () => ({ embedText: m.embedText }));
 vi.mock("@/helpers/chunk", () => ({ chunkText: m.chunkText }));
@@ -65,7 +75,7 @@ vi.mock("@/lib/db/schema", () => ({
     orgId: "documents.orgId",
     status: "documents.status",
   },
-  chunks: { orgId: "chunks.orgId" },
+  chunks: { orgId: "chunks.orgId", documentId: "chunks.documentId" },
 }));
 
 type Row = Record<string, unknown>;
@@ -101,6 +111,38 @@ async function readJson(res: Response): Promise<Row> {
   return (await res.json()) as Row;
 }
 
+// The fake transaction handle: the row lock, the chunk delete and insert, and the ready update
+const tx = {
+  select: () => ({
+    from: () => ({
+      where: () => ({
+        for: () =>
+          Promise.resolve(
+            state.lockedStatus === null ? [] : [{ status: state.lockedStatus }],
+          ),
+      }),
+    }),
+  }),
+  delete: () => ({
+    where: () => {
+      m.deleteChunks();
+      return Promise.resolve(undefined);
+    },
+  }),
+  insert: () => ({
+    values: (values: unknown) => {
+      m.insertValues(values);
+      return Promise.resolve(undefined);
+    },
+  }),
+  update: () => ({
+    set: (values: Row) => {
+      m.updateSet(values);
+      return { where: () => Promise.resolve(undefined) };
+    },
+  }),
+};
+
 // The failure side effects every failed document must have
 function expectMarkedFailed(): void {
   expect(m.updateSet).toHaveBeenCalledWith({ status: "failed" });
@@ -117,7 +159,9 @@ describe("POST /api/documents/process", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     // Happy defaults
-    m.requireOrg.mockResolvedValue({ orgId: "org_a" });
+    m.requireOrgAdmin.mockResolvedValue({ orgId: "org_a" });
+    state.lockedStatus = "processing";
+    state.failedRows = [{ id: 5 }];
     m.uploadLimit.mockResolvedValue({ success: true, remaining: 9, reset: 0 });
     queueDocument(DOC);
     m.getS3ObjectSize.mockResolvedValue(1000);
@@ -134,19 +178,22 @@ describe("POST /api/documents/process", () => {
     );
     m.triggerDocumentUpdated.mockResolvedValue(undefined);
 
-    // Fake writes: the status updates and the chunk insert
+    // markFailed's guarded UPDATE ... RETURNING
     m.update.mockImplementation(() => ({
       set: (values: Row) => {
         m.updateSet(values);
-        return { where: () => Promise.resolve(undefined) };
+        return {
+          where: (arg: unknown) => {
+            m.updateWhere(arg);
+            return { returning: () => Promise.resolve(state.failedRows) };
+          },
+        };
       },
     }));
-    m.insert.mockImplementation(() => ({
-      values: (values: unknown) => {
-        m.insertValues(values);
-        return Promise.resolve(undefined);
-      },
-    }));
+    // The storing transaction runs its callback with the fake handle
+    m.transaction.mockImplementation(
+      async (callback: (handle: typeof tx) => Promise<unknown>) => callback(tx),
+    );
   });
 
   describe("request checks", () => {
@@ -214,6 +261,7 @@ describe("POST /api/documents/process", () => {
         data: { chunkCount: 1 },
       });
       expect(m.downloadFromS3).toHaveBeenCalledWith(S3_KEY, expect.anything());
+      expect(m.deleteChunks).toHaveBeenCalledTimes(1);
       expect(m.insertValues).toHaveBeenCalledWith([
         {
           orgId: "org_a",
@@ -337,7 +385,7 @@ describe("POST /api/documents/process", () => {
   });
 
   describe("order of work", () => {
-    it("runs: size check → download → chunking → embedding → storing", async () => {
+    it("runs: size check → download → chunking → embedding → delete old chunks → insert → mark ready", async () => {
       await POST(postReq(VALID_BODY));
 
       const order = [
@@ -345,7 +393,10 @@ describe("POST /api/documents/process", () => {
         m.downloadFromS3.mock.invocationCallOrder[0],
         m.chunkText.mock.invocationCallOrder[0],
         m.embedText.mock.invocationCallOrder[0],
-        m.insert.mock.invocationCallOrder[0],
+        m.deleteChunks.mock.invocationCallOrder[0],
+        m.insertValues.mock.invocationCallOrder[0],
+        // On success the first status update is the "ready" one, inside the transaction
+        m.updateSet.mock.invocationCallOrder[0],
       ] as number[];
       expect([...order].sort((a, b) => a - b)).toEqual(order);
     });
@@ -378,6 +429,156 @@ describe("POST /api/documents/process", () => {
         extra: { orgId: "org_a", documentId: 5 },
       });
       expectMarkedFailed();
+    });
+  });
+
+  describe("permissions and body", () => {
+    it("a non-admin is refused before anything else happens", async () => {
+      m.requireOrgAdmin.mockRejectedValueOnce(new Error("Forbidden"));
+
+      await expect(POST(postReq(VALID_BODY))).rejects.toThrow("Forbidden");
+
+      expect(m.uploadLimit).not.toHaveBeenCalled();
+      expect(m.select).not.toHaveBeenCalled();
+    });
+
+    it("answers 400 for a body that is not JSON", async () => {
+      const res = await POST(
+        new NextRequest("http://localhost/api/documents/process", {
+          method: "POST",
+          body: "not json {{",
+        }),
+      );
+
+      expect(res.status).toBe(400);
+      expect(await readJson(res)).toEqual({
+        ok: false,
+        error: "Format JSON tidak valid",
+        status: 400,
+      });
+      expect(m.select).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("a document that is not processing", () => {
+    it.each(["ready", "failed"])(
+      "a %s document answers 409 and costs nothing",
+      async (status) => {
+        m.select.mockReset();
+        queueDocument({ ...DOC, status });
+
+        const res = await POST(postReq(VALID_BODY));
+        const body = await readJson(res);
+
+        expect(res.status).toBe(409);
+        expect(body.error).toBe(
+          "Dokumen ini tidak sedang diproses. Upload ulang file jika perlu.",
+        );
+        expect(m.getS3ObjectSize).not.toHaveBeenCalled();
+        expect(m.downloadFromS3).not.toHaveBeenCalled();
+        expect(m.embedText).not.toHaveBeenCalled();
+        expect(m.updateSet).not.toHaveBeenCalled();
+        expect(m.triggerDocumentUpdated).not.toHaveBeenCalled();
+        expect(m.trackEvent).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("overlapping calls (the storing transaction)", () => {
+    it("a call that loses the race answers 409 and writes nothing", async () => {
+      // The early check saw "processing", but by the time this call holds the lock another
+      // call has already finished the document
+      state.lockedStatus = "ready";
+
+      const res = await POST(postReq(VALID_BODY));
+
+      expect(res.status).toBe(409);
+      expect(m.deleteChunks).not.toHaveBeenCalled();
+      expect(m.insertValues).not.toHaveBeenCalled();
+      // A good document is never marked failed, and nobody is told anything
+      expect(m.updateSet).not.toHaveBeenCalled();
+      expect(m.triggerDocumentUpdated).not.toHaveBeenCalled();
+      expect(m.trackEvent).not.toHaveBeenCalled();
+      expect(m.captureException).not.toHaveBeenCalled();
+    });
+
+    it("a document that vanished before the lock also answers 409", async () => {
+      state.lockedStatus = null;
+
+      const res = await POST(postReq(VALID_BODY));
+
+      expect(res.status).toBe(409);
+      expect(m.insertValues).not.toHaveBeenCalled();
+    });
+
+    it("a failing store is reported, marks the document failed and never marks it ready", async () => {
+      m.transaction.mockImplementationOnce(async () => {
+        throw new Error("neon down");
+      });
+
+      const res = await POST(postReq(VALID_BODY));
+      const body = await readJson(res);
+
+      expect(res.status).toBe(500);
+      expect(body.error).toBe("Terjadi kesalahan saat memproses dokumen.");
+      expect(m.captureException).toHaveBeenCalledTimes(1);
+      expect(m.updateSet).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: "ready" }),
+      );
+      expectMarkedFailed();
+    });
+  });
+
+  describe("marking a document failed is guarded", () => {
+    it("only touches a document that is still processing", async () => {
+      m.embedText.mockRejectedValue(new Error("openai down"));
+
+      await POST(postReq(VALID_BODY));
+
+      expect(m.updateWhere).toHaveBeenCalledWith({
+        op: "and",
+        args: [
+          { op: "eq", a: "documents.id", b: 5 },
+          { op: "eq", a: "documents.orgId", b: "org_a" },
+          { op: "eq", a: "documents.status", b: "processing" },
+        ],
+      });
+    });
+
+    it("sends no 'failed' live event when the document was no longer processing", async () => {
+      // Another call already finished this document, so the guarded UPDATE changes no row
+      state.failedRows = [];
+      m.embedText.mockRejectedValue(new Error("openai down"));
+
+      const res = await POST(postReq(VALID_BODY));
+
+      expect(res.status).toBe(500);
+      expect(m.updateSet).toHaveBeenCalledWith({ status: "failed" });
+      expect(m.triggerDocumentUpdated).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the 55-second timeout", () => {
+    it("fails the document with a 408 when the pipeline runs past the limit", async () => {
+      // Only the timer functions are faked, so the request body still reads normally
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        // The pipeline never gets past the size lookup
+        m.getS3ObjectSize.mockImplementation(
+          () => new Promise<number>(() => undefined),
+        );
+
+        const pending = POST(postReq(VALID_BODY));
+        // vi.waitFor nudges fake timers a little on each check, so this passes once the pipeline started
+        await vi.waitFor(() => expect(m.getS3ObjectSize).toHaveBeenCalled());
+        await vi.advanceTimersByTimeAsync(55_000);
+        const res = await pending;
+
+        expect(res.status).toBe(408);
+        expectMarkedFailed();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

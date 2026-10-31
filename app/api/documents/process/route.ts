@@ -7,7 +7,7 @@ import * as Sentry from "@sentry/nextjs";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { requireOrg } from "@/lib/auth";
+import { requireOrgAdmin } from "@/lib/auth";
 import { trackEvent } from "@/lib/posthog";
 import { embedText } from "@/lib/ai/embed";
 import { downloadFromS3, getS3ObjectSize } from "@/lib/aws/s3";
@@ -27,6 +27,19 @@ class DocumentUserError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DocumentUserError";
+  }
+}
+
+// Shown when the document is not (or no longer) in the "processing" state
+const NOT_PROCESSING_MESSAGE =
+  "Dokumen ini tidak sedang diproses. Upload ulang file jika perlu.";
+
+// Thrown inside the storing transaction when another call already finished (or removed) this
+// document. Nothing was written, and the document must NOT be marked failed.
+class DocumentNotProcessingError extends Error {
+  constructor() {
+    super("Document is not in processing state");
+    this.name = "DocumentNotProcessingError";
   }
 }
 
@@ -154,7 +167,7 @@ async function runProcessingPipeline(
 
   if (signal.aborted) throw new Error("Processing timed out after 55000ms");
 
-  // ── Stage 5: Bulk insert chunks ──
+  // ── Stage 5: Replace the chunks and mark the document ready (ONE transaction) ──
   const chunkRows = textChunks.map((chunk, i) => ({
     orgId,
     documentId: document.id,
@@ -163,8 +176,37 @@ async function runProcessingPipeline(
   }));
 
   try {
-    await db.insert(chunks).values(chunkRows);
+    await db.transaction(async (tx) => {
+      // Lock the document row — an overlapping call for the same document queues here and
+      // re-reads the status only after this one has committed, so chunks can never be duplicated
+      const [locked] = await tx
+        .select({ status: documents.status })
+        .from(documents)
+        .where(and(eq(documents.id, document.id), eq(documents.orgId, orgId)))
+        .for("update");
+
+      // Already ready or failed (another call won), or the row is gone — write nothing
+      if (!locked || locked.status !== "processing") {
+        throw new DocumentNotProcessingError();
+      }
+
+      // Replace, never append: also cleans up chunks an old interrupted run may have left behind
+      await tx
+        .delete(chunks)
+        .where(
+          and(eq(chunks.documentId, document.id), eq(chunks.orgId, orgId)),
+        );
+      await tx.insert(chunks).values(chunkRows);
+
+      // Status flips in the SAME transaction, so "ready" always means the chunks exist
+      await tx
+        .update(documents)
+        .set({ status: "ready", chunkCount: textChunks.length })
+        .where(and(eq(documents.id, document.id), eq(documents.orgId, orgId)));
+    });
   } catch (err) {
+    // Not a failure — the caller answers 409
+    if (err instanceof DocumentNotProcessingError) throw err;
     throw new Error(
       `Failed to store chunks: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -174,8 +216,9 @@ async function runProcessingPipeline(
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // Guard — requireOrg() also protects against IDOR via orgId scoping below
-  const { orgId } = await requireOrg();
+  // Processing writes chunks and changes document status — a mutation, so admin only, like upload.
+  // orgId scoping below also protects against IDOR.
+  const { orgId } = await requireOrgAdmin();
 
   const processLimit = await checkUploadRateLimit(orgId);
   if (!processLimit.success) {
@@ -185,7 +228,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const body = (await request.json()) as ProcessRequestBody;
+  // A malformed body is a client error (400), not a crash — same as the upload route
+  let body: ProcessRequestBody;
+  try {
+    body = (await request.json()) as ProcessRequestBody;
+  } catch {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Format JSON tidak valid", status: 400 },
+      { status: 400 },
+    );
+  }
   const { documentId, s3Key } = body;
 
   // Validate inputs
@@ -248,14 +300,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // Helper — marks document as failed and notifies dashboard via Pusher
+  // Cheap early check: only a document that is still "processing" can be processed. A repeat call
+  // (double click, retry) costs nothing — no download, no embedding.
+  if (document.status !== "processing") {
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: NOT_PROCESSING_MESSAGE, status: 409 },
+      { status: 409 },
+    );
+  }
+
+  // Helper — marks document as failed and notifies dashboard via Pusher.
+  // Guarded: only a document that is STILL "processing" can fail. Without the guard, a failing
+  // call overlapping a successful one would overwrite a good document's "ready" with "failed".
   async function markFailed(): Promise<void> {
-    await db
+    const updated = await db
       .update(documents)
       .set({ status: "failed" })
       .where(
-        and(eq(documents.id, documentId as number), eq(documents.orgId, orgId)),
-      );
+        and(
+          eq(documents.id, documentId as number),
+          eq(documents.orgId, orgId),
+          eq(documents.status, "processing"),
+        ),
+      )
+      .returning({ id: documents.id });
+
+    // Nothing changed — the document is no longer "processing", so there is nothing to announce
+    if (updated.length === 0) return;
 
     await triggerDocumentUpdated(orgId, {
       documentId: documentId as number,
@@ -283,6 +354,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       timeoutPromise,
     ]);
   } catch (err) {
+    // Another call finished (or removed) this document first — nothing to undo, nothing to mark failed
+    if (err instanceof DocumentNotProcessingError) {
+      return NextResponse.json<ApiResponse>(
+        { ok: false, error: NOT_PROCESSING_MESSAGE, status: 409 },
+        { status: 409 },
+      );
+    }
+
     const isTimeout = err instanceof Error && err.message.includes("timed out");
 
     if (isTimeout) {
@@ -325,17 +404,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { textChunks } = pipelineResult;
 
-  // ── Stage 6: Update document status ──
-
-  await db
-    .update(documents)
-    .set({
-      status: "ready",
-      chunkCount: textChunks.length,
-    })
-    .where(and(eq(documents.id, document.id), eq(documents.orgId, orgId)));
-
-  // ── Stage 7: Notify dashboard via Pusher ──
+  // ── Stage 6: Notify dashboard via Pusher ──
+  // (the status already flipped to "ready" inside the Stage 5 transaction)
 
   // Dashboard is subscribed to org-{orgId} channel — this updates the UI live
   await triggerDocumentUpdated(orgId, {
