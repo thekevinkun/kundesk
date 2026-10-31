@@ -126,6 +126,48 @@ export async function downloadFromS3(
   return Buffer.concat(chunks);
 }
 
+// Returns the REAL size in bytes of a stored object WITHOUT downloading it.
+// The size the browser sends at upload time is only a claim, and the presigned URL does not
+// enforce it — so the process route asks the storage itself before it downloads anything.
+export async function getS3ObjectSize(
+  s3Key: string,
+  signal?: AbortSignal,
+): Promise<number> {
+  // Mock mode — ask the filesystem
+  if (env.storageMode === "mock") {
+    const { stat } = await import("fs/promises");
+    const info = await stat(resolveMockPath(s3Key));
+    return info.size;
+  }
+
+  // Real mode — HeadObject returns the metadata only, no body
+  if (!env.awsS3Bucket || !env.awsAccessKeyId || !env.awsSecretAccessKey) {
+    throw new Error("AWS credentials required when KUNDESK_STORAGE_MODE=s3");
+  }
+
+  const { S3Client, HeadObjectCommand } = await import("@aws-sdk/client-s3");
+
+  const client = new S3Client({
+    region: env.awsRegion,
+    credentials: {
+      accessKeyId: env.awsAccessKeyId,
+      secretAccessKey: env.awsSecretAccessKey,
+    },
+  });
+
+  const response = await client.send(
+    new HeadObjectCommand({ Bucket: env.awsS3Bucket, Key: s3Key }),
+    // Pass the abort signal only when provided, same as downloadFromS3
+    signal ? { abortSignal: signal } : undefined,
+  );
+
+  if (typeof response.ContentLength !== "number") {
+    throw new Error(`No size in S3 response for key: ${s3Key}`);
+  }
+
+  return response.ContentLength;
+}
+
 // Saves a file to mock local storage — called by the mock upload API route
 export async function saveMockUpload(
   s3Key: string,

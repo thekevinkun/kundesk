@@ -10,12 +10,14 @@ import { env } from "@/lib/env";
 import { requireOrg } from "@/lib/auth";
 import { trackEvent } from "@/lib/posthog";
 import { embedText } from "@/lib/ai/embed";
-import { chunkText } from "@/helpers/chunk";
-import { batchedAsync } from "@/helpers/async";
-import { downloadFromS3 } from "@/lib/aws/s3";
+import { downloadFromS3, getS3ObjectSize } from "@/lib/aws/s3";
 import { checkUploadRateLimit } from "@/lib/redis";
 import { documents, chunks } from "@/lib/db/schema";
 import { triggerDocumentUpdated } from "@/lib/pusher";
+import { chunkText } from "@/helpers/chunk";
+import { batchedAsync } from "@/helpers/async";
+import { findSignatureProblem } from "@/helpers/file-signature";
+import { MAX_FILE_SIZE_BYTES } from "@/helpers/security";
 import type { ApiResponse } from "@/types/api";
 
 // Marks an error message as safe to show directly to the client. Anything
@@ -70,6 +72,22 @@ async function runProcessingPipeline(
   s3Key: string,
   signal: AbortSignal,
 ): Promise<{ textChunks: { content: string }[] }> {
+  // ── Stage 0: real size check ──
+  // The 10MB limit at upload time is only the size the browser CLAIMED, and the presigned URL
+  // does not enforce it. Ask the storage itself before downloading the whole file into memory.
+  let objectSize: number;
+  try {
+    objectSize = await getS3ObjectSize(s3Key, signal);
+  } catch (err) {
+    throw new Error(
+      `Failed to read file size: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  if (objectSize > MAX_FILE_SIZE_BYTES) {
+    throw new DocumentUserError("Ukuran file maksimal 10MB");
+  }
+
   // ── Stage 1: Download ──
   let fileBuffer: Buffer;
   try {
@@ -80,6 +98,18 @@ async function runProcessingPipeline(
     throw new Error(
       `Failed to download file: ${err instanceof Error ? err.message : String(err)}`,
     );
+  }
+
+  // Second size check on the bytes actually received: the object can be replaced through the
+  // still-valid presigned URL between the check above and the download
+  if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
+    throw new DocumentUserError("Ukuran file maksimal 10MB");
+  }
+
+  // Content check: the extension alone picks the parser, so make sure the bytes fit it
+  const signatureProblem = findSignatureProblem(fileBuffer, document.name);
+  if (signatureProblem) {
+    throw new DocumentUserError(signatureProblem);
   }
 
   // Check abort between every stage — stops work immediately on timeout
