@@ -5,7 +5,7 @@
 
 **AI-powered customer service SaaS for Indonesian SMEs.**
 
-Kundesk lets business owners upload their documents — menu, FAQ, price list — and instantly get help from **KUN**, an AI assistant that answers customer questions 24/7, in Bahasa Indonesia, trained only on their own content.
+Kundesk lets business owners teach **KUN**, an AI assistant that answers customer questions 24/7, in Bahasa Indonesia, using only their own content. Start from whatever you already have: upload a document (menu, FAQ, price list), paste a price list or photograph a menu, or fill in a simple form.
 
 **Live demo:** [kundesk.vercel.app](https://kundesk.vercel.app)
 
@@ -17,7 +17,7 @@ Indonesian SMEs — warung, klinik, salon, properti — are drowning in repetiti
 
 ## The Solution
 
-Sign up, upload your business documents, and Kundesk deploys **KUN** — an AI assistant that handles your customers automatically. Every answer KUN gives comes from your own documents, not from generic AI knowledge.
+Sign up, give Kundesk your business information in whichever way is easiest — upload documents, paste or photograph a price list, or fill in the form — and Kundesk deploys **KUN**, an AI assistant that handles your customers automatically. Every answer KUN gives comes from your own content, not from generic AI knowledge.
 
 ---
 
@@ -28,7 +28,9 @@ Sign up, upload your business documents, and Kundesk deploys **KUN** — an AI a
 
 KUN is Kundesk's built-in AI assistant — the entity your customers actually talk to. KUN is not a generic chatbot; it has a fixed identity, a consistent voice, and speaks naturally in Bahasa Indonesia using the "Kak" address form that Indonesians expect in a friendly service context.
 
-KUN is trained exclusively on the documents each business uploads. Ask KUN about something not in those documents and it won't guess — it tells the customer honestly and suggests they contact the business directly.
+KUN answers exclusively from what each business gives it: uploaded documents plus the information entered by hand in **Isi Manual** (business profile, catalog, FAQ, policies, promos). Ask KUN about something not in that content and it won't guess — it tells the customer honestly and suggests they contact the business directly.
+
+KUN also knows the real day and time in the business's own timezone, and whether the business is open right now is computed in code from the structured opening hours, not left to the model.
 
 When a customer needs a human, they can ask KUN to connect them with the business owner. KUN detects the request, notifies the dashboard instantly, and holds the conversation gracefully until staff takes over. When staff is done, KUN resumes automatically.
 
@@ -66,7 +68,11 @@ This validates the product-market fit signal: Indonesian SMEs recognize the prob
 ## Features
 
 ### For Business Owners
-- **Document-trained KUN** — upload PDF or TXT files; KUN answers only from your content via RAG (Retrieval-Augmented Generation)
+- **Three ways to teach KUN** — every answer comes from your own content via RAG (Retrieval-Augmented Generation):
+  - **Document upload** — PDF, DOCX, TXT or MD (10MB max); the real file size and content are verified before processing
+  - **Isi Manual ("Info Bisnis")** — a business profile (about, address, contacts, structured opening hours, payment methods) plus catalog, FAQ, policy, promo and note sections; entries sync to KUN automatically
+  - **Catalog import from text or photo** — paste a WhatsApp price list or photograph a menu; AI reads the items into rows, the owner reviews and edits them before anything is saved, and the photo is never stored
+- **Business-timezone aware** — KUN states the right day, time and open/closed status; the timezone is auto-detected for Indonesian zones and can be changed in Settings
 - **Multiple delivery channels** — shareable public chat link, QR code (print it on your counter or menu), and embeddable web widget
 - **Human handoff** — take over any KUN conversation manually from the dashboard; return to KUN when done; dismiss pending requests with a canned message
 - **Live dashboard** — real-time conversation monitoring, stat cards, and Chart.js analytics (daily trend, monthly comparison, weekly breakdown)
@@ -93,17 +99,17 @@ This validates the product-market fit signal: Indonesian SMEs recognize the prob
 | UI | React 19, Tailwind CSS v4, shadcn/ui, Framer Motion |
 | Database | Neon (serverless PostgreSQL), Drizzle ORM v0.45, pgvector |
 | Auth & Multi-tenancy | Clerk Organizations |
-| AI | OpenAI `gpt-4o-mini` (chat) + `text-embedding-3-small` (RAG embeddings) |
+| AI | OpenAI `gpt-4o-mini` (chat, plus text and vision extraction for catalog import) + `text-embedding-3-small` (RAG embeddings) |
 | Vector Search | pgvector cosine similarity, HNSW index, scoped per `org_id` |
 | File Storage | AWS S3 (presigned URLs, 5-min expiry) + CloudFront CDN |
 | Payments | Midtrans — GoPay, OVO, DANA, BCA VA, QRIS, Credit Card |
 | Real-time | Pusher (private dashboard channels) + SSE (customer chat stream) |
-| Caching & Rate Limiting | Upstash Redis — 4 rate limiters + cache-aside pattern |
+| Caching & Rate Limiting | Upstash Redis — per-purpose rate limiters (chat, upload, auth, widget, knowledge writes, text and photo import) + cache-aside pattern; the chat path fails open if Redis is down |
 | Email | Resend + React Email |
 | Analytics | PostHog (server-side, 7 tracked events) |
 | Error Tracking | Sentry (PII scrubbed before send) |
 | Validation | Zod v4 |
-| Testing | Vitest + React Testing Library (266 tests) + Playwright E2E (24 tests) |
+| Testing | Vitest (1,289 tests in 49 files) + Playwright E2E (30 tests) |
 | CI/CD | GitHub Actions — typecheck → lint → test → build → E2E |
 | Deployment | Vercel (built-in cron, auto-deploy on push) |
 
@@ -128,17 +134,42 @@ Customer asks KUN a question
 ```
 Business owner uploads file
   → AWS S3 (presigned URL, client uploads directly)
-  → API notified → downloads from S3
-  → pdf-parse / plain text extraction
+  → API notified → checks the real object size (HeadObject), downloads from S3
+  → verifies the file signature (PDF / DOCX / text) against the real bytes
+  → pdf-parse / mammoth / plain text extraction
   → chunked (~500 tokens, 50 token overlap)
   → batched embedding (10 chunks/batch via batchedAsync)
-  → bulk INSERT into chunks table with org_id + vector embedding
+  → one transaction: replace old chunks, bulk INSERT new chunks with org_id + vector embedding, set status "ready"
   → document status updated to "ready"
   → Pusher event fires → dashboard updates live
 ```
 
+### Knowledge Entries Pipeline (Isi Manual)
+```
+Owner saves an entry (catalog item, FAQ, policy, promo, note)
+  → entry saved immediately and marked "stale"
+  → compiled into its own self-contained chunk
+    (catalog sections also get a summary chunk listing every item)
+  → embedded outside any DB transaction
+  → one transaction: fingerprint re-check, old chunks deleted, new chunks inserted, entry marked "synced"
+  → if the data changed meanwhile, the entry stays "stale" and a retry button repairs it
+```
+Always-needed profile facts (about, address, contacts, hours, payment methods) go straight into the system prompt instead of retrieval. A daily `knowledge-health` cron checks for entries that are "synced" but have no chunk.
+
+### Catalog Import (Text and Photo)
+```
+Owner pastes text or picks one photo
+  → photo: shrunk to a ~1600px JPEG in the browser (EXIF stripped), sent as multipart to a Route Handler
+  → server checks the real bytes (size, magic bytes) before any paid call
+  → rate limit → gpt-4o-mini with a strict JSON schema (text or vision)
+  → rows returned for review — nothing is saved yet
+  → owner edits, unticks or fixes rows; suspicious or duplicate rows are flagged and start unselected
+  → save: server re-validates every row, checks plan slots under a lock, skips duplicate names, then syncs
+```
+The pasted text and the model's answer are treated as untrusted data: titles are flattened to a single line, and text that looks like an instruction to the AI is flagged, never silently saved.
+
 ### Mock Mode System
-Every external paid service has a `mock` mode — OpenAI, S3, Midtrans, Pusher, Resend. The entire product can be built and tested without spending a cent. Mode switching is a single env variable change per service; the caller never checks the mode directly.
+Every external paid service has a `mock` mode — OpenAI, S3, Midtrans, Pusher, Resend. The entire product can be built and tested without spending a cent. Mode switching is a single env variable change per service; the caller never checks the mode directly. Even catalog photo import has a mock mode, so its whole review flow can be built and tested for free.
 
 ### Design Decisions (Why We Built It This Way)
 
@@ -155,10 +186,10 @@ Every external paid service has a `mock` mode — OpenAI, S3, Midtrans, Pusher, 
 **Mock mode for every external service:** Building without spending money on OpenAI, Midtrans, S3 means faster iteration. One env variable changes the entire behavior — the caller never checks the mode. This meant we could build the full payment flow without a live Midtrans account.
 
 ### Security Model (11 layers)
-`proxy.ts` route guards → `requireOrg()` tenant isolation → Zod input validation → prompt injection detection (15 regex patterns) → 4 Upstash rate limiters → Clerk (Svix) + Midtrans (SHA512) webhook verification → S3 file validation (MIME + magic bytes) → atomic plan limit enforcement → security headers + CSP → slug enumeration protection → Sentry PII scrubbing.
+`proxy.ts` route guards → `requireOrg()` tenant isolation → Zod input validation (AI-extracted rows are re-validated on the server before saving) → prompt injection detection (chat: 15+ regex patterns; imports: flag and unselect) → Upstash rate limiters → Clerk (Svix) + Midtrans (SHA512) webhook verification → file validation on the real bytes (size, magic bytes) → atomic plan limit enforcement → security headers → slug enumeration protection → Sentry PII scrubbing.
 
 ### Subscription Logic (Midtrans has no native recurring)
-Manual subscription management via Vercel Cron: daily renewal check → Midtrans charge creation → payment link via Resend → `past_due` after 3 days → `suspended` after 7 days → reactivated on payment webhook settlement. Full idempotency via `processedWebhooks` table.
+Manual subscription management via Vercel Cron: daily renewal check → Midtrans charge creation → payment link via Resend → `past_due` with a warning email at day 3 (full access kept) → automatic downgrade to Free at day 7 → reactivated on payment settlement. A daily reconcile cron asks Midtrans directly about unpaid orders, so a lost webhook never leaves a paying customer on the wrong plan. Cancelled subscriptions keep access until the paid period ends, then drop to Free. Full idempotency via the `processedWebhooks` table.
 
 ---
 
@@ -234,7 +265,7 @@ kundesk/
 │   ├── (dashboard)/          ← Protected tenant dashboard
 │   │   ├── page.tsx          ← Overview (stat cards + charts)
 │   │   ├── conversations/    ← Live conversation management + human handoff
-│   │   ├── documents/        ← Document upload + processing status
+│   │   ├── knowledge/        ← Info Bisnis: document upload + Isi Manual (profile, catalog, FAQ, import)
 │   │   ├── chatbot/          ← Chatbot configuration
 │   │   ├── analytics/        ← Deep analytics charts
 │   │   ├── billing/          ← Subscription + payment history
@@ -245,11 +276,12 @@ kundesk/
 │   └── api/
 │       ├── chat/             ← SSE streaming endpoint + RAG
 │       ├── documents/        ← Upload trigger + processing pipeline
+│       ├── knowledge/        ← Catalog photo import
 │       ├── conversations/    ← Takeover, dismiss, human reply routes
 │       ├── webhooks/
 │       │   ├── midtrans/     ← Payment notification + subscription state machine
 │       │   └── clerk/        ← Org/user sync
-│       ├── cron/             ← Renewal, reset-usage, past-due, retention
+│       ├── cron/             ← Renewal, reset-usage, past-due, retention, org-purge, knowledge-health, payment-reconcile
 │       ├── widget/           ← Embeddable JS snippet
 │       └── health/           ← Health check (SELECT 1)
 ├── components/
@@ -259,7 +291,9 @@ kundesk/
 │   └── ui/                   ← shadcn/ui components
 ├── lib/
 │   ├── db/                   ← Drizzle client, schema, queries
-│   ├── ai/                   ← Embedding, RAG, streaming
+│   ├── ai/                   ← Embedding, RAG, text and photo extraction
+│   ├── knowledge/            ← Entry-to-chunk sync layer
+│   ├── billing/              ← Shared payment settlement
 │   ├── aws/                  ← S3 helpers
 │   ├── redis/                ← Upstash client + rate limiters + cache
 │   ├── midtrans/             ← Payment client + subscription helpers
@@ -274,14 +308,17 @@ kundesk/
 
 ---
 
-## Database Schema (10 Tables)
+## Database Schema (13 Tables)
 
 | Table | Purpose |
 |---|---|
-| `orgs` | Tenants — synced from Clerk webhooks |
+| `orgs` | Tenants — synced from Clerk webhooks; plan, billing state, timezone |
 | `chatbots` | Per-org chatbot config (language, accent, quick replies, system prompt) |
 | `documents` | Uploaded files with processing status |
-| `chunks` | RAG knowledge base — text chunks + pgvector embeddings |
+| `business_profiles` | One row per org — about, address, contacts, structured opening hours, payment methods |
+| `knowledge_sections` | Named groups of manual entries (catalog, FAQ, policy, promo, note) |
+| `knowledge_entries` | Individual manual entries with a sync status |
+| `chunks` | RAG knowledge base — chunks + pgvector embeddings; each chunk belongs to exactly one document, entry or section (enforced by a CHECK constraint) |
 | `conversations` | Customer sessions with handoff state |
 | `messages` | All chat messages (`user`, `assistant`, `human_agent` roles) |
 | `processedWebhooks` | Idempotency table — prevents double-processing on retries |
@@ -297,16 +334,25 @@ kundesk/
 |---|---|---|
 | `/api/cron/renewal` | Daily 08:00 WIB | Find orgs due for renewal, create Midtrans charge, send payment link |
 | `/api/cron/reset-usage` | 1st of month | Reset `messagesUsed` to 0, fire `quota_reset` notification per org |
-| `/api/cron/past-due` | Daily 09:00 WIB | Suspend orgs unpaid after 7 days |
+| `/api/cron/past-due` | Daily 09:00 WIB | Warn at day 3, downgrade to Free at day 7; downgrade cancelled orgs once their paid period ends |
 | `/api/cron/retention` | Daily 03:00 WIB | Delete messages older than 90 days |
+| `/api/cron/payment-reconcile` | Daily 02:00 WIB | Ask Midtrans about unpaid orders, recover payments whose webhook was lost, expire abandoned checkouts |
+| `/api/cron/knowledge-health` | Daily 04:00 WIB | Report-only check for missing knowledge chunks (alerts Sentry) |
+| `/api/cron/org-purge` | Daily 11:00 WIB | Permanently delete organizations after the 30-day deletion grace period |
+
+> Schedules are set in UTC; on Vercel's Hobby plan a cron may run up to an hour late.
 
 ---
 
 ## Test Coverage
 
 ```
-Vitest unit + component tests:   266 tests — all passing
-Playwright E2E tests:             24 tests — all passing
+Vitest unit tests:   1,289 tests in 49 files — all passing
+Playwright E2E tests:   30 tests — all passing
+
+Unit coverage includes every cron job, both webhooks, payment settlement,
+the knowledge sync layer, and the chat route (including failed-turn and
+Redis-outage paths).
 
 E2E coverage:
   - Public chat flow (SSE streaming, rate limiting, prompt injection)
@@ -314,6 +360,8 @@ E2E coverage:
   - Document upload and processing pipeline
   - Billing webhook (Midtrans mock settlement)
   - Human handoff (takeover, return to AI, dismiss pending)
+  - Customer widget channel authentication
+  - Knowledge limits and cross-tenant isolation
 ```
 
 ---
@@ -379,11 +427,11 @@ npm run test:e2e      # Playwright E2E (requires .env.e2e)
 
 ## Subscription Plans
 
-| Plan | Price | Messages/month | Documents | Chatbots |
+| Plan | Price | Messages/month | Documents | Manual entries |
 |---|---|---|---|---|
-| Free | Rp 0 | 100 | 3 | 1 |
-| Starter | Rp 149.000 | 1.000 | 20 | 1 |
-| Pro | Rp 399.000 | 10.000 | Unlimited | 3 |
+| Free | Rp 0 | 100 | 3 | 50 |
+| Starter | Rp 149.000 | 1.000 | 20 | 300 |
+| Pro | Rp 399.000 | 10.000 | Unlimited | 1.000 |
 
 Payment methods: GoPay, OVO, DANA, BCA Virtual Account, QRIS, Credit Card — all via Midtrans.
 
