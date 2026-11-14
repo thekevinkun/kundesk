@@ -397,8 +397,8 @@ describe("PricingCard", () => {
           hasUsedFirstPurchase={false}
         />,
       );
-      // First-time price is Rp 99.000
-      expect(screen.getByText("Rp 99.000")).toBeInTheDocument();
+      // First-time price is Rp 49.000
+      expect(screen.getByText("Rp 49.000")).toBeInTheDocument();
     });
 
     it("shows discounted price for pro when eligible", () => {
@@ -409,8 +409,8 @@ describe("PricingCard", () => {
           hasUsedFirstPurchase={false}
         />,
       );
-      // First-time price is Rp 299.000
-      expect(screen.getByText("Rp 299.000")).toBeInTheDocument();
+      // First-time price is Rp 99.000
+      expect(screen.getByText("Rp 99.000")).toBeInTheDocument();
     });
 
     it("shows strikethrough regular price for starter when eligible", () => {
@@ -421,8 +421,8 @@ describe("PricingCard", () => {
           hasUsedFirstPurchase={false}
         />,
       );
-      // Regular price Rp 149.000 shown struck through
-      expect(screen.getByText("Rp 149.000")).toBeInTheDocument();
+      // Regular price Rp 79.000 shown struck through
+      expect(screen.getByText("Rp 79.000")).toBeInTheDocument();
     });
 
     it("shows strikethrough regular price for pro when eligible", () => {
@@ -433,8 +433,8 @@ describe("PricingCard", () => {
           hasUsedFirstPurchase={false}
         />,
       );
-      // Regular price Rp 399.000 shown struck through
-      expect(screen.getByText("Rp 399.000")).toBeInTheDocument();
+      // Regular price Rp 149.000 shown struck through
+      expect(screen.getByText("Rp 149.000")).toBeInTheDocument();
     });
 
     it("shows 'Harga perdana' badge when eligible", () => {
@@ -456,9 +456,9 @@ describe("PricingCard", () => {
           hasUsedFirstPurchase={true}
         />,
       );
-      expect(screen.getByText("Rp 149.000")).toBeInTheDocument();
+      expect(screen.getByText("Rp 79.000")).toBeInTheDocument();
       // Discounted price should NOT appear
-      expect(screen.queryByText("Rp 99.000")).not.toBeInTheDocument();
+      expect(screen.queryByText("Rp 49.000")).not.toBeInTheDocument();
     });
 
     it("shows regular price for pro when not eligible", () => {
@@ -469,8 +469,8 @@ describe("PricingCard", () => {
           hasUsedFirstPurchase={true}
         />,
       );
-      expect(screen.getByText("Rp 399.000")).toBeInTheDocument();
-      expect(screen.queryByText("Rp 299.000")).not.toBeInTheDocument();
+      expect(screen.getByText("Rp 149.000")).toBeInTheDocument();
+      expect(screen.queryByText("Rp 99.000")).not.toBeInTheDocument();
     });
 
     it("does not show 'Harga perdana' badge when not eligible", () => {

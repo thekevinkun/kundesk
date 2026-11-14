@@ -145,7 +145,7 @@ const styles = {
 PaymentPendingEmail.PreviewProps = {
   orgName: "Kun Borneo",
   planLabel: "Starter",
-  amount: "Rp 99.000",
+  amount: "Rp 49.000",
   redirectUrl: "https://app.sandbox.midtrans.com/snap/v4/redirection/example",
   logoUrl: EMAIL_PREVIEW_LOGO_URL,
 };

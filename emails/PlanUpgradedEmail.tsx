@@ -190,7 +190,7 @@ const styles = {
 PlanUpgradedEmail.PreviewProps = {
   orgName: "Kun Borneo",
   planLabel: "Starter",
-  amount: "Rp 99.000",
+  amount: "Rp 49.000",
   paymentMethod: "Transfer Bank",
   orderId: "KUNDESK-org_3ELK-STARTER-1781251199903",
   paidAt: "12 Juni 2026",

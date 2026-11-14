@@ -430,8 +430,8 @@ npm run test:e2e      # Playwright E2E (requires .env.e2e)
 | Plan | Price | Messages/month | Documents | Manual entries |
 |---|---|---|---|---|
 | Free | Rp 0 | 100 | 3 | 50 |
-| Starter | Rp 149.000 | 1.000 | 20 | 300 |
-| Pro | Rp 399.000 | 10.000 | Unlimited | 1.000 |
+| Starter | Rp 79.000 | 1.000 | 20 | 300 |
+| Pro | Rp 149.000 | 10.000 | Unlimited | 1.000 |
 
 Payment methods: GoPay, OVO, DANA, BCA Virtual Account, QRIS, Credit Card — all via Midtrans.
 

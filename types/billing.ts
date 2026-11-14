@@ -51,15 +51,15 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
 // Plan pricing in Rupiah
 export const PLAN_PRICE: Record<PlanName, number> = {
   free: 0,
-  starter: 149000,
-  pro: 399000,
+  starter: 79000,
+  pro: 149000,
 };
 
 // First-time discount prices — fixed amounts, only applies before first purchase
 // Once any paid plan is bought, hasUsedFirstPurchase flips to true and these never show again
 export const PLAN_FIRST_TIME_PRICE: Record<"starter" | "pro", number> = {
-  starter: 99_000,
-  pro: 299_000,
+  starter: 49_000,
+  pro: 99_000,
 };
 
 // Human-readable labels for Midtrans payment_type values

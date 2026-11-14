@@ -104,12 +104,12 @@ describe("PLAN_PRICE", () => {
     expect(PLAN_PRICE.free).toBe(0);
   });
 
-  it("starter plan costs Rp 149.000", () => {
-    expect(PLAN_PRICE.starter).toBe(149000);
+  it("starter plan costs Rp 79.000", () => {
+    expect(PLAN_PRICE.starter).toBe(79000);
   });
 
-  it("pro plan costs Rp 399.000", () => {
-    expect(PLAN_PRICE.pro).toBe(399000);
+  it("pro plan costs Rp 149.000", () => {
+    expect(PLAN_PRICE.pro).toBe(149000);
   });
 
   it("each paid plan costs more than the previous", () => {

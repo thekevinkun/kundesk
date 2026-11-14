@@ -70,7 +70,7 @@ export default async function MarketingPage() {
       "@type": "AggregateOffer",
       priceCurrency: "IDR",
       lowPrice: "0",
-      highPrice: "399000",
+      highPrice: "149000",
       offerCount: "3",
     },
     creator: {

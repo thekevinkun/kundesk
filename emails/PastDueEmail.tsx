@@ -143,7 +143,7 @@ const styles = {
 
 PastDueEmail.PreviewProps = {
   orgName: "Kun Borneo",
-  amount: "Rp149.000",
+  amount: "Rp 79.000",
   downgradeDate: "12 Oktober 2026",
   billingUrl: "http://localhost:3000/dashboard/billing",
   logoUrl: EMAIL_PREVIEW_LOGO_URL,

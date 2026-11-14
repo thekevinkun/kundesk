@@ -12,7 +12,7 @@ function buildMidtransNotification(
   serverKey: string,
   plan: "starter" | "pro",
 ) {
-  const grossAmount = plan === "starter" ? "149000" : "399000";
+  const grossAmount = plan === "starter" ? "79000" : "149000";
   const statusCode = "200";
   const raw = `${orderId}${statusCode}${grossAmount}${serverKey}`;
   const signatureKey = createHash("sha512").update(raw).digest("hex");
@@ -123,7 +123,7 @@ test.describe("Billing", () => {
       order_id: "KUNDESK-fake-STARTER-123",
       transaction_status: "settlement",
       fraud_status: "accept",
-      gross_amount: "149000",
+      gross_amount: "79000",
       payment_type: "bank_transfer",
       transaction_id: "fake-txn",
       status_code: "200",

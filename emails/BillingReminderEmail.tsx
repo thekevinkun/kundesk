@@ -134,7 +134,7 @@ const styles = {
 
 BillingReminderEmail.PreviewProps = {
   orgName: "Kun Borneo",
-  amount: "Rp149.000",
+  amount: "Rp79.000",
   dueDate: "15 Juni 2026",
   redirectUrl: "http://localhost:3000/dashboard/billing",
   logoUrl: EMAIL_PREVIEW_LOGO_URL,

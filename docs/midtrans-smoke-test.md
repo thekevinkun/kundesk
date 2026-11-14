@@ -42,7 +42,7 @@ the three variables at the top:
 
 ```bash
    ORDER='KUNDESK-org_XXXXXXXX-STARTER-0000000000000'
-   AMOUNT='99000.00'
+   AMOUNT='49000.00'
    STATUS='settlement'
    KEY=$(grep '^MIDTRANS_SERVER_KEY=' .env.local | cut -d= -f2-)
    SIG=$(printf '%s' "${ORDER}200${AMOUNT}${KEY}" | openssl dgst -sha512 | awk '{print $NF}')
