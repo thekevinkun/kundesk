@@ -76,7 +76,7 @@ export const metadata: Metadata = {
       "Kenalkan KUN, AI customer service yang menjawab pelanggan bisnis kamu 24/7 dalam Bahasa Indonesia. Upload dokumen, foto daftar harga, atau isi lewat formulir.",
     images: [
       {
-        url: "/images/og-image.jpg",
+        url: "/images/og-image.png",
         width: 1200,
         height: 630,
         alt: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
       "Kenalkan KUN, AI customer service yang menjawab pelanggan bisnis kamu 24/7 dalam Bahasa Indonesia. Upload dokumen, foto daftar harga, atau isi lewat formulir.",
-    images: ["/images/og-image.jpg"],
+    images: ["/images/og-image.png"],
     creator: "@kunborneo",
   },
 
