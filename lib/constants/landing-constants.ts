@@ -135,32 +135,16 @@ export const HOW_IT_WORKS_STEPS = [
 ] as const;
 
 // ── Testimonials ──
-export const TESTIMONIALS = [
-  {
-    id: 1,
-    quote:
-      "Sebelum pakai Kundesk, saya harus balas WhatsApp pelanggan sampai tengah malam. Sekarang KUN yang kerja, saya tinggal tidur. Omzet naik karena respon lebih cepat dan akurat.",
-    name: "Bu Sari Wulandari",
-    role: "Pemilik Kedai Bu Sari, Samarinda",
-    initials: "BS",
-  },
-  {
-    id: 2,
-    quote:
-      "Pasien sering nanya jadwal dokter dan harga konsultasi di luar jam kerja. KUN menjawab semua pertanyaan itu otomatis dari data klinik kami sendiri. Sama sekali tidak ada jawaban yang salah.",
-    name: "dr. Reza Kurniawan",
-    role: "Direktur Klinik Sehat Mandiri, Balikpapan",
-    initials: "RK",
-  },
-  {
-    id: 3,
-    quote:
-      "Sebagai developer yang juga pakai Kundesk untuk klien, arsitektur multi-tenantnya sangat solid. Data tiap klien benar-benar terisolasi. Ini yang saya cari sejak lama.",
-    name: "Kevin Mahendra",
-    role: "Full Stack Developer, Kun Borneo",
-    initials: "KM",
-  },
-] as const;
+// Intentionally empty: add only real quotes, with the person's permission
+export interface Testimonial {
+  id: number;
+  quote: string;
+  name: string;
+  role: string;
+  initials: string;
+}
+
+export const TESTIMONIALS: Testimonial[] = [];
 
 export interface FaqItems {
   id: number;
@@ -222,20 +206,20 @@ export const FAQ_ITEMS: FaqItems[] = [
   },
 ] as const;
 
-// ── Trust logos — Indonesian business types ──
-export const TRUST_LOGOS = [
-  { name: "WARUNG MAKAN SARI" },
-  { name: "KLINIK SEHAT MANDIRI" },
-  { name: "PROPERTI BORNEO" },
-  { name: "TOKO BUKU NUSA" },
-  { name: "SALON CANTIK" },
-  { name: "TOKO ONLINE MAJU" },
-  { name: "KEDAI KOPI RASA" },
-  { name: "APOTEK SEHAT" },
-  { name: "TRAVEL NUSANTARA" },
-  { name: "LAUNDRY BERSIH" },
-  { name: "BENGKEL JAYA" },
-  { name: "BUTIK ELEGAN" },
+// ── Business types the product is built for (not customers) ──
+export const BUSINESS_TYPES = [
+  { name: "WARUNG MAKAN" },
+  { name: "KLINIK" },
+  { name: "PROPERTI" },
+  { name: "TOKO BUKU" },
+  { name: "SALON" },
+  { name: "TOKO ONLINE" },
+  { name: "KEDAI KOPI" },
+  { name: "APOTEK" },
+  { name: "TRAVEL" },
+  { name: "LAUNDRY" },
+  { name: "BENGKEL" },
+  { name: "BUTIK" },
 ] as const;
 
 // Footer column link type

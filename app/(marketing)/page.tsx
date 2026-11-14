@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { LandingPage } from "@/components/landing";
-import { getActiveOrgCount } from "@/lib/db/queries/dashboard";
 import { getBillingData } from "@/lib/db/queries/billing";
 import type { PlanName } from "@/types/billing";
 
@@ -25,13 +24,6 @@ export const metadata: Metadata = {
 };
 
 export default async function MarketingPage() {
-  let activeOrgCount = 0;
-  try {
-    activeOrgCount = await getActiveOrgCount();
-  } catch (err) {
-    console.error("[marketing/page] Failed to fetch org count:", err);
-  }
-
   // Optionally fetch current plan — only if visitor is a signed-in org member
   let currentPlan: PlanName | null = null;
   let hasUsedFirstPurchase = false;
@@ -96,7 +88,6 @@ export default async function MarketingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <LandingPage
-        activeOrgCount={activeOrgCount}
         currentPlan={currentPlan}
         hasUsedFirstPurchase={hasUsedFirstPurchase}
       />

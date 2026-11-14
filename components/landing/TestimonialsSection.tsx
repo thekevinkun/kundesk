@@ -32,6 +32,9 @@ const TestimonialsSection = () => {
 
   return (
     <section className="py-24 px-6 lg:px-16 bg-(--color-bg-input) overflow-hidden">
+      {/* TODO before re-enabling: the heading and subtitle below make claims
+          ("Dipercaya bisnis di seluruh Indonesia", "Ribuan pemilik bisnis").
+          Rewrite them to match the real testimonials you add. */}
       {/* Section header */}
       <motion.div
         variants={scrollReveal}
@@ -57,7 +60,8 @@ const TestimonialsSection = () => {
           </em>
         </h2>
         <p className="text-[16px] text-(--color-text-500) leading-relaxed">
-          Ribuan pemilik bisnis sudah merasakan manfaat Kundesk — dari warung sampai klinik.
+          Ribuan pemilik bisnis sudah merasakan manfaat Kundesk — dari warung
+          sampai klinik.
         </p>
       </motion.div>
 

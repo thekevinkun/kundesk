@@ -7,18 +7,8 @@ import { useAuth } from "@clerk/nextjs";
 import { DashboardCard, FloatCard } from "@/components/landing/hero";
 import { fadeUp, landingStagger, landingStaggerItem } from "@/lib/animations";
 
-interface HeroSectionProps {
-  activeOrgCount: number;
-}
-
-const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
+const HeroSection = () => {
   const { isSignedIn } = useAuth();
-
-  // Format org count — show real number or "1.200+" style
-  const formattedCount =
-    activeOrgCount >= 1000
-      ? `${(activeOrgCount / 1000).toFixed(1).replace(".", ",")}k+`
-      : `${activeOrgCount}+`;
 
   return (
     <section
@@ -220,7 +210,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           {/* ── Floating card: right — active businesses ── */}
           <FloatCard delay={2.5} className="top-[24%] right-[3%] px-3.5 py-3">
             <div className="text-[9px] text-(--color-text-400) mb-1.5">
-              Bisnis yang aktif
+              Dibuat untuk
             </div>
 
             {/* Stacked avatars */}
@@ -249,10 +239,10 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
               </div>
             </div>
             <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
-              {formattedCount} bisnis aktif
+              Warung, klinik, properti
             </div>
             <div className="text-[9px] text-(--color-text-400) mt-0.5">
-              Kelola CS mereka pakai Kundesk
+              dan UMKM Indonesia lainnya
             </div>
           </FloatCard>
         </div>

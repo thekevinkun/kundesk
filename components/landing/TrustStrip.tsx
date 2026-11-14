@@ -1,9 +1,9 @@
 "use client";
 
-import { TRUST_LOGOS } from "@/lib/constants/landing-constants";
+import { BUSINESS_TYPES } from "@/lib/constants/landing-constants";
 
 // Duplicate array so the marquee loops seamlessly without a visible gap
-const MARQUEE_ITEMS = [...TRUST_LOGOS, ...TRUST_LOGOS];
+const MARQUEE_ITEMS = [...BUSINESS_TYPES, ...BUSINESS_TYPES];
 
 const TrustStrip = () => {
   return (
@@ -12,6 +12,11 @@ const TrustStrip = () => {
       style={{ background: "#111" }}
     >
       <div className="relative z-10 pt-18 pb-10">
+        {/* Label — says who the product is for, not who uses it */}
+        <div className="text-center text-[12px] font-bold tracking-[0.1em] uppercase text-(--color-brand) mb-8">
+          // Dibuat untuk bisnis seperti ini
+        </div>
+
         {/* Marquee track */}
         <div className="relative overflow-hidden">
           {/* Left fade */}

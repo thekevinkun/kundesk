@@ -13,9 +13,6 @@ const FeaturesSection = dynamic(
 const HowItWorksSection = dynamic(
   () => import("@/components/landing/HowItWorksSection"),
 );
-const TestimonialsSection = dynamic(
-  () => import("@/components/landing/TestimonialsSection"),
-);
 const PricingSection = dynamic(
   () => import("@/components/landing/PricingSection"),
 );
@@ -26,24 +23,21 @@ const FooterSection = dynamic(
 );
 
 interface LandingPageProps {
-  activeOrgCount: number;
   currentPlan: PlanName | null;
   hasUsedFirstPurchase: boolean;
 }
 
 const LandingPage = ({
-  activeOrgCount,
   currentPlan,
   hasUsedFirstPurchase,
 }: LandingPageProps) => {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       <Navbar />
-      <HeroSection activeOrgCount={activeOrgCount} />
+      <HeroSection />
       <TrustStrip />
       <FeaturesSection />
       <HowItWorksSection />
-      <TestimonialsSection />
       <PricingSection
         currentPlan={currentPlan}
         hasUsedFirstPurchase={hasUsedFirstPurchase}
