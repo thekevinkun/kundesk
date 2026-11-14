@@ -53,7 +53,7 @@ This validates the product-market fit signal: Indonesian SMEs recognize the prob
 
 > Landing Page - Hero
 
-<img width="1920" height="1505" alt="hero" src="https://github.com/user-attachments/assets/c6b2ff16-005f-4310-8e94-13fab8cf8b18" /><br />
+<img width="1920" height="1504" alt="homepage" src="https://github.com/user-attachments/assets/c6e36b3f-4ebc-4912-ac87-cb3af5950d5d" /><br />
 
 > Dashboard Overview
 
