@@ -32,15 +32,11 @@ export const PRICING_PLANS: Record<PlanName, PlanUIConfig> = {
     features: [
       "100 pesan / bulan",
       "3 dokumen upload",
-      "1 chatbot",
+      "50 entri Isi Manual",
+      "Impor daftar harga dari teks & foto",
       "QR Code + link publik",
     ],
-    unavailable: [
-      "Embed widget",
-      "Analytics dashboard",
-      "Custom branding",
-      "API access",
-    ],
+    unavailable: ["Embed widget", "Analytics dashboard"],
   },
   starter: {
     label: "Starter",
@@ -50,27 +46,27 @@ export const PRICING_PLANS: Record<PlanName, PlanUIConfig> = {
     features: [
       "1.000 pesan / bulan",
       "20 dokumen upload",
-      "1 chatbot",
+      "300 entri Isi Manual",
+      "Impor daftar harga dari teks & foto",
       "QR Code + link publik",
       "Embed widget",
       "Analytics dasar",
     ],
-    unavailable: ["Custom branding", "API access"],
+    unavailable: [],
   },
   pro: {
     label: "Pro",
-    desc: "KUN untuk bisnis besar atau agensi dengan banyak klien",
+    desc: "KUN untuk bisnis dengan banyak pelanggan dan katalog besar",
     color: "bg-(--color-brand-light)",
     icon: "🚀",
     features: [
       "10.000 pesan / bulan",
       "Dokumen unlimited",
-      "3 chatbot",
+      "1.000 entri Isi Manual",
+      "Impor daftar harga dari teks & foto",
       "QR Code + link publik",
       "Embed widget",
       "Analytics lengkap",
-      "Custom branding",
-      "API access",
     ],
     unavailable: [],
   },
@@ -82,10 +78,10 @@ export const FEATURES = [
     id: "rag",
     icon: "💬",
     name: "KUN Tahu Bisnismu",
-    desc: "KUN hanya menjawab berdasarkan dokumen yang kamu upload. Tidak ada halusinasi, tidak ada jawaban asal — hanya fakta dari bisnismu sendiri.",
+    desc: "KUN hanya menjawab dari informasi yang kamu berikan — dokumen, foto daftar harga, atau isian manual. Kalau informasinya tidak ada, KUN jujur bilang tidak tahu, bukan menebak.",
     preview: "rag" as const,
     layout: "wide" as const,
-    category: "AI Berbasis Dokumen",
+    category: "AI dari Data Bisnismu",
   },
   {
     id: "analytics",
@@ -120,9 +116,9 @@ export const FEATURES = [
 export const HOW_IT_WORKS_STEPS = [
   {
     step: 1,
-    icon: "📄",
-    title: "Upload Dokumen Bisnis",
-    desc: "Upload menu, FAQ, daftar harga, atau kebijakan bisnis kamu. PDF, TXT — apapun bisa. AI kami memproses dan mempelajarinya secara otomatis.",
+    icon: "📚",
+    title: "Ajari KUN Bisnismu",
+    desc: "Upload dokumen (PDF, DOCX, TXT), foto menu atau tempel daftar harga, atau isi lewat formulir. Mulai dari yang kamu punya — kamu cek hasilnya dulu sebelum disimpan.",
   },
   {
     step: 2,
@@ -179,31 +175,37 @@ export const FAQ_ITEMS: FaqItems[] = [
     id: 1,
     question: "Apa itu Kundesk dan bagaimana cara kerjanya?",
     answer:
-      "Kundesk adalah platform AI customer service untuk bisnis Indonesia. Kamu upload dokumen bisnis kamu (menu, FAQ, daftar harga), lalu KUN — asisten AI kami — menjawab pertanyaan pelanggan berdasarkan dokumen tersebut secara otomatis. Hasilnya akurat dan relevan untuk bisnismu.",
+      "Kundesk adalah platform AI customer service untuk bisnis Indonesia. Kamu mengisi informasi bisnis — upload dokumen, foto atau tempel daftar harga, atau isi manual lewat formulir — lalu KUN, asisten AI kami, menjawab pertanyaan pelanggan berdasarkan informasi itu secara otomatis. Hasilnya relevan untuk bisnismu.",
+  },
+  {
+    id: 8,
+    question: "Saya tidak punya dokumen, bagaimana?",
+    answer:
+      "Tidak masalah. Foto menu atau daftar harga kamu, atau tempel daftar harga dari WhatsApp, dan KUN membacanya jadi daftar item. Kamu periksa dan edit dulu sebelum disimpan, karena hasil bacaan tidak selalu sempurna. Kamu juga bisa mengisi langsung lewat formulir Isi Manual: profil bisnis, jam buka, katalog, FAQ, kebijakan, dan promo.",
   },
   {
     id: 2,
     question: "Siapa itu KUN?",
     answer:
-      "KUN adalah asisten AI dari Kundesk yang bertugas menjawab pertanyaan pelanggan bisnis kamu 24/7. KUN belajar dari dokumen yang kamu upload — menu, FAQ, daftar harga — dan hanya menjawab berdasarkan informasi tersebut. Tidak ada jawaban asal, tidak ada halusinasi. KUN adalah wajah AI dari bisnis kamu.",
+      "KUN adalah asisten AI dari Kundesk yang bertugas menjawab pertanyaan pelanggan bisnis kamu 24/7. KUN belajar dari informasi yang kamu berikan — dokumen, daftar harga, atau isian manual — dan hanya menjawab berdasarkan itu. Jika informasinya tidak ada, KUN jujur bilang tidak tahu dan menyarankan pelanggan menghubungi kamu langsung. KUN adalah wajah AI dari bisnis kamu.",
   },
   {
     id: 3,
     question: "Apakah saya perlu kemampuan coding untuk setup Kundesk?",
     answer:
-      "Tidak sama sekali. Upload dokumen, konfigurasi KUN, lalu bagikan QR code atau link ke pelanggan kamu. Selesai dalam 5 menit tanpa menyentuh kode apapun.",
+      "Tidak sama sekali. Isi informasi bisnis kamu (upload dokumen, foto daftar harga, atau isi formulir), lalu bagikan QR code atau link ke pelanggan kamu. Setup bisa selesai dalam sekitar 5 menit tanpa menyentuh kode apapun.",
   },
   {
     id: 4,
     question: "Seberapa akurat jawaban KUN?",
     answer:
-      "Rata-rata 97.3% pertanyaan terjawab dengan akurat berdasarkan dokumen yang kamu upload. KUN hanya menjawab dari sumber yang kamu berikan — jika informasi tidak ada, KUN akan menyarankan pelanggan untuk menghubungi kamu langsung.",
+      "KUN hanya menjawab dari informasi yang kamu berikan, bukan dari pengetahuan umum AI. Jika informasinya tidak ada, KUN menyarankan pelanggan menghubungi kamu langsung. Semakin lengkap dan terbaru informasi bisnismu, semakin akurat jawabannya.",
   },
   {
     id: 5,
     question: "Apakah data bisnis saya aman?",
     answer:
-      "Ya, sangat aman. Setiap bisnis memiliki database yang sepenuhnya terisolasi. Dokumen kamu disimpan di AWS S3 dengan enkripsi, dan tidak ada bisnis lain yang bisa mengakses data kamu. Kami menggunakan keamanan berlapis termasuk rate limiting dan webhook verification.",
+      "Data setiap bisnis dipisahkan dan hanya bisa diakses oleh bisnis itu sendiri. Dokumen disimpan di AWS S3 dan hanya bisa diakses lewat link berumur pendek. Kami memakai keamanan berlapis, termasuk rate limiting dan verifikasi webhook. Agar KUN bisa menjawab, isi informasi bisnis kamu diproses oleh OpenAI. Foto yang kamu impor hanya dibaca lalu dibuang, tidak kami simpan.",
     hasPrivacyLink: true,
   },
   {
@@ -249,7 +251,6 @@ export const FOOTER_COLS: { title: string; links: FooterLink[] }[] = [
       { label: "Kenalkan KUN", href: "#home" },
       { label: "Fitur", href: "#features" },
       { label: "Harga", href: "#pricing" },
-      { label: "API Docs", href: "#" },
       { label: "Changelog", href: "#" },
       { label: "Status", href: "#" },
     ],
