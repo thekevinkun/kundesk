@@ -85,7 +85,7 @@ const CtaBanner = () => {
               }}
               className="btn-outline text-[15px] py-3.5 px-8"
             >
-              Jadwalkan Demo
+              Lihat Demo
             </Link>
           </div>
         </div>

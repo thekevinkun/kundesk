@@ -10,17 +10,17 @@ export const metadata: Metadata = {
     absolute: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
   },
   description:
-    "Kenalkan KUN — AI asisten virtual dari Kundesk. Upload dokumen bisnis kamu, dan KUN siap menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
+    "Kenalkan KUN, AI customer service yang menjawab pelanggan bisnis kamu 24/7 dalam Bahasa Indonesia. Upload dokumen, foto daftar harga, atau isi lewat formulir.",
   openGraph: {
     title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Kenalkan KUN — AI asisten virtual dari Kundesk. Upload dokumen bisnis kamu, dan KUN siap menjawab pelanggan 24/7, akurat, dalam Bahasa Indonesia.",
+      "Kenalkan KUN, AI customer service yang menjawab pelanggan bisnis kamu 24/7 dalam Bahasa Indonesia. Upload dokumen, foto daftar harga, atau isi lewat formulir.",
     type: "website",
   },
   twitter: {
     title: "Kundesk - AI Customer Service untuk Bisnis Indonesia",
     description:
-      "Kenalkan KUN — AI asisten virtual dari Kundesk yang menjawab pelanggan bisnis kamu 24/7. Hanya perlu upload dokumen bisnis kamu.",
+      "Kenalkan KUN, AI customer service yang menjawab pelanggan bisnis kamu 24/7 dalam Bahasa Indonesia. Upload dokumen, foto daftar harga, atau isi lewat formulir.",
   },
 };
 
@@ -63,12 +63,13 @@ export default async function MarketingPage() {
     operatingSystem: "Web",
     url: "https://kundesk.vercel.app",
     description:
-      "Platform AI customer service untuk bisnis Indonesia. Ditenagai oleh KUN — AI asisten virtual yang menjawab pelanggan 24/7 berdasarkan dokumen bisnis kamu.",
+      "Platform AI customer service untuk bisnis Indonesia. Ditenagai oleh KUN — AI asisten virtual yang menjawab pelanggan 24/7 berdasarkan dokumen, foto daftar harga, dan isian manual dari bisnis kamu.",
     inLanguage: "id",
     // KUN as a named AI assistant — helps search engines understand the product
     featureList: [
       "KUN AI asisten virtual",
-      "RAG pipeline berbasis dokumen bisnis",
+      "Belajar dari dokumen, foto daftar harga, dan isian manual",
+      "Impor daftar harga dari teks atau foto",
       "QR Code customer service",
       "Embed widget untuk website",
       "Bahasa Indonesia native",

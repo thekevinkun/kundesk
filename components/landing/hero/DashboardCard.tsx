@@ -151,7 +151,7 @@ const DashboardCard = () => {
               },
               { icon: "📊", label: "Analytics" },
               { icon: "⚙️", label: "Konfigurasi" },
-              { icon: "📄", label: "Dokumen" },
+              { icon: "📚", label: "Info Bisnis" },
             ].map(({ icon, label, active, badge, badgeRed }) => (
               <div
                 key={label}

@@ -91,7 +91,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
           className="text-[13px] sm:text-[17px] text-(--color-text-500) 
             max-w-[480px] sm:max-w-[520px] mx-auto leading-relaxed mb-9"
         >
-          Upload dokumen bisnis kamu — menu, FAQ, harga.
+          Upload dokumen, foto daftar harga, atau isi lewat formulir.
           <br />
           <span className="text-(--color-text-900) font-semibold">
             KUN
@@ -193,7 +193,7 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
                   KUN sedang online
                 </div>
                 <div className="text-[9px] text-(--color-text-400)">
-                  142 percakapan hari ini ⚡
+                  Siap menjawab 24/7 ⚡
                 </div>
               </div>
             </div>
@@ -209,10 +209,10 @@ const HeroSection = ({ activeOrgCount }: HeroSectionProps) => {
             </div>
             <div>
               <div className="text-[10px] sm:text-[12px] font-bold text-(--color-text-900)">
-                Dijawab otomatis
+                Mulai dari yang kamu punya
               </div>
               <div className="text-[9px] text-(--color-text-400)">
-                97.3% akurasi bulan ini
+                Dokumen · Foto · Formulir
               </div>
             </div>
           </FloatCard>

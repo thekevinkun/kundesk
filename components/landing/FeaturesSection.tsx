@@ -139,7 +139,7 @@ const FeaturesSection = () => {
         </h2>
         <p className="text-[16px] text-[#888] leading-relaxed">
           Semua yang KUN butuhkan untuk melayani pelanggan bisnis kamu — dari AI
-          yang tahu dokumen bisnismu sampai analytics real-time.
+          yang tahu bisnismu sampai analytics real-time.
         </p>
       </motion.div>
 
