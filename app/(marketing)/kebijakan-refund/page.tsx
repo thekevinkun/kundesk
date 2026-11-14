@@ -16,6 +16,7 @@ import {
   REFUND_METHODS,
   CANCELLATION_RULES,
 } from "@/lib/constants/refund-constants";
+import { CONTACT_EMAIL } from "@/lib/constants/contact-constants";
 
 export const metadata: Metadata = {
   title: "Kebijakan Refund",
@@ -114,11 +115,11 @@ export default function RefundPage() {
               Respons dalam 3 hari kerja
             </p>
             <a
-              href="mailto:refund@kundesk.app"
+              href={`mailto:${CONTACT_EMAIL}`}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: "var(--color-brand)" }}
             >
-              ✉️ refund@kundesk.app
+              ✉️ {CONTACT_EMAIL}
             </a>
           </div>
         </PrivacySection>

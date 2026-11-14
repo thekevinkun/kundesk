@@ -20,6 +20,7 @@ import {
   TERMS_GOVERNING_ITEMS,
   TERMS_SERVICE_ITEMS,
 } from "@/lib/constants/terms-constants";
+import { CONTACT_EMAIL } from "@/lib/constants/contact-constants";
 
 export const metadata: Metadata = {
   title: "Syarat & Ketentuan",
@@ -72,8 +73,8 @@ export default function TermsPage() {
         <PrivacySection number="02" title="Deskripsi Layanan">
           <p>
             Kundesk adalah platform SaaS yang memungkinkan bisnis membuat
-            chatbot AI berbasis dokumen untuk melayani pelanggan mereka secara
-            otomatis. Layanan mencakup:
+            chatbot AI yang belajar dari dokumen dan informasi bisnis untuk
+            melayani pelanggan mereka secara otomatis. Layanan mencakup:
           </p>
           <Checklist items={TERMS_SERVICE_ITEMS} />
           <p className="mt-3">
@@ -107,8 +108,8 @@ export default function TermsPage() {
         {/* 05 */}
         <PrivacySection number="05" title="Konten & Dokumen Anda">
           <p>
-            Anda memiliki kepemilikan penuh atas konten yang Anda upload ke
-            Kundesk. Namun perlu dipahami:
+            Anda memiliki kepemilikan penuh atas konten yang Anda upload, isi,
+            atau impor ke Kundesk. Namun perlu dipahami:
           </p>
           <Checklist items={TERMS_CONTENT_ITEMS} />
         </PrivacySection>
@@ -169,11 +170,11 @@ export default function TermsPage() {
               Samarinda, Kalimantan Timur, Indonesia
             </p>
             <a
-              href="mailto:legal@kundesk.app"
+              href={`mailto:${CONTACT_EMAIL}`}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: "var(--color-brand)" }}
             >
-              ✉️ legal@kundesk.app
+              ✉️ {CONTACT_EMAIL}
             </a>
           </div>
         </PrivacySection>

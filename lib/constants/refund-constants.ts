@@ -1,4 +1,6 @@
-export const REFUND_LAST_UPDATED = "Mei 2026";
+import { CONTACT_EMAIL } from "@/lib/constants/contact-constants";
+
+export const REFUND_LAST_UPDATED = "November 2026";
 
 export const REFUND_ELIGIBLE_ITEMS = [
   "Anda ditagih ganda untuk periode yang sama karena kesalahan sistem",
@@ -9,13 +11,13 @@ export const REFUND_ELIGIBLE_ITEMS = [
 export const REFUND_INELIGIBLE_ITEMS = [
   "Anda memutuskan tidak ingin menggunakan layanan setelah berlangganan",
   "Anda lupa membatalkan langganan sebelum periode berikutnya",
-  "Chatbot tidak memberikan jawaban sesuai harapan (bergantung pada kualitas dokumen Anda)",
+  "Chatbot tidak memberikan jawaban sesuai harapan (bergantung pada kualitas dokumen dan informasi Anda)",
   "Anda mengupgrade plan lalu ingin downgrade di tengah periode",
   "Akun dinonaktifkan karena pelanggaran Syarat & Ketentuan",
 ];
 
 export const REFUND_PROCESS_STEPS = [
-  "Kirim email ke refund@kundesk.app dengan subjek: [REFUND] — nama bisnis Anda",
+  `Kirim email ke ${CONTACT_EMAIL} dengan subjek: [REFUND] — nama bisnis Anda`,
   "Sertakan: alamat email akun, tanggal transaksi, jumlah, dan alasan refund",
   "Tim kami akan merespons dalam 3 hari kerja untuk verifikasi",
   "Jika disetujui, pengembalian dana diproses dalam 7–14 hari kerja",
@@ -46,7 +48,10 @@ export const REFUND_METHODS = [
 
 export const CANCELLATION_RULES = [
   "Pembatalan berlaku di akhir periode yang sedang berjalan",
-  "Anda tetap dapat menggunakan layanan hingga periode berakhir",
+  "Anda tetap dapat menggunakan plan berbayar hingga periode berakhir",
+  "Setelah itu akun otomatis turun ke plan Free dan tetap ada",
+  "Tidak ada biaya pembatalan",
+  "Penghapusan akun adalah proses terpisah: ada masa tunggu 30 hari, lalu data dihapus permanen",
   "Tidak ada biaya pembatalan",
   "Data Anda disimpan selama 30 hari setelah pembatalan, lalu dihapus permanen",
 ];

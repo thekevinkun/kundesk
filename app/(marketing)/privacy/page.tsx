@@ -22,6 +22,7 @@ import {
   COOKIE_ITEMS,
   POLICY_CHANGE_ITEMS,
 } from "@/lib/constants/privacy-constants";
+import { CONTACT_EMAIL } from "@/lib/constants/contact-constants";
 
 export const metadata: Metadata = {
   title: "Kebijakan Privasi",
@@ -39,12 +40,12 @@ export default function PrivacyPage() {
         <div className="card-base p-8 mb-12 border-l-4 border-(--color-brand)">
           <p className="text-(--color-text-700) leading-relaxed">
             Kebijakan Privasi ini berlaku untuk layanan{" "}
-            <strong className="text-(--color-text-900)">Kundesk</strong>{" "}
-            yang dioperasikan oleh{" "}
-            <strong className="text-(--color-text-900)">Kun Borneo</strong>
-            . Dengan menggunakan Kundesk, Anda menyetujui praktik yang
-            dijelaskan dalam kebijakan ini. Jika Anda tidak setuju, harap
-            hentikan penggunaan layanan kami.
+            <strong className="text-(--color-text-900)">Kundesk</strong> yang
+            dioperasikan oleh{" "}
+            <strong className="text-(--color-text-900)">Kun Borneo</strong>.
+            Dengan menggunakan Kundesk, Anda menyetujui praktik yang dijelaskan
+            dalam kebijakan ini. Jika Anda tidak setuju, harap hentikan
+            penggunaan layanan kami.
           </p>
         </div>
 
@@ -144,10 +145,10 @@ export default function PrivacyPage() {
           <p className="mt-4">
             Untuk menggunakan hak-hak ini, hubungi kami di{" "}
             <a
-              href="mailto:privacy@kundesk.app"
+              href={`mailto:${CONTACT_EMAIL}`}
               className="font-semibold text-(--color-brand) hover:underline"
             >
-              privacy@kundesk.app
+              {CONTACT_EMAIL}
             </a>
             . Kami akan merespons dalam 14 hari kerja.
           </p>
@@ -194,20 +195,18 @@ export default function PrivacyPage() {
           </p>
 
           <div className="mt-4 card-base p-6 border-2 border-(--color-brand-mid)">
-            <p className="font-bold text-(--color-text-900) mb-1">
-              Kun Borneo
-            </p>
+            <p className="font-bold text-(--color-text-900) mb-1">Kun Borneo</p>
 
             <p className="text-sm text-(--color-text-500) mb-4">
               Samarinda, Kalimantan Timur, Indonesia
             </p>
 
             <a
-              href="mailto:privacy@kundesk.app"
+              href={`mailto:${CONTACT_EMAIL}`}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: "var(--color-brand)" }}
             >
-              ✉️ privacy@kundesk.app
+              ✉️ {CONTACT_EMAIL}
             </a>
           </div>
         </PrivacySection>
