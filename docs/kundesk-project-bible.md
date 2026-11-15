@@ -59,11 +59,11 @@ Indonesian SMEs — warung makan, klinik, salon, properti, toko online, travel a
 
 Subscription SaaS, billed monthly in Rupiah via Midtrans.
 
-| Plan    | Price      | Messages/month | Documents | Chatbots |
+| Plan    | Price      | Messages/month | Documents | Manual entries |
 | ------- | ---------- | -------------- | --------- | -------- |
-| Free    | Rp 0       | 100            | 3         | 1        |
-| Starter | Rp 149.000 | 1.000          | 20        | 1        |
-| Pro     | Rp 399.000 | 10.000         | Unlimited | 3        |
+| Free    | Rp 0       | 100            | 3         | 50        |
+| Starter | Rp 79.000  | 1.000          | 20        | 300        |
+| Pro     | Rp 149.000 | 10.000         | Unlimited | 1000        |
 
 ---
 
