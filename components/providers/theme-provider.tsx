@@ -1,11 +1,11 @@
-// Thin wrapper around next-themes ThemeProvider
-// Needed because next-themes requires "use client" but our root layout is a Server Component
+// Thin wrapper around the theme provider
+// Needed because the provider requires "use client" but our root layout is a Server Component
 // We wrap it here so the layout stays a Server Component
 
 "use client";
 
 import * as React from "react";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider as NextThemesProvider } from "@teispace/next-themes";
 
 export function ThemeProvider({
   children,

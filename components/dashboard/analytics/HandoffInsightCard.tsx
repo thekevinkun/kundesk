@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { useTheme } from "next-themes";
+import { useTheme } from "@teispace/next-themes";
 import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
 import LockedFeatureOverlay from "./LockedFeatureOverlay";
 import { staggerItem } from "@/lib/animations";

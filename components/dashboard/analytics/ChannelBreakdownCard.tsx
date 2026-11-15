@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { useTheme } from "next-themes";
+import { useTheme } from "@teispace/next-themes";
 import { Chart, DoughnutController, ArcElement, Tooltip } from "chart.js";
 import { staggerItem } from "@/lib/animations";
 import { CHANNEL_CONFIG } from "./constants";

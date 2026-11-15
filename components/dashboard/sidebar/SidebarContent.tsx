@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useTheme } from "next-themes";
+import { useTheme } from "@teispace/next-themes";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { Separator } from "@/components/ui/separator";

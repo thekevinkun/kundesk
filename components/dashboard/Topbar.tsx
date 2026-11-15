@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@teispace/next-themes";
 import { UserButton } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -60,7 +60,7 @@ const Topbar = ({ initialAccentColor, isAdmin, timezone }: TopbarProps) => {
   // Defer Clerk UserButton render until after hydration — prevents mismatch
   const [mounted, setMounted] = useState(false);
 
-  // useTheme from next-themes — reads current theme, setTheme toggles .dark on <html>
+  // useTheme reads current theme and setTheme toggles .dark on <html>
   const { theme, setTheme } = useTheme();
 
   const [activeColor, setActiveColor] = useState(initialAccentColor);
