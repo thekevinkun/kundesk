@@ -119,8 +119,8 @@
 111. **Midtrans Finish Redirect URL** — handled via per-request `callbacks`. Dashboard-level setting alone does NOT work for Kundesk's integration — per-request `callbacks.finish/error/pending` override it.
 112. **Neon cold start context** — Neon serverless sleeps after inactivity. First query after waking takes 2–5 seconds.
 113. **Pusher channel auth — `transport: "ajax"` + `headersProvider`** — DO NOT change to `"fetch"` or `customHandler`. Confirmed working via direct A/B test; `customHandler` causes total live-update regression. **This proven pattern was reused as-is for the customer widget's own auth endpoint in Session 3 (Phase 16) — do not invent a different transport for any new private channel.**
-114. **Dark mode is scoped to dashboard only** — `ThemeProvider` (next-themes) lives in `app/(dashboard)/dashboard/layout.tsx`, NOT in root `app/layout.tsx`. Landing page is always light.
-115. **`ThemeProvider` wrapper keeps `next-themes` as-is** — no `scriptProps` override.
+114. **Dark mode is scoped to dashboard only** — `ThemeProvider` (`@teispace/next-themes`) lives in `app/(dashboard)/dashboard/layout.tsx`, NOT in root `app/layout.tsx`. Landing page is always light.
+115. **Theme provider compatibility** — `@teispace/next-themes@3.1.1` replaced unmaintained `next-themes@0.4.6` because the latter emits React 19's "Encountered a script tag while rendering React component" development error under Next 16. The replacement injects its anti-flash script outside React's client component tree; keep the existing `class`, light-default, `enableSystem={false}`, and `disableTransitionOnChange` settings. Do not add a `scriptProps` workaround.
 116. **Theme toggle hydration guard** — `Topbar.tsx` dark mode toggle renders a neutral placeholder until `mounted === true`.
 117. **PlanCard CTA/badge text colors use `text-white`, never `text-(--color-bg-page)`**.
 118. **`getAnsweredRate` is capped at 100%** — `Math.min(..., 100)`. Never remove the cap.
