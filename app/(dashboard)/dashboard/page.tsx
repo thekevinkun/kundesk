@@ -2,15 +2,10 @@ import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import {
-  getTotalMessages,
-  getAnsweredRate,
-  getUniqueVisitors,
   getDailyMessageTrend,
   getMonthlyMessageComparison,
   getWeeklyMessages,
-  getBotStatus,
-  getOrgData,
-  getAvgResponseTime,
+  getLiveOverviewSnapshot,
   getRecentActiveConversations,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
@@ -34,12 +29,7 @@ export default async function DashboardPage() {
     dailyTrend,
     monthlyComparison,
     weeklyMessages,
-    botStatus,
-    orgData,
-    initialTotalMessages,
-    initialAnsweredRate,
-    initialUniqueVisitors,
-    initialAvgResponseTime,
+    initialLiveOverview,
     recentConversations,
   ] = await Promise.all([
     (await clerkClient()).organizations.getOrganization({
@@ -48,12 +38,7 @@ export default async function DashboardPage() {
     getDailyMessageTrend(orgId!, timezone),
     getMonthlyMessageComparison(orgId!, timezone),
     getWeeklyMessages(orgId!, timezone),
-    getBotStatus(orgId!),
-    getOrgData(orgId!),
-    getTotalMessages(orgId!),
-    getAnsweredRate(orgId!),
-    getUniqueVisitors(orgId!),
-    getAvgResponseTime(orgId!),
+    getLiveOverviewSnapshot(orgId!, timezone),
     getRecentActiveConversations(orgId!),
   ]);
 
@@ -65,22 +50,13 @@ export default async function DashboardPage() {
   return (
     <DashboardOverview
       orgId={orgId!}
-      initialStats={{
-        totalMessages: initialTotalMessages,
-        answeredRate: initialAnsweredRate,
-        uniqueVisitors: initialUniqueVisitors,
-        avgResponseTime: initialAvgResponseTime,
-      }}
+      initialLiveOverview={initialLiveOverview}
       orgName={organization.name}
       dailyTrend={dailyTrend}
       monthlyCurrent={monthlyComparison.current}
       monthlyPrevious={monthlyComparison.previous}
       weeklyMessages={weeklyMessages}
       currentYear={currentYear}
-      botStatus={botStatus}
-      orgSlug={orgData?.slug ?? ""}
-      initialMessagesUsed={orgData?.messagesUsed ?? 0}
-      initialMessagesLimit={orgData?.messagesLimit ?? 100}
       initialRecentConversations={recentConversations}
     />
   );

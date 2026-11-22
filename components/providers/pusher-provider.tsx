@@ -58,6 +58,9 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
     });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
+    });
   }, []);
 
   const handleTakeover = useCallback((payload: TakeoverPayload) => {
@@ -69,6 +72,9 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     });
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
+    });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
   }, []);
 
@@ -87,6 +93,9 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "human-unread"],
     });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
+    });
   }, []);
 
   const handleReturn = useCallback(() => {
@@ -101,6 +110,15 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "human-unread"],
     });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
+    });
+  }, []);
+
+  const handleDocumentUpdated = useCallback(() => {
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
+    });
   }, []);
 
   const handleUsageUpdated = useCallback(
@@ -111,9 +129,9 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
       // Update usage bar instantly via Zustand
       stableRef.current.setUsage(payload.messagesUsed, payload.messagesLimit);
 
-      // Stat cards — invalidate immediately
+      // Live overview — invalidate immediately
       void stableRef.current.queryClient.invalidateQueries({
-        queryKey: ["dashboard", stableRef.current.orgId, "stats"],
+        queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
       });
 
       // Charts — debounce 2s, module-level timer survives re-renders
@@ -132,6 +150,7 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     onTakeover: handleTakeover,
     onMessage: handleMessage,
     onReturn: handleReturn,
+    onDocumentUpdated: handleDocumentUpdated,
     onUsageUpdated: handleUsageUpdated,
   });
 

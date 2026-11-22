@@ -11,7 +11,7 @@ vi.mock("@/lib/db/queries/org-timezone", () => ({
   getOrgTimezone: mocks.getOrgTimezone,
 }));
 
-import { getOwnerTimezone } from "./timezone";
+import { getOwnerDayBounds, getOwnerTimezone } from "./timezone";
 
 describe("getOwnerTimezone", () => {
   beforeEach(() => {
@@ -36,5 +36,15 @@ describe("getOwnerTimezone", () => {
     mocks.getSession.mockResolvedValue({ userId: "u1", orgId: "org_1" });
     mocks.getOrgTimezone.mockRejectedValue(new Error("neon down"));
     expect(await getOwnerTimezone()).toBe("Asia/Jakarta");
+  });
+
+  it("uses the owner-local day boundaries instead of the server UTC date", () => {
+    const { start, end } = getOwnerDayBounds(
+      "Asia/Makassar",
+      new Date("2026-11-22T17:00:00.000Z"),
+    );
+
+    expect(start.toISOString()).toBe("2026-11-22T16:00:00.000Z");
+    expect(end.toISOString()).toBe("2026-11-23T16:00:00.000Z");
   });
 });

@@ -6,23 +6,22 @@
 
 import { requireOrg } from "@/lib/auth";
 import {
-  getTotalMessages,
-  getAnsweredRate,
-  getUniqueVisitors,
-  getAvgResponseTime,
   getRecentActiveConversations,
   findConversationPage,
   getHumanUnreadConversationIds,
+  getLiveOverviewSnapshot,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
+import type { LiveOverviewSnapshot } from "@/types/dashboard";
 
-export interface DashboardStats {
-  totalMessages: number;
-  answeredRate: number;
-  uniqueVisitors: number;
-  avgResponseTime: string | null;
+// Snapshot refetch for the dashboard overview. The active org and its timezone
+// come exclusively from the server session; the browser cannot select a tenant.
+export async function getLiveOverviewSnapshotAction(): Promise<LiveOverviewSnapshot> {
+  const { orgId } = await requireOrg();
+  const timezone = await getOwnerTimezone();
+  return getLiveOverviewSnapshot(orgId, timezone);
 }
 
 export async function getRecentActiveConversationsAction(): Promise<
@@ -36,22 +35,6 @@ export async function getRecentActiveConversationsAction(): Promise<
     lastMessageAt: row.lastMessageAt ? row.lastMessageAt.toISOString() : null,
     takenOverAt: row.takenOverAt ? row.takenOverAt.toISOString() : null,
   }));
-}
-
-export async function getDashboardStats(): Promise<DashboardStats> {
-  // Auth enforced here — orgId comes from server session, never from client
-  const { orgId } = await requireOrg();
-
-  // All four in parallel — same pattern as page.tsx
-  const [totalMessages, answeredRate, uniqueVisitors, avgResponseTime] =
-    await Promise.all([
-      getTotalMessages(orgId),
-      getAnsweredRate(orgId),
-      getUniqueVisitors(orgId),
-      getAvgResponseTime(orgId),
-    ]);
-
-  return { totalMessages, answeredRate, uniqueVisitors, avgResponseTime };
 }
 
 // ── Find which page a conversation lives on — called by GlobalSearch before navigating ──

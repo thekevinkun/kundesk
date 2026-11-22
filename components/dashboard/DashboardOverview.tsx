@@ -7,11 +7,11 @@ import { useConversationStore } from "@/stores/conversation-store";
 import { StatCard } from "@/components/dashboard";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import {
-  getDashboardStats,
   getDashboardChartData,
+  getLiveOverviewSnapshotAction,
 } from "@/lib/actions/dashboard";
-import type { DashboardStats } from "@/lib/actions/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
+import type { LiveOverviewSnapshot } from "@/types/dashboard";
 
 // ── Dynamic imports — Chart.js only loads after shell renders ──
 const DonutCharts = dynamic(
@@ -72,23 +72,13 @@ const BotStatusPanel = dynamic(
 // ── Props ──
 interface DashboardOverviewProps {
   orgId: string;
-  initialStats: DashboardStats;
+  initialLiveOverview: LiveOverviewSnapshot;
   orgName: string;
   dailyTrend: { date: string; count: number }[];
   monthlyCurrent: number[];
   monthlyPrevious: number[];
   weeklyMessages: number[];
   currentYear: number;
-  botStatus: {
-    language: string;
-    isActive: boolean;
-    accentColor: string;
-    documentCount: number;
-    totalChunks: number;
-  } | null;
-  orgSlug: string;
-  initialMessagesUsed: number;
-  initialMessagesLimit: number;
   initialRecentConversations: ConversationRowType[];
 }
 
@@ -119,28 +109,26 @@ const CardHeader = ({
 
 const DashboardOverview = ({
   orgId,
-  initialStats,
+  initialLiveOverview,
   orgName,
   dailyTrend,
   monthlyCurrent,
   monthlyPrevious,
   weeklyMessages,
   currentYear,
-  botStatus,
-  orgSlug,
-  initialMessagesUsed,
-  initialMessagesLimit,
   initialRecentConversations,
 }: DashboardOverviewProps) => {
-  // ── Stats query — invalidated by PusherProvider on usage:updated ──
-  const { data: stats } = useQuery({
-    queryKey: ["dashboard", orgId, "stats"],
-    queryFn: getDashboardStats,
-    initialData: initialStats,
+  // ── Live overview — seeded by the page and invalidated by PusherProvider ──
+  const { data: liveOverview } = useQuery({
+    queryKey: ["dashboard", orgId, "live-overview"],
+    queryFn: getLiveOverviewSnapshotAction,
+    initialData: initialLiveOverview,
     initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
     staleTime: 0, // Always refetch when invalidated
     refetchOnWindowFocus: false,
   });
+
+  const stats = liveOverview.stats;
 
   // ── Chart data query — invalidated by PusherProvider on usage:updated (debounced) ──
   const { data: chartData } = useQuery({
@@ -162,8 +150,10 @@ const DashboardOverview = ({
   // Falls back to server-seeded initial values until the first Pusher event fires
   const storeMessagesUsed = useConversationStore((s) => s.messagesUsed);
   const storeMessagesLimit = useConversationStore((s) => s.messagesLimit);
-  const messagesUsed = storeMessagesUsed ?? initialMessagesUsed;
-  const messagesLimit = storeMessagesLimit ?? initialMessagesLimit;
+  const messagesUsed =
+    storeMessagesUsed ?? liveOverview.organization.messagesUsed;
+  const messagesLimit =
+    storeMessagesLimit ?? liveOverview.organization.messagesLimit;
 
   // Read accentColor from store
   const accentColor = useConversationStore((s) => s.accentColor);
@@ -306,15 +296,15 @@ const DashboardOverview = ({
       </div>
 
       {/* ── Bot status panel ── */}
-      {botStatus && (
+      {liveOverview.bot && (
         <div className="mt-4">
           <BotStatusPanel
-            orgSlug={orgSlug}
-            language={botStatus.language}
-            isActive={botStatus.isActive}
+            orgSlug={liveOverview.organization.slug}
+            language={liveOverview.bot.language}
+            isActive={liveOverview.bot.isActive}
             accentColor={accentColor}
-            documentCount={botStatus.documentCount}
-            totalChunks={botStatus.totalChunks}
+            documentCount={liveOverview.bot.documentCount}
+            totalChunks={liveOverview.bot.totalChunks}
             messagesUsed={messagesUsed}
             messagesLimit={messagesLimit}
           />

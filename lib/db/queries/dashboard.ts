@@ -13,8 +13,11 @@ import {
   chunks,
   notifications,
 } from "@/lib/db/schema";
+import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
 import { toDateSafe } from "@/helpers/format";
+import { getOwnerDayBounds } from "@/lib/timezone";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
+import type { LiveOverviewSnapshot } from "@/types/dashboard";
 
 // ── Total messages sent to this org's chatbot ──
 // Counts ALL roles (user + assistant + human_agent) — full volume metric
@@ -32,6 +35,63 @@ export async function getTotalMessages(orgId: string): Promise<number> {
     );
 
   return result?.total ?? 0;
+}
+
+// ── Customer messages received in the owner's local calendar day ──
+// Message timestamps are stored in UTC. Convert the tenant's local day to UTC
+// bounds before filtering so midnight is correct for every IANA timezone.
+export async function getCustomerMessagesToday(
+  orgId: string,
+  timezone: string,
+): Promise<number> {
+  const { start, end } = getOwnerDayBounds(timezone);
+  const result = await db.execute<{ total: number }>(
+    sql`
+      SELECT COUNT(*)::int AS total
+      FROM ${messages}
+      WHERE org_id = ${orgId}
+        AND role = 'user'
+        AND created_at >= ${start.toISOString()}::timestamp
+        AND created_at < ${end.toISOString()}::timestamp
+    `,
+  );
+
+  return result.rows[0]?.total ?? 0;
+}
+
+// ── Live queue summary — active means a conversation with activity in 24h ──
+// The definition deliberately mirrors getRecentActiveConversations so the future
+// operations board and the existing activity list cannot disagree.
+export async function getActiveConversationSummary(orgId: string): Promise<{
+  activeConversationCount: number;
+  pendingHandoffCount: number;
+}> {
+  const result = await db.execute<{
+    active_conversation_count: number;
+    pending_handoff_count: number;
+  }>(
+    sql`
+      SELECT
+        COUNT(*)::int AS active_conversation_count,
+        COUNT(*) FILTER (WHERE c.handoff_status = 'pending_handoff')::int
+          AS pending_handoff_count
+      FROM ${conversations} c
+      WHERE c.org_id = ${orgId}
+        AND EXISTS (
+          SELECT 1
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+            AND m.org_id = ${orgId}
+            AND m.created_at > NOW() - INTERVAL '24 hours'
+        )
+    `,
+  );
+
+  const row = result.rows[0];
+  return {
+    activeConversationCount: row?.active_conversation_count ?? 0,
+    pendingHandoffCount: row?.pending_handoff_count ?? 0,
+  };
 }
 
 // ── Auto-answer rate — assistant messages / total messages × 100 ──
@@ -751,6 +811,45 @@ export async function getAvgResponseTime(
 
   // Convert ms to seconds, round to 1 decimal
   return `${(avg / 1000).toFixed(1)}s`;
+}
+
+// ── Live overview snapshot — shared server seed and protected client refetch ──
+// Each source remains its established tenant-scoped query; this only provides one
+// stable contract for the redesigned overview.
+export async function getLiveOverviewSnapshot(
+  orgId: string,
+  timezone: string,
+): Promise<LiveOverviewSnapshot> {
+  const [
+    totalMessages,
+    messagesToday,
+    answeredRate,
+    uniqueVisitors,
+    avgResponseTime,
+    queue,
+    bot,
+    organization,
+  ] = await Promise.all([
+    getTotalMessages(orgId),
+    getCustomerMessagesToday(orgId, timezone),
+    getAnsweredRate(orgId),
+    getUniqueVisitors(orgId),
+    getAvgResponseTime(orgId),
+    getActiveConversationSummary(orgId),
+    getBotStatus(orgId),
+    getOrgData(orgId),
+  ]);
+
+  return createLiveOverviewSnapshot({
+    totalMessages,
+    messagesToday,
+    answeredRate,
+    uniqueVisitors,
+    avgResponseTime,
+    ...queue,
+    bot,
+    organization,
+  });
 }
 
 // ── Find which page a conversation is on — for search deep links ──
