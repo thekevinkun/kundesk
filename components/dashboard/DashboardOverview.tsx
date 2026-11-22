@@ -1,10 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useConversationStore } from "@/stores/conversation-store";
-import { StatCard } from "@/components/dashboard";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import {
   getDashboardChartData,
@@ -13,63 +13,11 @@ import {
 import type { ConversationRow as ConversationRowType } from "@/types/api";
 import type { LiveOverviewSnapshot } from "@/types/dashboard";
 
-// ── Dynamic imports — Chart.js only loads after shell renders ──
-const DonutCharts = dynamic(
-  () => import("@/components/dashboard/charts/DonutCharts"),
-  {
-    loading: () => (
-      <div className="flex justify-around items-center py-4 px-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex flex-col items-center gap-2.5">
-            <div className="w-[110px] h-[110px] rounded-full skeleton" />
-            <div className="h-3 w-16 rounded skeleton" />
-          </div>
-        ))}
-      </div>
-    ),
-    ssr: false,
-  },
-);
+const AreaChart = dynamic(() => import("@/components/dashboard/charts/AreaChart"), { loading: () => <div className="h-44 rounded-md skeleton" />, ssr: false });
+const LineChart = dynamic(() => import("@/components/dashboard/charts/LineChart"), { loading: () => <div className="h-44 rounded-md skeleton" />, ssr: false });
+const BarChart = dynamic(() => import("@/components/dashboard/charts/BarChart"), { loading: () => <div className="h-44 rounded-md skeleton" />, ssr: false });
+const RecentConversationsPanel = dynamic(() => import("@/components/dashboard/RecentConversationsPanel"), { loading: () => <div className="min-h-96 rounded-md skeleton" /> });
 
-const AreaChart = dynamic(
-  () => import("@/components/dashboard/charts/AreaChart"),
-  {
-    loading: () => <div className="h-[140px] skeleton rounded-[10px]" />,
-    ssr: false,
-  },
-);
-
-const LineChart = dynamic(
-  () => import("@/components/dashboard/charts/LineChart"),
-  {
-    loading: () => <div className="h-[160px] skeleton rounded-[10px]" />,
-    ssr: false,
-  },
-);
-
-const BarChart = dynamic(
-  () => import("@/components/dashboard/charts/BarChart"),
-  {
-    loading: () => <div className="h-[160px] skeleton rounded-[10px]" />,
-    ssr: false,
-  },
-);
-
-const RecentConversationsPanel = dynamic(
-  () => import("@/components/dashboard/RecentConversationsPanel"),
-  {
-    loading: () => (
-      <div className="card-base h-full min-h-[300px] skeleton rounded-[14px]" />
-    ),
-  },
-);
-
-const BotStatusPanel = dynamic(
-  () => import("@/components/dashboard/BotStatusPanel"),
-  { ssr: false },
-);
-
-// ── Props ──
 interface DashboardOverviewProps {
   orgId: string;
   initialLiveOverview: LiveOverviewSnapshot;
@@ -82,234 +30,69 @@ interface DashboardOverviewProps {
   initialRecentConversations: ConversationRowType[];
 }
 
-// ── Card header — reused across all chart cards ──
-const CardHeader = ({
-  title,
-  subtitle,
-  action,
-}: {
-  title: string;
-  subtitle?: string;
-  action?: React.ReactNode;
-}) => (
-  <div className="flex items-start justify-between px-5 pt-5 pb-0">
-    <div>
-      <div className="text-[15px] font-bold tracking-[-0.02em] text-(--color-text-900)">
-        {title}
-      </div>
-      {subtitle && (
-        <div className="text-[11.5px] text-(--color-text-400) mt-0.5">
-          {subtitle}
-        </div>
-      )}
+const Metric = ({ icon, label, value, detail, tone }: { icon: string; label: string; value: string; detail: string; tone: string }) => (
+  <div className="card-base flex min-w-0 gap-3 p-4">
+    <span className={`flex size-10 shrink-0 items-center justify-center rounded-[12px] text-lg ${tone}`} aria-hidden="true">{icon}</span>
+    <div className="min-w-0">
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-(--color-text-400)">{label}</p>
+      <p className="mt-1 text-[25px] font-extrabold leading-none tracking-[-0.04em] text-(--color-text-900)">{value}</p>
+      <p className="mt-1.5 text-[11px] text-(--color-text-500)">{detail}</p>
     </div>
-    {action && <div>{action}</div>}
   </div>
 );
 
-const DashboardOverview = ({
-  orgId,
-  initialLiveOverview,
-  orgName,
-  dailyTrend,
-  monthlyCurrent,
-  monthlyPrevious,
-  weeklyMessages,
-  currentYear,
-  initialRecentConversations,
-}: DashboardOverviewProps) => {
-  // ── Live overview — seeded by the page and invalidated by PusherProvider ──
-  const { data: liveOverview } = useQuery({
-    queryKey: ["dashboard", orgId, "live-overview"],
-    queryFn: getLiveOverviewSnapshotAction,
-    initialData: initialLiveOverview,
-    initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
-    staleTime: 0, // Always refetch when invalidated
-    refetchOnWindowFocus: false,
+const ChartCard = ({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) => (
+  <div className="card-base min-w-0">
+    <div className="px-5 pt-5"><h2 className="text-[15px] font-bold tracking-[-0.02em] text-(--color-text-900)">{title}</h2><p className="mt-0.5 text-[11.5px] text-(--color-text-400)">{subtitle}</p></div>
+    <div className="px-5 pb-5 pt-3">{children}</div>
+  </div>
+);
+
+const DashboardOverview = ({ orgId, initialLiveOverview, orgName, dailyTrend, monthlyCurrent, monthlyPrevious, weeklyMessages, currentYear, initialRecentConversations }: DashboardOverviewProps) => {
+  const { data: overview } = useQuery({
+    queryKey: ["dashboard", orgId, "live-overview"], queryFn: getLiveOverviewSnapshotAction,
+    initialData: initialLiveOverview, initialDataUpdatedAt: 0, staleTime: 0, refetchOnWindowFocus: false,
   });
-
-  const stats = liveOverview.stats;
-
-  // ── Chart data query — invalidated by PusherProvider on usage:updated (debounced) ──
-  const { data: chartData } = useQuery({
-    queryKey: ["dashboard", orgId, "charts"],
-    queryFn: getDashboardChartData,
-    initialData: {
-      dailyTrend,
-      monthlyCurrent,
-      monthlyPrevious,
-      weeklyMessages,
-      currentYear,
-    },
-    initialDataUpdatedAt: 0, // Force stale immediately — invalidation always triggers a refetch
-    staleTime: 0,
-    refetchOnWindowFocus: false,
+  const { data: charts } = useQuery({
+    queryKey: ["dashboard", orgId, "charts"], queryFn: getDashboardChartData,
+    initialData: { dailyTrend, monthlyCurrent, monthlyPrevious, weeklyMessages, currentYear }, initialDataUpdatedAt: 0, staleTime: 0, refetchOnWindowFocus: false,
   });
-
-  // ── Usage — read from Zustand, set by PusherProvider on usage:updated ──
-  // Falls back to server-seeded initial values until the first Pusher event fires
-  const storeMessagesUsed = useConversationStore((s) => s.messagesUsed);
-  const storeMessagesLimit = useConversationStore((s) => s.messagesLimit);
-  const messagesUsed =
-    storeMessagesUsed ?? liveOverview.organization.messagesUsed;
-  const messagesLimit =
-    storeMessagesLimit ?? liveOverview.organization.messagesLimit;
-
-  // Read accentColor from store
   const accentColor = useConversationStore((s) => s.accentColor);
-
-  // Quota percentage for donut chart
-  const quotaUsed = Math.min((messagesUsed / (messagesLimit || 1)) * 100, 100);
-
-  const formatCount = (n: number): string => {
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-    return n.toString();
-  };
+  const used = useConversationStore((s) => s.messagesUsed) ?? overview.organization.messagesUsed;
+  const limit = useConversationStore((s) => s.messagesLimit) ?? overview.organization.messagesLimit;
+  const quotaPct = Math.min((used / (limit || 1)) * 100, 100);
+  const bot = overview.bot;
 
   return (
-    <div>
-      {/* ── Page header ── */}
-      <div className="mb-6">
-        <h1 className="text-[24px] font-extrabold tracking-[-0.03em] text-(--color-text-900) leading-tight">
-          Dashboard
-        </h1>
-        <p className="text-[14px] text-(--color-text-500) mt-1">
-          Selamat datang, {orgName} 👋
-        </p>
+    <div className="mx-auto max-w-[1440px] space-y-5">
+      <header className="card-base p-5 sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div><div className="flex flex-wrap items-center gap-2"><h1 className="text-[24px] font-extrabold tracking-[-0.04em] text-(--color-text-900)">Dashboard</h1><span className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold ${bot?.isActive ? "bg-(--color-success-bg) text-(--color-success)" : "bg-(--color-danger-bg) text-(--color-danger)"}`}>{bot?.isActive ? "KUN AKTIF" : "KUN NONAKTIF"}</span></div><p className="mt-1 text-[13px] text-(--color-text-500)">Pantau percakapan dan kesehatan operasional {orgName} secara langsung.</p></div>
+          <div className="flex flex-wrap gap-2 text-[11.5px] font-semibold"><span className="rounded-full bg-(--color-bg-page) px-3 py-2 text-(--color-text-700)"><span className="mr-1.5 text-(--color-brand)">●</span>{overview.queue.activeConversationCount} percakapan aktif</span><span className={`rounded-full px-3 py-2 ${overview.queue.pendingHandoffCount > 0 ? "bg-(--color-danger-bg) text-(--color-danger)" : "bg-(--color-success-bg) text-(--color-success)"}`}>{overview.queue.pendingHandoffCount > 0 ? `${overview.queue.pendingHandoffCount} menunggu staff` : "Tidak ada handoff tertunda"}</span></div>
+        </div>
+      </header>
+
+      <motion.section className="grid grid-cols-2 gap-3 lg:grid-cols-4" variants={staggerContainer} initial="hidden" animate="visible">
+        <motion.div variants={staggerItem}><Metric icon="💬" label="Pesan Hari Ini" value={overview.stats.messagesToday.toLocaleString("id-ID")} detail="Pesan pelanggan di zona waktu bisnis" tone="bg-(--color-brand-light) text-(--color-brand)" /></motion.div>
+        <motion.div variants={staggerItem}><Metric icon="✦" label="Auto-Bot" value={`${overview.stats.answeredRate}%`} detail="Jawaban KUN · seluruh waktu" tone="bg-(--color-success-bg) text-(--color-success)" /></motion.div>
+        <motion.div variants={staggerItem}><Metric icon="⚡" label="Avg. Respon" value={overview.stats.avgResponseTime ?? "—"} detail="Rata-rata jawaban KUN · seluruh waktu" tone="bg-(--color-warning-bg) text-(--color-warning)" /></motion.div>
+        <motion.div variants={staggerItem}><Metric icon="👥" label="Pengunjung Unik" value={overview.stats.uniqueVisitors.toLocaleString("id-ID")} detail="Semua sesi pelanggan" tone="bg-(--color-info-bg) text-(--color-info)" /></motion.div>
+      </motion.section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.8fr)]">
+        <section className="min-w-0"><RecentConversationsPanel initialConversations={initialRecentConversations} /></section>
+        <aside className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-1">
+          <Link href="/dashboard/knowledge" className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"><div className="flex items-start justify-between gap-3"><span className="flex size-10 items-center justify-center rounded-[12px] bg-(--color-brand-light) text-lg">▤</span><span className="text-[11px] font-semibold text-(--color-brand)">Kelola →</span></div><h2 className="mt-4 text-[15px] font-bold text-(--color-text-900)">Knowledge KUN</h2><p className="mt-1 text-[12px] text-(--color-text-500)">{bot ? `${bot.documentCount} dokumen siap · ${bot.totalChunks.toLocaleString("id-ID")} chunks` : "Belum ada chatbot aktif"}</p></Link>
+          <Link href="/dashboard/billing" className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"><div className="flex items-center justify-between"><h2 className="text-[15px] font-bold text-(--color-text-900)">Kuota Pesan</h2><span className="text-[11px] font-semibold text-(--color-brand)">Billing →</span></div><p className="mt-3 text-[22px] font-extrabold tracking-[-0.04em] text-(--color-text-900)">{used.toLocaleString("id-ID")} <span className="text-[13px] font-medium text-(--color-text-400)">/ {limit.toLocaleString("id-ID")}</span></p><div className="mt-3 h-2 overflow-hidden rounded-full bg-(--color-bg-page)"><div className="h-full rounded-full bg-(--color-brand)" style={{ width: `${quotaPct}%` }} /></div></Link>
+          {bot && <Link href="/dashboard/chatbot" className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"><div className="flex items-center justify-between"><div><h2 className="text-[15px] font-bold text-(--color-text-900)">Status KUN</h2><p className="mt-1 text-[12px] text-(--color-text-500)">{bot.isActive ? "Siap melayani pelanggan" : "Tidak menerima percakapan baru"}</p></div><span className={`size-3 rounded-full ${bot.isActive ? "bg-(--color-success)" : "bg-(--color-danger)"}`} aria-label={bot.isActive ? "KUN aktif" : "KUN nonaktif"} /></div></Link>}
+        </aside>
       </div>
 
-      {/* ── Stat cards ── */}
-      <motion.div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={staggerItem}>
-          <StatCard
-            icon="💬"
-            iconVariant="brand"
-            value={formatCount(stats.totalMessages)}
-            label="Total Pesan"
-            changeDirection="up"
-            changeLabel="Semua waktu"
-          />
-        </motion.div>
-        <motion.div variants={staggerItem}>
-          <StatCard
-            icon="✅"
-            iconVariant="teal"
-            value={`${stats.answeredRate}%`}
-            label="Terjawab Otomatis"
-            changeDirection={stats.answeredRate >= 90 ? "up" : "down"}
-            changeLabel={
-              stats.answeredRate >= 90 ? "Sangat baik" : "Perlu ditingkatkan"
-            }
-          />
-        </motion.div>
-        <motion.div variants={staggerItem}>
-          <StatCard
-            icon="👥"
-            iconVariant="amber"
-            value={formatCount(stats.uniqueVisitors)}
-            label="Pengunjung Unik"
-            changeDirection="neutral"
-            changeLabel="Semua sesi"
-          />
-        </motion.div>
-        <motion.div variants={staggerItem}>
-          <StatCard
-            icon="⚡"
-            iconVariant="rose"
-            value={stats.avgResponseTime ?? "—"}
-            label="Avg. Response Time"
-            changeDirection={stats.avgResponseTime ? "up" : "neutral"}
-            changeLabel={
-              stats.avgResponseTime ? "Rata-rata KUN" : "Belum ada data"
-            }
-          />
-        </motion.div>
-      </motion.div>
-
-      {/* ── Charts row 1: Donuts + Area ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 mb-4">
-        <div className="card-base">
-          <CardHeader
-            title="Ringkasan Performa"
-            subtitle={`Bulan ${new Date().toLocaleString("id-ID", { month: "long" })} ${chartData.currentYear}`}
-          />
-          <DonutCharts
-            answeredRate={stats.answeredRate}
-            quotaUsed={quotaUsed}
-            accentColor={accentColor}
-          />
-        </div>
-
-        <div className="card-base">
-          <CardHeader
-            title="Tren Percakapan"
-            subtitle="Volume pesan harian — 30 hari terakhir"
-            action={
-              <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[11.5px] font-semibold bg-(--color-brand) text-white transition-all hover:bg-(--color-brand-dark)">
-                ⬇ Simpan Laporan
-              </button>
-            }
-          />
-          <div className="px-5 pt-3 pb-5">
-            <AreaChart data={chartData.dailyTrend} accentColor={accentColor} />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Charts row 2: Bar + Line left, Conversations panel right ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-stretch">
-        <div className="flex flex-col gap-4">
-          <div className="card-base flex-1">
-            <CardHeader title="Pesan per Hari" subtitle="Minggu ini" />
-            <div className="px-5 pt-3 pb-5">
-              <BarChart
-                data={chartData.weeklyMessages}
-                accentColor={accentColor}
-              />
-            </div>
-          </div>
-
-          <div className="card-base flex-1">
-            <CardHeader title="Total Pesan Bulanan" />
-            <div className="px-5 pt-3 pb-5">
-              <LineChart
-                current={chartData.monthlyCurrent}
-                previous={chartData.monthlyPrevious}
-                currentYear={chartData.currentYear}
-                previousYear={chartData.currentYear - 1}
-                accentColor={accentColor}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="h-full lg:sticky lg:top-4">
-          <RecentConversationsPanel
-            initialConversations={initialRecentConversations}
-          />
-        </div>
-      </div>
-
-      {/* ── Bot status panel ── */}
-      {liveOverview.bot && (
-        <div className="mt-4">
-          <BotStatusPanel
-            orgSlug={liveOverview.organization.slug}
-            language={liveOverview.bot.language}
-            isActive={liveOverview.bot.isActive}
-            accentColor={accentColor}
-            documentCount={liveOverview.bot.documentCount}
-            totalChunks={liveOverview.bot.totalChunks}
-            messagesUsed={messagesUsed}
-            messagesLimit={messagesLimit}
-          />
-        </div>
-      )}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title="Tren Percakapan" subtitle="Volume pesan pelanggan · 30 hari terakhir"><AreaChart data={charts.dailyTrend} accentColor={accentColor} /></ChartCard>
+        <ChartCard title="Pesan per Hari" subtitle="Minggu berjalan"><BarChart data={charts.weeklyMessages} accentColor={accentColor} /></ChartCard>
+        <div className="lg:col-span-2"><ChartCard title="Total Pesan Bulanan" subtitle="Perbandingan tahun berjalan dan sebelumnya"><LineChart current={charts.monthlyCurrent} previous={charts.monthlyPrevious} currentYear={charts.currentYear} previousYear={charts.currentYear - 1} accentColor={accentColor} /></ChartCard></div>
+      </section>
     </div>
   );
 };

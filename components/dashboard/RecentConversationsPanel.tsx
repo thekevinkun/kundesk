@@ -74,6 +74,12 @@ const RecentConversationsPanel = ({
 }: RecentConversationsPanelProps) => {
   const router = useRouter();
   const [now, setNow] = useState(() => Date.now());
+  const [filter, setFilter] = useState<
+    "all" | "pending_handoff" | "ai" | "human"
+  >("all");
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    number | null
+  >(initialConversations[0]?.id ?? null);
 
   // Self-fetching via TanStack Query — PusherProvider invalidates this key
   // on every conversation:new, conversation:message, conversation:takeover, conversation:return
@@ -126,10 +132,18 @@ const RecentConversationsPanel = ({
     (c) => c.handoffStatus === "pending_handoff",
   ).length;
 
-  const displayed = conversations.slice(0, 5);
+  const displayed = conversations
+    .filter((conversation) =>
+      filter === "all" ? true : conversation.handoffStatus === filter,
+    )
+    .slice(0, 5);
+  const selectedConversation =
+    displayed.find((conversation) => conversation.id === selectedConversationId) ??
+    displayed[0] ??
+    null;
 
   return (
-    <div className="card-base flex h-full flex-col overflow-hidden">
+    <div className="card-base flex h-full min-h-[420px] flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-(--color-border-sm) flex-shrink-0">
         <div>
@@ -152,6 +166,30 @@ const RecentConversationsPanel = ({
         </button>
       </div>
 
+      <div className="flex gap-1 overflow-x-auto border-b border-(--color-border-sm) px-4 py-2.5">
+        {[
+          ["all", "Semua"],
+          ["pending_handoff", "Butuh Admin"],
+          ["ai", "KUN"],
+          ["human", "Manual"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() =>
+              setFilter(value as "all" | "pending_handoff" | "ai" | "human")
+            }
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors ${
+              filter === value
+                ? "bg-(--color-brand) text-white"
+                : "bg-(--color-bg-page) text-(--color-text-500) hover:text-(--color-text-900)"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* List */}
       <div
         className="overflow-y-auto flex-1 min-h-0
@@ -168,11 +206,15 @@ const RecentConversationsPanel = ({
             return (
               <button
                 key={convo.id}
-                onClick={() => void handleClick(convo.id)}
+                onClick={() => setSelectedConversationId(convo.id)}
                 className={`w-full text-left px-4 py-3.5 border-b border-(--color-border-sm) last:border-0 transition-colors hover:bg-(--color-bg-page) group ${
                   isPending ? "bg-(--color-danger-bg)/40" : ""
+                } ${
+                  selectedConversation?.id === convo.id
+                    ? "ring-1 ring-inset ring-(--color-brand-mid)"
+                    : ""
                 }`}
-                aria-label={`Buka percakapan ${convo.sessionId.slice(0, 8)}`}
+                aria-label={`Pilih percakapan ${convo.sessionId.slice(0, 8)}`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -212,6 +254,31 @@ const RecentConversationsPanel = ({
           })
         )}
       </div>
+
+      {selectedConversation && (
+        <div className="border-t border-(--color-border-sm) bg-(--color-bg-page)/60 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-(--color-text-400)">
+                Percakapan dipilih
+              </p>
+              <p className="mt-1 truncate font-mono text-[12px] font-semibold text-(--color-text-900)">
+                #{selectedConversation.sessionId.slice(0, 8)}
+              </p>
+              <p className="mt-1 line-clamp-2 text-[12px] leading-snug text-(--color-text-500)">
+                {selectedConversation.lastMessage ?? "Belum ada pesan"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleClick(selectedConversation.id)}
+              className="shrink-0 rounded-[8px] bg-(--color-brand) px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-(--color-brand-dark)"
+            >
+              Buka →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
