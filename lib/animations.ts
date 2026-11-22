@@ -226,3 +226,37 @@ export const chatBubbleIn: Variants = {
     },
   },
 };
+
+// ── Operations board state cues — tied only to verified live dashboard state ──
+export const operationsBoardKunVariants: Variants = {
+  static: { scale: 1, y: 0 },
+  active: {
+    scale: [1, 1.025, 1],
+    y: [0, -2, 0],
+    transition: {
+      duration: 3.2,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      repeat: Infinity,
+    },
+  },
+};
+
+export const operationsBoardQueueVariants: Variants = {
+  static: { scale: 1, opacity: 1 },
+  message: {
+    scale: [1, 1.03, 1],
+    opacity: [0.72, 1, 1],
+    transition: {
+      duration: 0.5,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+  urgent: {
+    scale: [1, 1.025, 1],
+    transition: {
+      duration: 1.2,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      repeat: Infinity,
+    },
+  },
+};

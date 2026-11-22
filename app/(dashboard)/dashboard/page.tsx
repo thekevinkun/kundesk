@@ -2,9 +2,6 @@ import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import {
-  getDailyMessageTrend,
-  getMonthlyMessageComparison,
-  getWeeklyMessages,
   getLiveOverviewSnapshot,
   getRecentActiveConversations,
 } from "@/lib/db/queries/dashboard";
@@ -20,43 +17,23 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { orgId } = await auth();
-
-  // Owner's timezone — used for all time-grouped queries to show local times in charts
   const timezone = await getOwnerTimezone();
 
-  const [
-    organization,
-    dailyTrend,
-    monthlyComparison,
-    weeklyMessages,
-    initialLiveOverview,
-    recentConversations,
-  ] = await Promise.all([
+  const [organization, initialLiveOverview, recentConversations] =
+    await Promise.all([
     (await clerkClient()).organizations.getOrganization({
       organizationId: orgId!,
     }),
-    getDailyMessageTrend(orgId!, timezone),
-    getMonthlyMessageComparison(orgId!, timezone),
-    getWeeklyMessages(orgId!, timezone),
     getLiveOverviewSnapshot(orgId!, timezone),
     getRecentActiveConversations(orgId!),
   ]);
-
-  // Derive current year in owner's local timezone — not server UTC
-  const currentYear = new Date(
-    new Date().toLocaleString("en-US", { timeZone: timezone }),
-  ).getFullYear();
 
   return (
     <DashboardOverview
       orgId={orgId!}
       initialLiveOverview={initialLiveOverview}
       orgName={organization.name}
-      dailyTrend={dailyTrend}
-      monthlyCurrent={monthlyComparison.current}
-      monthlyPrevious={monthlyComparison.previous}
-      weeklyMessages={weeklyMessages}
-      currentYear={currentYear}
+      orgImageUrl={organization.imageUrl ?? null}
       initialRecentConversations={recentConversations}
     />
   );
