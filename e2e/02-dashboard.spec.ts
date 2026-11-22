@@ -26,10 +26,11 @@ test.describe("Dashboard", () => {
     // Sidebar should be visible
     await expect(page.getByRole("navigation")).toBeVisible();
 
-    // Page heading
-    await expect(page.getByRole("heading", { name: /dashboard/i })).toBeVisible(
-      { timeout: 10_000 },
-    );
+    // The overview identity is the business name; the operations board is the
+    // stable, user-facing landmark for the live dashboard workspace.
+    await expect(
+      page.getByRole("heading", { name: "Kantor Operasional KUN" }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows org name in sidebar or topbar", async ({ page }) => {
