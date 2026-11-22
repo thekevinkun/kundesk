@@ -1,6 +1,6 @@
 # Dashboard Live Overview Redesign — Approved Implementation Brief
 
-> **Status:** Planning approved; implementation has not started.  
+> **Status:** Implemented on `master` through commits `4378033` → `3a4ff80` (November 2026). This is the approved design brief and historical implementation plan; the current behavior is recorded in `docs/kundesk-phase-handoff.md` rules 350–356.
 > **Scope:** Central content of `/dashboard` only. The existing Sidebar and Topbar remain unchanged.  
 > **Start here:** Read this document with `docs/kundesk-project-bible.md`, `docs/kundesk-phase-handoff.md`, the full `docs/references/` directory, and the current implementation before writing code.
 
@@ -86,7 +86,7 @@ The board provides at-a-glance operational state and fast navigation. It is not 
 - Respect `prefers-reduced-motion`; static state must remain understandable.
 - Provide a text alternative/status summary alongside the visual. All station actions must be keyboard accessible.
 
-## 6. Approved PR Sequence
+## 6. Approved PR Sequence (Historical)
 
 ### PR 1 — `feat: add live overview dashboard data`
 
@@ -138,18 +138,18 @@ Expected work:
 - Review the final diff and confirm only intended files changed.
 - Use a feature branch and a PR with a markdown description; do not commit or push without explicit instruction.
 
-## 8. First New-Chat Request
+## 8. Superseded New-Chat Request
 
 Use this exact request in a new chat:
 
 ```text
-Start the Dashboard Live Overview redesign. Read:
+Continue or change the implemented Dashboard Live Overview. Read:
 - docs/kundesk-project-bible.md
 - docs/kundesk-phase-handoff.md
 - docs/dashboard-live-overview-plan.md
 - all docs/references files
 - the current dashboard implementation
 
-Do not write code yet. First verify the documented plan against the current implementation and give me the exact PR 1 plan, affected files, data contract, tests, and any discrepancies.
+Do not write code yet. First verify the current implementation against the dashboard rules in the phase handoff, explain the affected data contract and tests, and identify any discrepancy before proposing a focused change.
 ```
 

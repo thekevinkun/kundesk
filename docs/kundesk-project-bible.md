@@ -705,7 +705,17 @@ These are defined in `globals.css` and used throughout — always prefer these o
 - **Light mode:** White cards, soft shadows, rounded corners, colorful 3D-style icon backgrounds on stat cards
 - **Dark mode:** Warm dark (not cold), same layout, tokens swap via `.dark` class
 - **Color picker:** Business owners can change their chatbot's accent color from the dashboard navbar — updates sidebar active state, buttons, chart accents, usage bar, hover states
-- **Charts:** Chart.js 4.x — donut charts (3 on overview), area chart (daily trend), dual-line chart (monthly comparison), grouped bar chart (weekly)
+- **Charts:** Chart.js 4.x powers the deeper Analytics page. The overview uses a compact weekly activity summary that links there.
+
+### Dashboard Live Overview
+
+- **Scope:** The central content of `/dashboard` is a tenant-safe, timezone-aware operations overview. Sidebar and Topbar are intentionally unchanged.
+- **Composition:** Desktop has three rails: an urgent, fixed-height conversation queue plus compact activity summary; a connected live-conversation workspace; and a Knowledge KUN / quota / operational-health / priority rail. Mobile preserves that operational hierarchy vertically.
+- **Real-time conversation:** The workspace is the conversation with the newest real message in the last 24 hours, regardless of `handoffStatus` (`ai`, `pending_handoff`, or `human`). It renders real customer/KUN/admin messages and links to Conversations; it is not a second reply/takeover client.
+- **Handoff semantics:** `handoffStatus` is the current operational state; `wasHandedOff` is the permanent historical metric for total handoffs. Never calculate historical health from current `human` status.
+- **Knowledge:** The short rail shows at most three newest entries combined from ready documents and Manual Knowledge sections. Documents sort by upload time, manual sections by update time; the summary includes ready-document count and all chunks, including manual chunks.
+- **Motion and realtime:** Pusher may invalidate dashboard queries and trigger brief state-driven motion, but the UI must not fabricate message traffic, staff presence, assignment, CSAT, or other activity. Respect `prefers-reduced-motion`; shared Framer Motion variants live in `lib/animations.ts`.
+- **Data boundary:** Dashboard reads are scoped to the active organization. Server actions obtain the org with `requireOrg()`; never accept a client-selected tenant id. Time-grouped data uses the organization IANA timezone.
 
 ### Landing Page Design Feel
 
