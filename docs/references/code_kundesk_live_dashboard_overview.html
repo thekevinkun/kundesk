@@ -1,0 +1,558 @@
+<!DOCTYPE html><html lang="id" style=""><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased"><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "primary-container": "#008378", "secondary-fixed": "#71f8e4", "surface-tint": "#006a61", "on-secondary": "#ffffff", "outline-variant": "#bcc9c6", "on-background": "#131b2e", "on-secondary-fixed": "#00201c", "secondary-fixed-dim": "#4fdbc8", "on-tertiary-container": "#fffbff", "tertiary-container": "#a36700", "on-primary": "#ffffff", "tertiary-fixed-dim": "#ffb95f", "background": "#faf8ff", "surface-container-highest": "#dae2fd", "tertiary": "#825100", "surface-dim": "#d2d9f4", "error": "#ba1a1a", "on-secondary-container": "#006f64", "surface-variant": "#dae2fd", "tertiary-fixed": "#ffddb8", "on-error-container": "#93000a", "on-tertiary-fixed": "#2a1700", "on-tertiary": "#ffffff", "primary": "#00685f", "secondary-container": "#6df5e1", "inverse-on-surface": "#eef0ff", "secondary": "#006b5f", "on-primary-container": "#f4fffc", "on-surface-variant": "#3d4947", "primary-fixed-dim": "#6bd8cb", "on-primary-fixed-variant": "#005049", "surface": "#faf8ff", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#653e00", "surface-bright": "#faf8ff", "on-secondary-fixed-variant": "#005048", "surface-container-high": "#e2e7ff", "surface-container-lowest": "#ffffff", "outline": "#6d7a77", "primary-fixed": "#89f5e7", "surface-container": "#eaedff", "on-surface": "#131b2e", "on-primary-fixed": "#00201d", "inverse-surface": "#283044", "inverse-primary": "#6bd8cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xl": "2rem", "gutter": "1.25rem", "space-md": "1rem", "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "margin-mobile": "1rem", "space-sm": "0.5rem", "gutter-mobile": "0.75rem" }, "fontFamily": { "headline-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, "fontSize": { "headline-sm": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between py-margin"><div class="flex flex-col h-full justify-between overflow-y-auto px-4 py-4"><div class="flex flex-col gap-4"><div class="px-2 flex items-center justify-between"><div class="flex items-center gap-2.5"><div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-on-primary font-bold shadow-[0_4px_12px_rgba(0,104,95,0.2)]"><span class="material-symbols-outlined text-[20px]">smart_toy</span></div><div><div class="flex items-center gap-1.5"><span class="font-headline-sm text-base font-bold text-on-surface tracking-tight">kundesk</span><span class="px-1.5 py-0.5 rounded text-[10px] bg-secondary-fixed/50 text-on-secondary-fixed font-bold">KUN</span></div><span class="text-[11px] text-on-surface-variant block leading-tight font-medium">AI Customer Service</span></div></div></div><div class="bg-surface-container-low p-2.5 rounded-xl flex items-center justify-between cursor-pointer hover:bg-surface-container-high transition-colors"><div class="flex items-center gap-2 overflow-hidden"><div class="w-7 h-7 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-xs"><span class="material-symbols-outlined text-[16px]">storefront</span></div><span class="font-label-md text-xs font-semibold text-on-surface truncate">Kedai Bu Sari</span></div><span class="material-symbols-outlined text-on-surface-variant text-[16px]">unfold_more</span></div><div class="flex flex-col gap-4 pt-1"><div class="flex flex-col gap-1"><span class="px-2 text-[10px] font-bold text-outline uppercase tracking-wider">MAIN</span><nav class="flex flex-col gap-0.5"><a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-primary-container text-on-primary-container font-semibold text-xs shadow-xs"><span class="material-symbols-outlined text-[18px]">grid_view</span><span class="">Dashboard</span></a><a href="#" class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[18px]">chat</span><span class="">Percakapan</span></div><div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded-full bg-error-container text-error text-[10px] font-bold leading-none">1</span><span class="px-1.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold leading-none">1</span></div></a><a href="#" class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[18px]">analytics</span><span class="">Analytics</span></div><span class="px-1.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold leading-none">Live</span></a></nav></div><div class="flex flex-col gap-1"><span class="px-2 text-[10px] font-bold text-outline uppercase tracking-wider">CHATBOT</span><nav class="flex flex-col gap-0.5"><a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><span class="material-symbols-outlined text-[18px]">tune</span><span class="">Konfigurasi</span></a><a href="#" class="flex items-center justify-between px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-[18px]">description</span><span class="">Dokumen</span></div><span class="px-1.5 py-0.5 rounded-full bg-surface-container-high text-on-surface font-semibold text-[10px] leading-none">2</span></a><a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><span class="material-symbols-outlined text-[18px]">code</span><span class="">Widget Embed</span></a></nav></div><div class="flex flex-col gap-1"><span class="px-2 text-[10px] font-bold text-outline uppercase tracking-wider">AKUN</span><nav class="flex flex-col gap-0.5"><a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><span class="material-symbols-outlined text-[18px]">credit_card</span><span class="">Billing</span></a><a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><span class="material-symbols-outlined text-[18px]">settings</span><span class="">Pengaturan</span></a><a href="#" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface text-xs font-medium transition-colors"><span class="material-symbols-outlined text-[18px]">group</span><span class="">Tim</span></a></nav></div></div></div><div class="mt-4 flex flex-col gap-3"><div class="relative overflow-hidden rounded-2xl bg-gradient-to-b from-primary to-primary-container p-3.5 text-on-primary shadow-sm"><div class="flex items-center gap-2 mb-1.5"><div class="w-6 h-6 rounded-lg bg-surface-container-lowest/20 flex items-center justify-center text-secondary-fixed"><span class="material-symbols-outlined text-[16px]">rocket_launch</span></div><span class="font-headline-sm text-xs font-bold leading-none">Upgrade ke Pro</span></div><p class="text-[11px] text-on-primary/90 leading-tight mb-3">Unlimited dokumen &amp; 10,000 pesan per bulan</p><button type="button" class="w-full py-1.5 px-3 bg-surface-container-lowest text-primary rounded-xl text-xs font-bold text-center shadow-xs hover:bg-surface-container-low transition-colors active:translate-y-0.5">Lihat Plan</button></div></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-margin"><!-- Search Bar on Left/Center --><div class="flex items-center flex-1 max-w-md"><div class="relative w-full"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span><input type="text" placeholder="Cari percakapan, dokumen..." class="w-full bg-surface-container-low hover:bg-surface-container-high/50 text-on-surface text-xs font-medium pl-9 pr-4 py-2 rounded-xl border-none outline-none transition-colors placeholder:text-outline"></div></div><!-- Right Action Controls & Status Icons --><div class="flex items-center gap-space-sm sm:gap-space-md"><!-- Notification Bell Button --><button type="button" class="relative w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Notifikasi"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-tertiary-container ring-2 ring-surface-container-lowest"></span></button><!-- Chat/Message Button --><button type="button" class="relative w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Pesan Masuk"><span class="material-symbols-outlined text-[20px]">chat_bubble</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></button><!-- Dark/Light Mode Toggle --><button type="button" class="w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors" title="Mode Gelap / Terang"><span class="material-symbols-outlined text-[20px]">dark_mode</span></button><!-- Warna Brand Pill Button --><button type="button" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-xs font-semibold transition-colors"><span class="w-2.5 h-2.5 rounded-full bg-tertiary-fixed-dim ring-1 ring-tertiary"></span><span class="">Warna Brand</span></button><!-- Digital Clock / Time Widget --><div class="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface-variant font-label-sm text-xs font-medium"><span class="material-symbols-outlined text-[16px] text-primary">schedule</span><span class="text-on-surface font-semibold">12.00.50</span><span class="text-[11px] text-outline">UTC+8</span></div><!-- User Profile Avatar --><div class="flex items-center gap-space-sm pl-1 sm:pl-space-xs"><div class="text-right hidden sm:block"><span class="font-label-md text-label-md text-on-surface font-semibold block leading-tight">Rumah Paco</span><span class="font-body-sm text-[11px] text-on-surface-variant block leading-tight">Supervisor Lead</span></div><div class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs ring-2 ring-surface-container-low cursor-pointer shadow-xs"><span class="material-symbols-outlined text-[20px]">person</span></div></div></div></header><main class="w-full pt-16 px-margin min-h-screen bg-background"><div class="flex flex-col w-full gap-space-lg pb-space-xl">
+<!-- TOP SUB-HEADER HUD BAR -->
+<section class="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col xl:flex-row items-start xl:items-center justify-between gap-space-md">
+<div class="flex flex-wrap items-center gap-space-md">
+<!-- Tenant & Room Badge -->
+<div class="flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-full">
+<span class="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+<span class="font-headline-sm text-label-lg text-on-surface font-semibold tracking-tight">Kedai Kopi &amp; Resto Bu Sari</span>
+<span class="font-label-sm text-label-sm px-space-xs py-0.5 rounded bg-primary-fixed text-on-primary-fixed">Cabang Dipatiukur</span>
+</div>
+<div class="hidden sm:flex items-center gap-space-xs text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-primary text-[18px]">bolt</span>
+<span class="">Kantor Virtual CS Aktif</span>
+<span class="text-outline-variant">•</span>
+<span class="text-on-surface font-medium">3 Sesi Bersamaan</span>
+<span class="text-outline-variant">•</span>
+<span class="bg-secondary-fixed/50 text-on-secondary-fixed px-2 py-0.5 rounded-full font-label-sm text-label-sm font-bold">KUN v2.4 (Suhu 0.3)</span>
+</div>
+</div>
+<!-- Gamified Quick Pill HUD Strip -->
+<div class="flex flex-wrap items-center gap-space-xs sm:gap-space-sm">
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-xl">
+<span class="material-symbols-outlined text-primary text-[18px]">chat</span>
+<div class="flex flex-col leading-none">
+<span class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider">Pesan Hari Ini</span>
+<span class="font-label-lg text-label-md font-bold text-on-surface">79 <span class="text-on-surface-variant font-normal text-[11px]">/ 100</span></span>
+</div>
+</div>
+<div class="flex items-center gap-2 bg-secondary-fixed/30 px-3 py-1.5 rounded-xl text-on-secondary-container">
+<span class="material-symbols-outlined text-primary text-[18px]">auto_awesome</span>
+<div class="flex flex-col leading-none">
+<span class="font-label-sm text-[10px] uppercase tracking-wider">Auto-Bot</span>
+<span class="font-label-lg text-label-md font-bold text-primary">62% <span class="text-primary font-normal text-[11px]">↑ +8%</span></span>
+</div>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-xl">
+<span class="material-symbols-outlined text-tertiary text-[18px]">speed</span>
+<div class="flex flex-col leading-none">
+<span class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider">Avg Respon</span>
+<span class="font-label-lg text-label-md font-bold text-on-surface">3.2s</span>
+</div>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-xl">
+<span class="material-symbols-outlined text-primary text-[18px]">support_agent</span>
+<div class="flex flex-col leading-none">
+<span class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider">Admin Siaga</span>
+<span class="font-label-lg text-label-md font-bold text-on-surface">2 Staff</span>
+</div>
+</div>
+<button class="h-9 px-3 bg-primary hover:bg-primary-container text-on-primary rounded-xl font-label-sm text-label-sm flex items-center gap-1 transition-all shadow-sm active:translate-y-0.5" type="button">
+<span class="material-symbols-outlined text-[16px]">fullscreen</span>
+<span class="">HUD Penuh</span>
+</button>
+</div>
+</section>
+<!-- 3-COLUMN MAIN OPS DECK -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT PANEL: AKTIVITAS CS LANGSUNG & QUEUE STREAM (Col 1-3) -->
+<aside class="xl:col-span-3 flex flex-col gap-space-md">
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">stream</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Aktivitas Live</h2>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-bold">120 Log</span>
+</div>
+<!-- Filter Chips -->
+<div class="flex flex-wrap gap-1.5">
+<button class="px-2.5 py-1 rounded-lg bg-primary text-on-primary font-label-sm text-[11px] font-bold" type="button">Semua (48)</button>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface font-label-sm text-[11px]" type="button">KUN (32)</button>
+<button class="px-2.5 py-1 rounded-lg bg-error-container/60 text-error font-label-sm text-[11px] font-bold animate-pulse" type="button">Butuh Admin (2)</button>
+<button class="px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface font-label-sm text-[11px]" type="button">Manual (14)</button>
+</div>
+<!-- Live Streaming Log List -->
+<div class="flex flex-col gap-space-sm max-h-[580px] overflow-y-auto pr-1">
+<!-- Item 1: Pending Alert -->
+<div class="p-space-sm rounded-xl bg-error-container/30 hover:bg-error-container/50 transition-all flex flex-col gap-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-6 h-6 rounded-full bg-error text-on-error flex items-center justify-center font-bold text-[10px]">!</span>
+<span class="font-label-sm text-label-sm text-error font-bold">Butuh Intervensi</span>
+</div>
+<span class="font-label-sm text-[10px] text-on-surface-variant">Baru saja</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface line-clamp-2">"Halo min, saya sudah transfer DP catering 2.5jt, konfirmasi ya"</p>
+<div class="flex items-center justify-between mt-1 text-[11px]">
+<span class="font-label-sm text-on-surface-variant">#c8419f • WA Bisnis</span>
+<span class="text-error font-semibold flex items-center gap-0.5">Ambil <span class="material-symbols-outlined text-[14px]">arrow_forward</span></span>
+</div>
+</div>
+<!-- Item 2: KUN Auto-replied -->
+<div class="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-[10px]">🤖</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">KUN Bot</span>
+</div>
+<span class="font-label-sm text-[10px] text-on-surface-variant">14:22</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Membalas otomatis: Jadwal buka &amp; lokasi parkir VIP.</p>
+<div class="flex items-center justify-between mt-1 text-[11px] text-on-surface-variant">
+<span class="">#b63744b2 • Web Widget</span>
+<span class="text-primary font-semibold">Otomatis 100%</span>
+</div>
+</div>
+<!-- Item 3: Human Staff Takeover -->
+<div class="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="w-6 h-6 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center font-bold text-[10px]">R</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Rina (Admin)</span>
+</div>
+<span class="font-label-sm text-[10px] text-on-surface-variant">14:20</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Selesai menangani sesi custom request kopi susu literan.</p>
+<div class="flex items-center justify-between mt-1 text-[11px] text-on-surface-variant">
+<span class="">#d242971c • Tokopedia Chat</span>
+<span class="text-on-surface font-semibold">Resolved (2m 14s)</span>
+</div>
+</div>
+<!-- Item 4: Document Context Read -->
+<div class="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[16px]">menu_book</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">KUN Knowledge Bank</span>
+</div>
+<span class="font-label-sm text-[10px] text-on-surface-variant">14:18</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Mengambil chunk #12: "Ketentuan Minimum Order Nasi Kotak".</p>
+<div class="flex items-center justify-between mt-1 text-[11px] text-on-surface-variant">
+<span class="">Menu_Makanan_2026.pdf</span>
+<span class="text-primary font-semibold">99% Match</span>
+</div>
+</div>
+<!-- Item 5: Customer QR Entry -->
+<div class="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 cursor-pointer">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">qr_code_scanner</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Tamu Meja 07</span>
+</div>
+<span class="font-label-sm text-[10px] text-on-surface-variant">14:15</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">Memulai sesi tanya rekomendasi menu ramah anak.</p>
+<div class="flex items-center justify-between mt-1 text-[11px] text-on-surface-variant">
+<span class="">QR Dine-in</span>
+<span class="text-primary font-semibold">Aktif</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- CENTER PANEL: VIRTUAL OFFICE HUD & LIVE INTERACTION STAGE (Col 4-9) -->
+<main class="xl:col-span-6 flex flex-col gap-space-md">
+<div class="relative bg-surface-container-lowest rounded-2xl overflow-hidden shadow-[0_4px_20px_-2px_rgba(15,23,42,0.06)] flex flex-col">
+<!-- Room Stage Header -->
+<div class="p-space-md bg-surface-container-low/70 flex items-center justify-between backdrop-blur-md z-10">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">domain</span>
+</div>
+<div>
+<span class="font-headline-sm text-headline-sm text-on-surface block">Simulasi Kantor CS Bu Sari</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant block">Layout 2.5D Ruang Kerja Tim &amp; Bot</span>
+</div>
+</div>
+<!-- Room View Mode Switcher -->
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl shadow-xs">
+<button class="px-2.5 py-1 rounded-lg bg-primary text-on-primary font-label-sm text-[11px] font-semibold flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">view_in_ar</span>Isometrik
+            </button>
+<button class="px-2.5 py-1 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-[11px] flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[14px]">grid_view</span>Grid Tim
+            </button>
+</div>
+</div>
+<!-- ISOMETRIC OFFICE CANVAS (SVG 2.5D Gamified Workstation) -->
+<div class="relative w-full h-[360px] sm:h-[400px] bg-gradient-to-b from-surface-container-high/40 via-surface-container-low to-surface overflow-hidden flex items-center justify-center select-none">
+<!-- Ambient Isometric Grid Lines -->
+<svg class="absolute inset-0 w-full h-full opacity-40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="34.64" id="iso-grid" patternTransform="scale(1)" patternUnits="userSpaceOnUse" width="60">
+<path d="M 60 0 L 0 34.64 M 0 0 L 60 34.64" fill="none" opacity="0.35" stroke="#6bd8cb" stroke-width="0.7"></path>
+</pattern>
+</defs>
+<rect fill="url(#iso-grid)" height="100%" width="100%"></rect>
+</svg>
+<!-- Interactive Hotspot Stage Items -->
+<!-- 1. Customer Waiting Lounge (Left) -->
+<div class="absolute left-4 top-8 flex flex-col gap-2 z-20">
+<div class="bg-surface-container-lowest/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">meeting_room</span>
+<span class="font-label-sm text-label-sm font-bold text-on-surface">Lobi Antrean (3)</span>
+</div>
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-secondary text-on-secondary ring-2 ring-surface-container-lowest flex items-center justify-center font-bold text-[11px] shadow-sm" title="Pak Hendra (WhatsApp)">H</div>
+<div class="w-8 h-8 rounded-full bg-tertiary-container text-on-tertiary-container ring-2 ring-surface-container-lowest flex items-center justify-center font-bold text-[11px] shadow-sm" title="Siti (Web)">S</div>
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary ring-2 ring-surface-container-lowest flex items-center justify-center font-bold text-[11px] shadow-sm" title="Anonim (QR Menu)">?</div>
+</div>
+</div>
+<!-- ISOMETRIC DESKS AND CHARACTERS -->
+<div class="relative w-full max-w-[540px] h-[320px] flex items-center justify-center">
+<!-- DESK 1: KUN AI (Center Left) -->
+<div class="absolute left-8 sm:left-14 top-20 flex flex-col items-center group cursor-pointer">
+<!-- AI Speech Bubble -->
+<div class="animate-bounce mb-1 px-3 py-1.5 bg-primary text-on-primary rounded-xl text-[11px] font-semibold shadow-lg flex items-center gap-1.5 max-w-[210px]">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed animate-ping"></span>
+<span class="truncate">Drafting menu promo Ramadhan...</span>
+</div>
+<!-- Isometric Desk & Robot Agent SVG -->
+<svg fill="none" height="110" viewBox="0 0 130 110" width="130" xmlns="http://www.w3.org/2000/svg">
+<!-- Desk Surface -->
+<polygon fill="#E2E7FF" points="65,45 120,65 65,85 10,65" stroke="#008378" stroke-width="1.5"></polygon>
+<polygon fill="#DAE2FD" points="10,65 65,85 65,100 10,80"></polygon>
+<polygon fill="#C4CEF4" points="65,85 120,65 120,80 65,100"></polygon>
+<!-- Dual Monitor setup -->
+<polygon fill="#131B2E" points="45,40 60,32 60,50 45,58"></polygon>
+<polygon fill="#00685F" points="65,30 85,38 85,56 65,48"></polygon>
+<!-- Robot Agent Kun -->
+<circle cx="65" cy="20" fill="#008378" r="14"></circle>
+<rect fill="#71F8E4" height="7" rx="3.5" width="14" x="58" y="14"></rect>
+<circle cx="61" cy="17" fill="#00201C" r="1.5"></circle>
+<circle cx="69" cy="17" fill="#00201C" r="1.5"></circle>
+<path d="M65,6 L65,1" stroke="#008378" stroke-linecap="round" stroke-width="2"></path>
+<circle cx="65" cy="1" fill="#71F8E4" r="2"></circle>
+</svg>
+<!-- Agent Tag -->
+<div class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary font-label-sm text-[10px] font-bold shadow-sm">
+                🤖 KUN Bot (Aktif)
+              </div>
+</div>
+<!-- DESK 2: Staff Rina - Human Takeover (Center Right) -->
+<div class="absolute right-8 sm:right-16 top-12 flex flex-col items-center group cursor-pointer">
+<div class="mb-1 px-2.5 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+<span class="">Takeover Sesi #d242</span>
+</div>
+<svg fill="none" height="110" viewBox="0 0 120 110" width="120" xmlns="http://www.w3.org/2000/svg">
+<!-- Desk -->
+<polygon fill="#E2E7FF" points="60,45 110,65 60,85 10,65" stroke="#A36700" stroke-width="1.5"></polygon>
+<polygon fill="#DAE2FD" points="10,65 60,85 60,100 10,80"></polygon>
+<polygon fill="#C4CEF4" points="60,85 110,65 110,80 60,100"></polygon>
+<!-- Laptop -->
+<polygon fill="#131B2E" points="50,55 70,55 75,45 55,45"></polygon>
+<!-- Rina Avatar -->
+<circle cx="60" cy="22" fill="#FFDDB8" r="13"></circle>
+<!-- Hair -->
+<path d="M47,20 C47,12 52,9 60,9 C68,9 73,12 73,20 C73,26 71,28 69,29 C65,24 55,24 51,29 Z" fill="#2A1700"></path>
+<rect fill="#825100" height="16" rx="4" width="16" x="52" y="35"></rect>
+</svg>
+<div class="px-2 py-0.5 rounded-full bg-surface-container-lowest text-on-surface font-label-sm text-[10px] font-bold shadow-sm">
+                👩‍💼 Rina (CS Lead)
+              </div>
+</div>
+<!-- DESK 3: Staff Budi - Standby Reviewer (Bottom Center) -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-85 hover:opacity-100 transition-opacity">
+<svg fill="none" height="90" viewBox="0 0 100 90" width="100" xmlns="http://www.w3.org/2000/svg">
+<polygon fill="#E2E7FF" points="50,35 90,52 50,70 10,52" stroke="#6D7A77" stroke-width="1"></polygon>
+<polygon fill="#DAE2FD" points="10,52 50,70 50,82 10,64"></polygon>
+<polygon fill="#C4CEF4" points="50,70 90,52 90,64 50,82"></polygon>
+<circle cx="50" cy="18" fill="#D2D9F4" r="11"></circle>
+<rect fill="#3D4947" height="12" rx="3" width="14" x="43" y="29"></rect>
+</svg>
+<div class="px-2 py-0.5 rounded-full bg-surface-container-lowest/90 text-on-surface-variant font-label-sm text-[10px]">
+                👨‍💻 Budi (Standby)
+              </div>
+</div>
+</div>
+<!-- Tactical HUD Watermark Tag -->
+<div class="absolute right-3 bottom-3 text-[10px] font-label-sm text-outline tracking-wider uppercase font-semibold">
+            KUN-SIM-ENGINE • 60 FPS
+          </div>
+</div>
+<!-- DIRECT LIVE CONVERSATION ACTION CARD PINNED IN STAGE -->
+<div class="p-space-md bg-surface-container-lowest flex flex-col gap-space-sm">
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2">
+<div class="flex items-center gap-space-sm">
+<span class="w-3 h-3 rounded-full bg-primary animate-pulse"></span>
+<span class="font-headline-sm text-label-lg text-on-surface font-bold">Percakapan Paling Aktif (#c8419f)</span>
+<span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] font-bold">WhatsApp Pelanggan</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pesan diterima 18 detik lalu</span>
+</div>
+<!-- Chat Conversation Preview -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-sm">
+<!-- Customer Bubble -->
+<div class="flex items-start gap-2.5 max-w-[85%]">
+<div class="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface flex items-center justify-center font-bold text-xs shrink-0">H</div>
+<div class="bg-surface-container-lowest p-2.5 rounded-xl rounded-tl-none shadow-xs text-body-sm text-on-surface">
+<span class="font-label-sm text-[10px] text-on-surface-variant block mb-0.5">Pak Hendra (0812-9921-xxxx)</span>
+                "Halo kak, apakah ada diskon paket catering untuk 50 pax besok lusa?"
+              </div>
+</div>
+<!-- KUN AI Draft Bubble -->
+<div class="flex items-start gap-2.5 max-w-[90%] self-end flex-row-reverse">
+<div class="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs shrink-0">🤖</div>
+<div class="bg-primary/10 p-2.5 rounded-xl rounded-tr-none text-body-sm text-on-surface shadow-xs">
+<div class="flex items-center justify-between gap-4 mb-1">
+<span class="font-label-sm text-[10px] text-primary font-bold">KUN AI (Draft Jawaban Disiapkan)</span>
+<span class="font-label-sm text-[10px] text-primary font-semibold">Confidence 96%</span>
+</div>
+                "Halo Pak Hendra! Ada diskon 15% untuk paket prasmanan catering di atas 30 pax. Berikut menu pilihan Nusantara kami: Paket A (Ayam Goreng Lengkuas) &amp; Paket B (Rendang Daging). Apakah acaranya di area Bandung?"
+              </div>
+</div>
+</div>
+<!-- Operator Action Controls for the Draft -->
+<div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+<div class="flex items-center gap-1.5">
+<button class="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1.5 shadow-sm active:translate-y-0.5 transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span class="">Izinkan Kirim KUN</span>
+</button>
+<button class="px-3 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+<span class="">Edit Jawaban</span>
+</button>
+</div>
+<button class="px-3 py-2 rounded-xl bg-error-container/60 hover:bg-error-container text-on-error-container font-label-sm text-label-sm font-bold flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">pan_tool</span>
+<span class="">Ambil Alih (Human Takeover)</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- RIGHT PANEL: TOKO KNOWLEDGE & HEALTH STATUS (Col 10-12) -->
+<aside class="xl:col-span-3 flex flex-col gap-space-md">
+<!-- KNOWLEDGE BASE DECK -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">library_books</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Knowledge Toko</h2>
+</div>
+<span class="font-label-sm text-[11px] text-primary font-bold">2 Dokumen Aktif</span>
+</div>
+<div class="flex flex-col gap-2 pt-1">
+<!-- Doc 1 -->
+<div class="p-2.5 rounded-xl bg-surface-container-low flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 overflow-hidden">
+<span class="material-symbols-outlined text-error text-[18px]">picture_as_pdf</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold truncate">Menu_Makanan_2026.pdf</span>
+</div>
+<span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-bold">100%</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-on-surface-variant font-label-sm">
+<span class="">24 Chunks • Digunakan 42x</span>
+<span class="text-primary font-semibold">Tersinkron</span>
+</div>
+</div>
+<!-- Doc 2 -->
+<div class="p-2.5 rounded-xl bg-surface-container-low flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 overflow-hidden">
+<span class="material-symbols-outlined text-primary text-[18px]">description</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold truncate">FAQ_Pengiriman_Grab.docx</span>
+</div>
+<span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-bold">92%</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-on-surface-variant font-label-sm">
+<span class="">12 Chunks • Digunakan 18x</span>
+<span class="text-primary font-semibold">Tersinkron</span>
+</div>
+</div>
+<!-- Doc 3 (Locked/Draft) -->
+<div class="p-2.5 rounded-xl bg-surface-container-high/50 flex flex-col gap-1.5 opacity-75">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 overflow-hidden">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">lock</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold truncate">Kebijakan_Refund.pdf</span>
+</div>
+<span class="font-label-sm text-[10px] px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface font-bold">Draft</span>
+</div>
+<div class="flex items-center justify-between text-[11px] text-on-surface-variant font-label-sm">
+<span class="">8 Chunks • Perlu Review Owner</span>
+<span class="text-error font-semibold">Terkunci</span>
+</div>
+</div>
+</div>
+<button class="w-full mt-1 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">upload_file</span>
+<span class="">Tambah Dokumen Baru</span>
+</button>
+</div>
+<!-- CSAT SATISFACTION & SPEED STAT CARD -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Kepuasan (CSAT)</h3>
+<span class="font-label-sm text-[11px] text-tertiary-container font-bold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container">star</span> 4.8 / 5.0
+          </span>
+</div>
+<!-- CSAT Donut Visual + Mini Breakdown -->
+<div class="flex items-center gap-space-md py-1">
+<div class="relative w-16 h-16 shrink-0 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-primary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="94, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<span class="absolute font-headline-sm text-label-md font-bold text-on-surface">94%</span>
+</div>
+<div class="flex flex-col gap-1 text-[11px] font-label-sm text-on-surface-variant w-full">
+<div class="flex items-center justify-between">
+<span class="">Puas • Cepat</span>
+<span class="font-bold text-on-surface">88 pesan</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="">Kurang Jelas</span>
+<span class="font-bold text-on-surface">4 pesan</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="">Eskalasi ke Owner</span>
+<span class="font-bold text-error">2 pesan</span>
+</div>
+</div>
+</div>
+</div>
+<!-- KUOTA PESAN AI & TOKEN GAUGE -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">battery_charging_full</span>
+<span class="font-headline-sm text-label-lg font-bold text-on-surface">Kuota Pesan KUN</span>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-primary">79 / 100 Digunakan</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden p-0.5">
+<div class="h-full bg-gradient-to-r from-secondary-container to-primary rounded-full transition-all duration-500" style="width: 79%"></div>
+</div>
+<div class="flex items-center justify-between font-label-sm text-[11px] text-on-surface-variant">
+<span class="">Reset dalam 9 hari</span>
+<span class="text-tertiary-container font-semibold">Tersisa 21 Kuota</span>
+</div>
+<button class="w-full mt-1 py-2 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs" type="button">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span class="">Top-up Kuota Pesan</span>
+</button>
+</div>
+</aside>
+</div>
+<!-- BOTTOM CONTROL DOCK: DAFTAR AGEN & KONTROL CEPAT (Party Status Cards) -->
+<section class="w-full flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[22px]">group_work</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Roster Agen &amp; Skuad CS</h2>
+<span class="font-label-sm text-[11px] px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-semibold">4 Entitas Terdaftar</span>
+</div>
+<span class="font-label-sm text-[11px] text-on-surface-variant hidden sm:inline-block">Status real-time otomatis tersinkron dengan engine bot</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Agent 1: KUN AI Bot -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-bold text-lg shadow-sm">
+              🤖
+            </div>
+<div>
+<span class="font-headline-sm text-label-lg font-bold text-on-surface block">KUN AI Bot</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant block">Auto-Responder Utama</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] font-bold">Aktif</span>
+</div>
+<div class="flex flex-col gap-1 text-[12px] font-body-sm text-on-surface-variant">
+<div class="flex justify-between"><span class="">Akurasi Konteks:</span> <span class="font-bold text-on-surface">98.4%</span></div>
+<div class="flex justify-between"><span class="">Tone Respon:</span> <span class="font-semibold text-primary">Ramah &amp; Sopan</span></div>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1">
+<button class="py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-[11px] font-semibold text-center transition-colors" type="button">
+            Uji Respon
+          </button>
+<button class="py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-label-sm text-[11px] font-bold text-center transition-colors" type="button">
+            Atur Prompt
+          </button>
+</div>
+</div>
+<!-- Agent 2: Admin Rina -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-xl bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-bold text-sm shadow-sm">
+              RN
+            </div>
+<div>
+<span class="font-headline-sm text-label-lg font-bold text-on-surface block">Admin Rina</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant block">Human CS Lead</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] font-bold">Online</span>
+</div>
+<div class="flex flex-col gap-1 text-[12px] font-body-sm text-on-surface-variant">
+<div class="flex justify-between"><span class="">Ditangani Hari Ini:</span> <span class="font-bold text-on-surface">14 Pesan</span></div>
+<div class="flex justify-between"><span class="">Avg Resolution:</span> <span class="font-semibold text-on-surface">2m 40s</span></div>
+</div>
+<button class="w-full py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-[11px] font-semibold text-center transition-colors" type="button">
+          Oper Sesi Baru
+        </button>
+</div>
+<!-- Agent 3: Admin Budi -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface font-bold text-sm shadow-sm">
+              BD
+            </div>
+<div>
+<span class="font-headline-sm text-label-lg font-bold text-on-surface block">Admin Budi</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant block">Supervisor Toko</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-[10px] font-bold">Istirahat</span>
+</div>
+<div class="flex flex-col gap-1 text-[12px] font-body-sm text-on-surface-variant">
+<div class="flex justify-between"><span class="">Sesi Terakhir:</span> <span class="font-bold text-on-surface">35 mnt lalu</span></div>
+<div class="flex justify-between"><span class="">Audit Rating:</span> <span class="font-semibold text-tertiary-container">5.0 ★</span></div>
+</div>
+<button class="w-full py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-sm text-[11px] font-semibold text-center transition-colors" type="button">
+          Panggil ke Meja
+        </button>
+</div>
+<!-- Agent 4: Auto-Training Worker -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_4px_20px_-2px_rgba(15,23,42,0.04)] flex flex-col justify-between gap-space-sm">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-xl bg-secondary-fixed/50 flex items-center justify-center text-primary font-bold text-lg shadow-sm">
+              ⚡
+            </div>
+<div>
+<span class="font-headline-sm text-label-lg font-bold text-on-surface block">KUN Indexer</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant block">Sync Otomatis AI</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] font-bold">Idle</span>
+</div>
+<div class="flex flex-col gap-1 text-[12px] font-body-sm text-on-surface-variant">
+<div class="flex justify-between"><span class="">Chunk Dipelajari:</span> <span class="font-bold text-on-surface">2 chunk baru</span></div>
+<div class="flex justify-between"><span class="">Pembaruan:</span> <span class="font-semibold text-primary">10 mnt lalu</span></div>
+</div>
+<button class="w-full py-1.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-sm text-[11px] font-bold text-center transition-colors shadow-xs" type="button">
+          Sinkron Sekarang
+        </button>
+</div>
+</div>
+</section>
+</div></main></div></body></html>

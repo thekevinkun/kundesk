@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-background":"#131b2e","tertiary-container":"#a36700","inverse-on-surface":"#eef0ff","surface-dim":"#d2d9f4","outline-variant":"#bcc9c6","secondary":"#006b5f","surface-container":"#eaedff","on-tertiary-container":"#fffbff","on-tertiary":"#ffffff","outline":"#6d7a77","surface":"#faf8ff","on-surface-variant":"#3d4947","surface-variant":"#dae2fd","background":"#faf8ff","on-primary-fixed":"#00201d","surface-tint":"#006a61","on-error":"#ffffff","on-primary":"#ffffff","secondary-fixed":"#71f8e4","surface-container-lowest":"#ffffff","on-tertiary-fixed":"#2a1700","secondary-fixed-dim":"#4fdbc8","on-secondary-fixed":"#00201c","primary-container":"#008378","tertiary-fixed":"#ffddb8","surface-bright":"#faf8ff","surface-container-highest":"#dae2fd","on-primary-container":"#f4fffc","primary-fixed":"#89f5e7","inverse-surface":"#283044","error":"#ba1a1a","on-secondary-container":"#006f64","on-secondary-fixed-variant":"#005048","surface-container-high":"#e2e7ff","tertiary":"#825100","secondary-container":"#6df5e1","inverse-primary":"#6bd8cb","on-primary-fixed-variant":"#005049","on-tertiary-fixed-variant":"#653e00","primary-fixed-dim":"#6bd8cb","on-error-container":"#93000a","primary":"#00685f","tertiary-fixed-dim":"#ffb95f","on-secondary":"#ffffff","on-surface":"#131b2e","error-container":"#ffdad6","surface-container-low":"#f2f3ff"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"gutter-mobile":"0.75rem","space-xl":"2rem","space-xs":"0.25rem","margin":"1.5rem","gutter":"1.25rem","space-lg":"1.5rem","space-md":"1rem","space-sm":"0.5rem","margin-mobile":"1rem"},"fontFamily":{"body-lg":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"],"label-sm":["Plus Jakarta Sans"],"body-md":["Plus Jakarta Sans"],"label-md":["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"label-lg":["Plus Jakarta Sans"],"body-sm":["Plus Jakarta Sans"],"headline-md":["Plus Jakarta Sans"]},"fontSize":{"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-xl-mobile":["26px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"700"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.02em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.01em","fontWeight":"600"}],"headline-sm":["18px",{"lineHeight":"26px","fontWeight":"600"}],"headline-xl":["36px",{"lineHeight":"44px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-lg":["28px",{"lineHeight":"36px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-lg":["14px",{"lineHeight":"20px","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"18px","fontWeight":"400"}],"headline-md":["22px",{"lineHeight":"30px","letterSpacing":"-0.01em","fontWeight":"600"}]}}}};</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen antialiased selection:bg-secondary-fixed"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] pt-safe"><div class="h-16 px-gutter-mobile flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><div class="flex items-center gap-1.5 flex-shrink-0"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="font-headline-sm text-headline-sm text-on-primary">K</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight hidden xs:inline">kun<span class="text-primary">desk</span></span></div><button class="min-h-[44px] px-space-sm py-1 flex items-center gap-1.5 bg-surface-container-low hover:bg-surface-container rounded-full max-w-[140px] truncate" type="button"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse flex-shrink-0"></span><span class="font-label-md text-label-md text-on-surface truncate">Kedai Bu Sari</span><span class="material-symbols-outlined text-outline text-[16px] flex-shrink-0">expand_more</span></button></div><div class="flex items-center gap-space-xs"><button aria-label="Notifikasi" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center relative text-on-surface-variant hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error ring-2 ring-surface"></span></button><div class="flex items-center gap-space-xs pl-1"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full px-margin-mobile gap-space-md">
+<!-- 1. Store & Live Status Banner -->
+<section class="flex flex-col gap-space-sm pt-space-xs">
+<!-- Branch + Status Pill -->
+<div class="flex items-center justify-between gap-space-xs">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary animate-ping"></span>
+<h1 class="font-headline-sm text-headline-sm text-on-surface truncate">Cabang Dipatiukur</h1>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-sm text-label-sm">Kantor CS Aktif</span>
+</div>
+</div>
+<!-- Live Engine Sub-pill Banner -->
+<div class="flex items-center justify-between px-3 py-2 rounded-xl bg-surface-container-low shadow-sm">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-primary text-[18px]">smart_toy</span>
+<span class="font-label-md text-label-md text-on-surface-variant truncate">KUN v2.4 (Suhu 0.3) • 3 Sesi Aktif</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-semibold px-2 py-0.5 rounded-md bg-primary-fixed">60 FPS</span>
+</div>
+<!-- KPI Chips Slider (Horizontal scrollable) -->
+<div class="flex items-center gap-2 overflow-x-auto pb-1 -mx-margin-mobile px-margin-mobile scrollbar-none">
+<div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest shadow-sm flex-shrink-0">
+<div class="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pesan Hari Ini</span>
+<span class="font-label-lg text-label-lg text-on-surface">79<span class="text-outline text-label-sm">/100</span></span>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest shadow-sm flex-shrink-0">
+<div class="w-7 h-7 rounded-lg bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[16px]">auto_mode</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Auto-Bot</span>
+<span class="font-label-lg text-label-lg text-secondary font-bold">62%</span>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest shadow-sm flex-shrink-0">
+<div class="w-7 h-7 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Avg Respon</span>
+<span class="font-label-lg text-label-lg text-on-surface">3.2s</span>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-lowest shadow-sm flex-shrink-0">
+<div class="w-7 h-7 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[16px]">support_agent</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Admin Siaga</span>
+<span class="font-label-lg text-label-lg text-on-surface">2 Staf</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. Compact Interactive 2.5D CS Office Stage -->
+<section class="relative flex flex-col rounded-2xl bg-surface-container-lowest shadow-md overflow-hidden p-space-sm">
+<!-- View Switcher & Live Engine Chip -->
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex p-0.5 rounded-lg bg-surface-container-low">
+<button class="px-2.5 py-1 rounded-md bg-surface-container-lowest text-primary font-label-md text-label-md shadow-sm transition-all flex items-center gap-1" id="btn-isometric">
+<span class="material-symbols-outlined text-[14px]">view_in_ar</span>
+          Isometrik
+        </button>
+<button class="px-2.5 py-1 rounded-md text-on-surface-variant font-label-md text-label-md hover:text-on-surface transition-all flex items-center gap-1" id="btn-roster">
+<span class="material-symbols-outlined text-[14px]">table_rows</span>
+          Daftar Agen
+        </button>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px] text-secondary animate-spin">sync</span>
+<span class="font-label-sm text-label-sm">KUN-SIM 1.4</span>
+</div>
+</div>
+<!-- Isometric SVG Interactive Canvas -->
+<div class="relative w-full h-56 rounded-xl bg-gradient-to-b from-surface-container to-surface-container-low flex items-center justify-center overflow-hidden" id="sim-canvas-container">
+<!-- 2.5D Isometric SVG Representation -->
+<svg class="w-full h-full" fill="none" viewbox="0 0 340 220" xmlns="http://www.w3.org/2000/svg">
+<!-- Isometric Room Grid Floor -->
+<path d="M170 20 L320 100 L170 180 L20 100 Z" fill="#dae2fd" opacity="0.45"></path>
+<path d="M170 30 L305 102 L170 174 L35 102 Z" stroke="#bcc9c6" stroke-dasharray="3 3" stroke-width="0.75"></path>
+<path d="M170 60 L270 114 L170 168 L70 114 Z" stroke="#bcc9c6" stroke-dasharray="3 3" stroke-width="0.75"></path>
+<!-- Left Desk: Admin Rina (CS Lead) -->
+<g class="cursor-pointer transition-transform hover:scale-105" onclick="alert('Admin Rina: Mengurus 1 percakapan aktif.')">
+<!-- Desk Shadow -->
+<ellipse cx="80" cy="115" fill="#00201d" opacity="0.12" rx="28" ry="12"></ellipse>
+<!-- Desk Top -->
+<polygon fill="#eaedff" points="60,95 100,75 120,85 80,105"></polygon>
+<polygon fill="#d2d9f4" points="60,95 80,105 80,112 60,102"></polygon>
+<polygon fill="#bcc9c6" points="80,105 120,85 120,92 80,112"></polygon>
+<!-- Laptop -->
+<polygon fill="#00685f" points="82,88 95,82 100,85 87,91"></polygon>
+<!-- Character Avatar -->
+<circle cx="85" cy="72" fill="#006b5f" r="9"></circle>
+<text fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle" x="85" y="75">R</text>
+<!-- Status Ping -->
+<circle cx="93" cy="65" fill="#6df5e1" r="3"></circle>
+<!-- Name Tag -->
+<rect fill="#ffffff" height="14" opacity="0.9" rx="4" width="50" x="58" y="116"></rect>
+<text fill="#131b2e" font-size="7" font-weight="600" text-anchor="middle" x="83" y="126">Rina (CS)</text>
+</g>
+<!-- Center Stage: KUN AI Bot (Master Station) -->
+<g class="cursor-pointer transition-transform hover:scale-105">
+<!-- Energy Ripple Aura -->
+<ellipse cx="170" cy="120" fill="#6df5e1" opacity="0.35" rx="38" ry="16">
+<animate attributename="rx" dur="2.5s" repeatcount="indefinite" values="32;42;32"></animate>
+<animate attributename="opacity" dur="2.5s" repeatcount="indefinite" values="0.4;0.15;0.4"></animate>
+</ellipse>
+<!-- Center Modern Isometric Core Desk -->
+<polygon fill="#ffffff" points="140,90 200,90 220,105 120,105"></polygon>
+<polygon fill="#008378" points="120,105 220,105 220,114 120,114"></polygon>
+<!-- Hologram Beam Pillar -->
+<polygon fill="url(#kunGlow)" opacity="0.75" points="155,90 185,90 195,50 145,50"></polygon>
+<!-- Floating KUN Core Orb -->
+<circle cx="170" cy="48" fill="#00685f" r="13">
+<animate attributename="cy" dur="2s" repeatcount="indefinite" values="46;50;46"></animate>
+</circle>
+<circle cx="170" cy="48" fill="#89f5e7" r="9">
+<animate attributename="cy" dur="2s" repeatcount="indefinite" values="46;50;46"></animate>
+</circle>
+<text fill="#00201d" font-size="8" font-weight="bold" text-anchor="middle" x="170" y="51">KUN</text>
+<!-- Speech Bubble / Task Status -->
+<g>
+<rect fill="#131b2e" height="18" rx="6" width="120" x="110" y="15"></rect>
+<text fill="#f4fffc" font-size="7" text-anchor="middle" x="170" y="27">Drafting menu Ramadhan...</text>
+</g>
+<!-- Ground Tag -->
+<rect fill="#00685f" height="14" rx="4" width="50" x="145" y="125"></rect>
+<text fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle" x="170" y="135">KUN Bot v2</text>
+</g>
+<!-- Right Desk: Admin Budi (Supervisor - Standby) -->
+<g class="cursor-pointer transition-transform hover:scale-105" onclick="alert('Admin Budi: Sedang istirahat ringan / Standby.')">
+<!-- Desk Shadow -->
+<ellipse cx="255" cy="115" fill="#00201d" opacity="0.12" rx="28" ry="12"></ellipse>
+<!-- Desk Top -->
+<polygon fill="#eaedff" points="235,85 275,75 295,95 255,105"></polygon>
+<polygon fill="#bcc9c6" points="235,85 255,105 255,112 235,92"></polygon>
+<polygon fill="#d2d9f4" points="255,105 295,95 295,102 255,112"></polygon>
+<!-- Character Avatar -->
+<circle cx="265" cy="72" fill="#825100" r="9"></circle>
+<text fill="#ffffff" font-size="7" font-weight="bold" text-anchor="middle" x="265" y="75">B</text>
+<!-- Status Indicator Amber -->
+<circle cx="273" cy="65" fill="#ffb95f" r="3"></circle>
+<!-- Name Tag -->
+<rect fill="#ffffff" height="14" opacity="0.9" rx="4" width="54" x="238" y="116"></rect>
+<text fill="#131b2e" font-size="7" font-weight="600" text-anchor="middle" x="265" y="126">Budi (Spv)</text>
+</g>
+<!-- Gradients -->
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="kunGlow" x1="170" x2="170" y1="90" y2="50">
+<stop offset="0%" stop-color="#6df5e1" stop-opacity="0.05"></stop>
+<stop offset="100%" stop-color="#008378" stop-opacity="0.5"></stop>
+</lineargradient>
+</defs>
+</svg>
+<!-- Overlay HUD: Incoming Queue Chips on Floor -->
+<div class="absolute bottom-2 left-2 right-2 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface-container-lowest/90 backdrop-blur shadow-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-tertiary">hourglass_top</span>
+<span class="font-label-sm text-label-sm text-on-surface">Lobi Antrean:</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[10px] flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[11px]">chat</span> WA (1)
+          </span>
+<span class="px-1.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-[10px] flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[11px]">language</span> Web (1)
+          </span>
+<span class="px-1.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-[10px] flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[11px]">qr_code</span> Dine-in (1)
+          </span>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. Live Action Bar & Takeover Card (Hero Action Module) -->
+<section class="flex flex-col rounded-2xl bg-surface-container-lowest shadow-md p-space-md gap-space-sm relative overflow-hidden">
+<!-- Accent Line -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-secondary-fixed"></div>
+<!-- Card Header -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded-full bg-secondary-container font-label-sm text-label-sm text-on-secondary-container font-bold">
+          WhatsApp Pelanggan
+        </span>
+<span class="font-label-sm text-label-sm text-outline">18 dtk lalu</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">#c8419f</span>
+</div>
+<!-- Customer Incoming Message -->
+<div class="flex flex-col gap-1 p-space-sm rounded-xl bg-surface-container-low">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-bold">Pak Hendra (0812-9844-xxxx)</span>
+<span class="font-label-sm text-label-sm text-tertiary-container flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px]">priority_high</span> Prioritas Tinggi
+        </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">
+        “Halo kak, apakah ada diskon paket catering untuk 50 pax besok lusa?”
+      </p>
+</div>
+<!-- KUN AI Generated Suggestion Box -->
+<div class="flex flex-col gap-1.5 p-space-sm rounded-xl bg-primary-fixed/30 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[16px]">smart_toy</span>
+<span class="font-label-md text-label-md font-bold">Rekomendasi Balasan KUN</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-primary text-on-primary font-label-sm text-[10px] font-semibold">
+          96% Akurat
+        </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant" id="kun-draft-text">
+        “Halo Pak Hendra! Tentu ada, khusus pemesanan catering di atas 30 pax tersedia potongan diskon 15% plus gratis ongkir area Bandung Kota. Boleh kami bantu pilih menu ayam bakar atau geprek komplit Pak?”
+      </p>
+</div>
+<!-- Mobile Quick Action Stack -->
+<div class="flex flex-col gap-2 pt-1">
+<button class="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-container active:scale-[0.99] text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-sm transition-all" id="btn-approve" onclick="triggerSendAction()">
+<span class="material-symbols-outlined text-[18px]">send</span>
+<span>Izinkan Kirim KUN</span>
+</button>
+<div class="flex gap-2">
+<button class="flex-1 py-2 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 transition-all" onclick="editDraftResponse()">
+<span class="material-symbols-outlined text-[16px] text-primary">edit</span>
+<span>Edit Jawaban</span>
+</button>
+<button class="flex-1 py-2 px-3 rounded-xl bg-error-container hover:opacity-90 text-on-error-container font-label-md text-label-md flex items-center justify-center gap-1.5 transition-all" onclick="takeoverHumanSession()">
+<span class="material-symbols-outlined text-[16px]">headset_mic</span>
+<span>Ambil Alih</span>
+</button>
+</div>
+</div>
+</section>
+<!-- 4. Live Activity Stream (Feed & Tabs) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Aktivitas Langsung</h2>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Real-time</span>
+</div>
+<!-- Filter Pills -->
+<div class="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-margin-mobile px-margin-mobile scrollbar-none">
+<button class="px-3 py-1 rounded-full bg-primary text-on-primary font-label-sm text-label-sm shadow-sm flex-shrink-0">
+        Semua (48)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm flex-shrink-0">
+        Butuh Admin (2)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm flex-shrink-0">
+        KUN (32)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-low text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm flex-shrink-0">
+        Manual (14)
+      </button>
+</div>
+<!-- Feed Cards -->
+<div class="flex flex-col gap-space-xs">
+<!-- Item 1: Urgent Manual Takeover Required -->
+<div class="flex items-start justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="flex items-start gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded-lg bg-error-container text-on-error-container flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-label-md text-label-md text-on-surface font-bold">Transfer DP Catering 2.5jt</span>
+<span class="font-label-sm text-label-sm text-error bg-error-container/50 px-1 rounded">Butuh Verifikasi</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+              #c8419f • Ibu Dina kirim bukti struk transfer BCA.
+            </p>
+<span class="font-label-sm text-label-sm text-outline mt-0.5">Baru saja</span>
+</div>
+</div>
+<button class="px-2.5 py-1.5 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm flex-shrink-0 ml-2 shadow-sm">
+          Ambil →
+        </button>
+</div>
+<!-- Item 2: Fully Automated By KUN -->
+<div class="flex items-start justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="flex items-start gap-2.5 min-w-0">
+<div class="w-8 h-8 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">task_alt</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md text-on-surface font-bold">Jam Buka Resto &amp; Parkir</span>
+<span class="font-label-sm text-label-sm text-secondary bg-secondary-fixed/50 px-1 rounded">100% Otomatis</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+              #b63744b2 • Web Widget • Dijawab tuntas dalam 2.1 detik.
+            </p>
+<span class="font-label-sm text-label-sm text-outline mt-0.5">2 mnt lalu</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[18px] flex-shrink-0 ml-2 mt-1">check_circle</span>
+</div>
+<!-- Item 3: RAG Retrieval Log Snippet -->
+<div class="flex items-start gap-2.5 p-space-sm rounded-xl bg-surface-container-low shadow-sm">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-semibold">KUN Knowledge Base</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">99% Match</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+            Membaca chunk #12: “Menu_Makanan_Dipatiukur_2026.pdf”
+          </p>
+<span class="font-label-sm text-label-sm text-outline mt-0.5">4 mnt lalu</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 5. Agent Roster & Health Cards -->
+<section class="flex flex-col gap-space-sm pb-space-lg">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Kesehatan Staf &amp; Kuota</h2>
+<span class="font-label-sm text-label-sm text-secondary">3 Anggota Tim</span>
+</div>
+<!-- Stacked Compact Agent Cards -->
+<div class="flex flex-col gap-space-xs">
+<!-- Agent: KUN Bot -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">
+              K
+            </div>
+<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-lg text-label-lg text-on-surface">KUN AI Bot</span>
+<span class="px-1.5 py-0.2 rounded bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px]">Autopilot</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Akurasi 98.4% • Tone Sopan</span>
+</div>
+</div>
+<button class="px-2.5 py-1.5 rounded-lg bg-surface-container-low text-primary font-label-sm text-label-sm hover:bg-surface-container" onclick="alert('Membuka modal uji respon sandboxing...')">
+          Uji Respon
+        </button>
+</div>
+<!-- Agent: Admin Rina -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative">
+<div class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-bold">
+              R
+            </div>
+<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-lg text-label-lg text-on-surface">Rina Safitri</span>
+<span class="font-label-sm text-label-sm text-outline">CS Lead</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">14 pesan selesai • Respon 2m 40s</span>
+</div>
+</div>
+<div class="flex items-center gap-1 text-secondary font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> Online
+        </div>
+</div>
+<!-- Agent: Admin Budi -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="relative">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-bold">
+              B
+            </div>
+<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-tertiary ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-lg text-label-lg text-on-surface">Budi Utomo</span>
+<span class="font-label-sm text-label-sm text-outline">Supervisor</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Rating Kepuasan 5.0 ★</span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary font-semibold px-2 py-0.5 rounded-full bg-tertiary-fixed">
+          Istirahat
+        </span>
+</div>
+</div>
+<!-- Quota & CSAT Compact Health Widget -->
+<div class="flex flex-col p-space-md rounded-2xl bg-surface-container-lowest shadow-sm gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[20px]">star</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Skor CSAT Pelanggan</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">4.8 <span class="font-label-md text-label-md text-secondary font-normal">(94% Puas)</span></span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Sisa Kuota Bot</span>
+<div class="font-label-lg text-label-lg text-on-surface">79 / 100</div>
+</div>
+</div>
+<!-- Quota Progress Bar -->
+<div class="flex flex-col gap-1">
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 79%;"></div>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-label-sm text-label-sm text-outline">Tersisa 21 percakapan hari ini</span>
+<button class="font-label-sm text-label-sm text-primary font-bold hover:underline" onclick="alert('Mengarahkan ke halaman Top-up Kuota Paket UMKM...')">
+            + Isi Kuota
+          </button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // Simple view toggle interaction for isometric vs list
+  const btnIso = document.getElementById('btn-isometric');
+  const btnRoster = document.getElementById('btn-roster');
+  const canvasContainer = document.getElementById('sim-canvas-container');
+
+  btnRoster.addEventListener('click', () => {
+    btnRoster.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+    btnRoster.classList.remove('text-on-surface-variant');
+    btnIso.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+    btnIso.classList.add('text-on-surface-variant');
+    canvasContainer.classList.add('opacity-40');
+  });
+
+  btnIso.addEventListener('click', () => {
+    btnIso.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+    btnIso.classList.remove('text-on-surface-variant');
+    btnRoster.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+    btnRoster.classList.add('text-on-surface-variant');
+    canvasContainer.classList.remove('opacity-40');
+  });
+
+  // Action Bar Interactivities
+  function triggerSendAction() {
+    const btn = document.getElementById('btn-approve');
+    btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span> Terkirim ke WhatsApp!';
+    btn.classList.remove('bg-primary');
+    btn.classList.add('bg-secondary');
+    setTimeout(() => {
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span> Berhasil Terkirim';
+    }, 900);
+  }
+
+  function editDraftResponse() {
+    const draftText = document.getElementById('kun-draft-text');
+    const newText = prompt("Edit balasan draft KUN:", draftText.innerText.replace(/[“”]/g, ''));
+    if (newText) {
+      draftText.innerText = `“${newText}”`;
+    }
+  }
+
+  function takeoverHumanSession() {
+    alert("Sesi #c8419f diambil alih! KUN dimatikan untuk obrolan ini.");
+  }
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/85 backdrop-blur-xl shadow-[0_-4px_16px_rgba(0,0,0,0.04)]" data-active-classes="text-primary"><div class="flex justify-around items-center h-16 px-space-xs"><a aria-current="page" class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] w-14 py-1 transition-colors text-primary" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[22px]">dashboard</span><span class="font-label-sm text-label-sm mt-0.5">Beranda</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] w-14 py-1 relative text-on-surface-variant hover:text-primary transition-colors" data-path="percakapan" href="#"><div class="relative"><span class="material-symbols-outlined text-[22px]">chat_bubble</span><span class="absolute -top-1 -right-2 px-1 min-w-[14px] h-[14px] rounded-full bg-primary text-on-primary font-label-sm text-[10px] leading-[14px] flex items-center justify-center">1</span></div><span class="font-label-sm text-label-sm mt-0.5">Pesan</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] w-14 py-1 relative text-on-surface-variant hover:text-primary transition-colors" data-path="dokumen" href="#"><div class="relative"><span class="material-symbols-outlined text-[22px]">description</span><span class="absolute -top-1 -right-2 px-1 min-w-[14px] h-[14px] rounded-full bg-secondary text-on-secondary font-label-sm text-[10px] leading-[14px] flex items-center justify-center">2</span></div><span class="font-label-sm text-label-sm mt-0.5">Dokumen</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] w-14 py-1 text-on-surface-variant hover:text-primary transition-colors" data-path="tim" href="#"><span class="material-symbols-outlined text-[22px]">group</span><span class="font-label-sm text-label-sm mt-0.5">Tim</span></a><a class="flex flex-col items-center justify-center min-w-[44px] min-h-[44px] w-14 py-1 text-on-surface-variant hover:text-primary transition-colors" data-path="akun" href="#"><span class="material-symbols-outlined text-[22px]">manage_accounts</span><span class="font-label-sm text-label-sm mt-0.5">Akun</span></a></div></nav></body></html>
