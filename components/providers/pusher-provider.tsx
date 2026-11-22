@@ -162,6 +162,9 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "recent-knowledge"],
+    });
   }, []);
 
   const handleUsageUpdated = useCallback(

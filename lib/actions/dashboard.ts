@@ -11,6 +11,7 @@ import {
   getHumanUnreadConversationIds,
   getLiveOverviewSnapshot,
   getLiveConversationPreview,
+  getRecentKnowledgeItems,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
@@ -18,6 +19,7 @@ import type { ConversationRow as ConversationRowType } from "@/types/api";
 import type {
   DashboardChartData,
   LiveConversationPreview,
+  RecentKnowledgeItem,
   LiveOverviewSnapshot,
 } from "@/types/dashboard";
 
@@ -34,6 +36,13 @@ export async function getLiveConversationPreviewAction(): Promise<
 > {
   const { orgId } = await requireOrg();
   return getLiveConversationPreview(orgId);
+}
+
+export async function getRecentKnowledgeItemsAction(): Promise<
+  RecentKnowledgeItem[]
+> {
+  const { orgId } = await requireOrg();
+  return getRecentKnowledgeItems(orgId);
 }
 
 export async function getRecentActiveConversationsAction(): Promise<

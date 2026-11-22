@@ -29,6 +29,7 @@ const ActivitySnapshotCard = ({
   const weeklyAverage = Math.round(weeklyTotal / chartData.weeklyMessages.length);
   const monthlyTotal = chartData.monthlyCurrent[chartData.currentMonth] ?? 0;
   const highestDay = Math.max(...chartData.weeklyMessages, 1);
+  const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
     <Link
@@ -49,20 +50,24 @@ const ActivitySnapshotCard = ({
         </span>
       </div>
 
-      <div
-        className="mt-4 flex h-10 items-end gap-1"
-        aria-label={`${weeklyTotal} pesan pelanggan minggu ini`}
-      >
-        {chartData.weeklyMessages.map((count, index) => (
-          <span
-            key={index}
-            className="flex-1 rounded-t-[3px] bg-(--color-brand-light)"
-            style={{ height: `${Math.max((count / highestDay) * 100, 8)}%` }}
-            title={`${count} pesan`}
-          >
-            <span className="sr-only">{count} pesan</span>
-          </span>
-        ))}
+      <div className="mt-4" aria-label={`${weeklyTotal} pesan pelanggan minggu ini`}>
+        <div className="flex h-13 items-end gap-1">
+          {chartData.weeklyMessages.map((count, index) => (
+            <span
+              key={index}
+              className="flex-1 rounded-t-[3px] bg-(--color-brand)"
+              style={{ height: `${Math.max((count / highestDay) * 100, 8)}%` }}
+              title={`${count} pesan`}
+            >
+              <span className="sr-only">{count} pesan</span>
+            </span>
+          ))}
+        </div>
+        <div className="mt-1.5 flex gap-1 text-center text-[8.5px] font-medium text-(--color-text-400)">
+          {weekdays.map((day) => (
+            <span key={day} className="flex-1">{day}</span>
+          ))}
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 border-t border-(--color-border-sm) pt-3">

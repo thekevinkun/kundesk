@@ -6,6 +6,7 @@ import {
   getRecentActiveConversations,
   getLiveConversationPreview,
   getDashboardCharts,
+  getRecentKnowledgeItems,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { DashboardOverview } from "@/components/dashboard";
@@ -27,6 +28,7 @@ export default async function DashboardPage() {
     recentConversations,
     liveConversationPreview,
     initialDashboardCharts,
+    initialKnowledgeItems,
   ] = await Promise.all([
     (await clerkClient()).organizations.getOrganization({
       organizationId: orgId!,
@@ -35,6 +37,7 @@ export default async function DashboardPage() {
     getRecentActiveConversations(orgId!),
     getLiveConversationPreview(orgId!),
     getDashboardCharts(orgId!, timezone),
+    getRecentKnowledgeItems(orgId!),
   ]);
 
   return (
@@ -46,6 +49,7 @@ export default async function DashboardPage() {
       initialRecentConversations={recentConversations}
       initialLiveConversationPreview={liveConversationPreview}
       initialDashboardCharts={initialDashboardCharts}
+      initialKnowledgeItems={initialKnowledgeItems}
     />
   );
 }

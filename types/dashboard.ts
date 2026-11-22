@@ -60,3 +60,14 @@ export interface LiveConversationPreview {
     createdAt: string;
   }[];
 }
+
+export interface RecentKnowledgeItem {
+  id: number;
+  source: "document" | "manual";
+  title: string;
+  kind: string | null;
+  chunkCount: number;
+  entryCount: number | null;
+  status: string | null;
+  updatedAt: string;
+}

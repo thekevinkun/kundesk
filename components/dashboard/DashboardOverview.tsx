@@ -14,6 +14,7 @@ import type {
   DashboardChartData,
   LiveOverviewSnapshot,
   LiveConversationPreview,
+  RecentKnowledgeItem,
 } from "@/types/dashboard";
 
 const RecentConversationsPanel = dynamic(
@@ -28,6 +29,10 @@ const ActivitySnapshotCard = dynamic(
   () => import("@/components/dashboard/ActivitySnapshotCard"),
   { loading: () => <div className="min-h-40 rounded-md skeleton" /> },
 );
+const KnowledgeKunPanel = dynamic(
+  () => import("@/components/dashboard/KnowledgeKunPanel"),
+  { loading: () => <div className="min-h-56 rounded-md skeleton" /> },
+);
 
 interface DashboardOverviewProps {
   orgId: string;
@@ -37,6 +42,7 @@ interface DashboardOverviewProps {
   initialRecentConversations: ConversationRowType[];
   initialLiveConversationPreview: LiveConversationPreview | null;
   initialDashboardCharts: DashboardChartData;
+  initialKnowledgeItems: RecentKnowledgeItem[];
 }
 
 const Metric = ({
@@ -79,6 +85,7 @@ const DashboardOverview = ({
   initialRecentConversations,
   initialLiveConversationPreview,
   initialDashboardCharts,
+  initialKnowledgeItems,
 }: DashboardOverviewProps) => {
   const { data: overview } = useQuery({
     queryKey: ["dashboard", orgId, "live-overview"],
@@ -139,11 +146,6 @@ const DashboardOverview = ({
               <h1 className="text-[24px] font-extrabold tracking-[-0.04em] text-(--color-text-900)">
                 {orgName}
               </h1>
-              <span
-                className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold ${bot?.isActive ? "bg-(--color-success-bg) text-(--color-success)" : "bg-(--color-danger-bg) text-(--color-danger)"}`}
-              >
-                {bot?.isActive ? "KUN AKTIF" : "KUN NONAKTIF"}
-              </span>
             </div>
             <p className="mt-1.5 text-[13px] text-(--color-text-500)">
               Pantau percakapan dan kesehatan operasional bisnis secara
@@ -211,7 +213,7 @@ const DashboardOverview = ({
 
       <div className="grid gap-5 xl:grid-cols-[270px_minmax(0,1fr)_250px] xl:items-start">
         <section className="order-3 min-w-0 space-y-4 xl:order-1">
-          <div className="xl:h-[480px]">
+          <div className="xl:h-[584px]">
             <RecentConversationsPanel
               initialConversations={initialRecentConversations}
             />
@@ -229,27 +231,12 @@ const DashboardOverview = ({
           />
         </section>
         <aside className="order-4 grid content-start gap-4 sm:grid-cols-2 xl:order-3 xl:grid-cols-1">
-          <Link
-            href="/dashboard/knowledge"
-            className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <span className="flex size-10 items-center justify-center rounded-[12px] bg-(--color-brand-light) text-lg">
-                ▤
-              </span>
-              <span className="text-[11px] font-semibold text-(--color-brand)">
-                Kelola →
-              </span>
-            </div>
-            <h2 className="mt-4 text-[15px] font-bold text-(--color-text-900)">
-              Knowledge KUN
-            </h2>
-            <p className="mt-1 text-[12px] text-(--color-text-500)">
-              {bot
-                ? `${bot.documentCount} dokumen siap · ${bot.totalChunks.toLocaleString("id-ID")} chunks`
-                : "Belum ada chatbot aktif"}
-            </p>
-          </Link>
+          <KnowledgeKunPanel
+            orgId={orgId}
+            initialItems={initialKnowledgeItems}
+            documentCount={bot?.documentCount ?? 0}
+            totalChunks={bot?.totalChunks ?? 0}
+          />
           <Link
             href="/dashboard/billing"
             className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"

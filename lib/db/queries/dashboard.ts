@@ -11,6 +11,8 @@ import {
   chatbots,
   documents,
   chunks,
+  knowledgeSections,
+  knowledgeEntries,
   notifications,
 } from "@/lib/db/schema";
 import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
@@ -21,6 +23,7 @@ import type {
   DashboardChartData,
   LiveOverviewSnapshot,
   LiveConversationPreview,
+  RecentKnowledgeItem,
 } from "@/types/dashboard";
 
 // ── Total messages sent to this org's chatbot ──
@@ -567,6 +570,81 @@ export async function getLiveConversationPreview(
       createdAt: toDateSafe(message.created_at).toISOString(),
     })),
   };
+}
+
+// ── Latest knowledge sources for the compact overview rail ──
+// Documents and Isi Manual sections are separate sources, ordered together by
+// their latest recorded change. Only three rows are returned for this compact UI.
+export async function getRecentKnowledgeItems(
+  orgId: string,
+): Promise<RecentKnowledgeItem[]> {
+  const result = await db.execute<{
+    id: number;
+    source: "document" | "manual";
+    title: string;
+    kind: string | null;
+    chunk_count: number;
+    entry_count: number | null;
+    status: string | null;
+    updated_at: Date;
+  }>(
+    sql`
+      SELECT *
+      FROM (
+        SELECT
+          d.id,
+          'document'::text AS source,
+          d.name AS title,
+          NULL::text AS kind,
+          d.chunk_count AS chunk_count,
+          NULL::int AS entry_count,
+          d.status AS status,
+          d.created_at AS updated_at
+        FROM ${documents} d
+        WHERE d.org_id = ${orgId}
+          AND d.status = 'ready'
+
+        UNION ALL
+
+        SELECT
+          s.id,
+          'manual'::text AS source,
+          s.title,
+          s.kind,
+          (
+            SELECT COUNT(*)::int
+            FROM ${chunks} c
+            WHERE c.org_id = ${orgId}
+              AND (
+                c.section_id = s.id
+                OR c.entry_id IN (
+                  SELECT e2.id
+                  FROM ${knowledgeEntries} e2
+                  WHERE e2.section_id = s.id AND e2.org_id = ${orgId}
+                )
+              )
+          ) AS chunk_count,
+          (SELECT COUNT(*)::int FROM ${knowledgeEntries} e WHERE e.section_id = s.id AND e.org_id = ${orgId}) AS entry_count,
+          NULL::text AS status,
+          s.updated_at
+        FROM ${knowledgeSections} s
+        WHERE s.org_id = ${orgId}
+      ) knowledge_items
+      ORDER BY updated_at DESC
+      LIMIT 3
+    `,
+  );
+
+  return result.rows.map((item) => ({
+    id: item.id,
+    source: item.source,
+    title: item.title,
+    kind: item.kind,
+    chunkCount: item.chunk_count,
+    entryCount: item.entry_count,
+    status: item.status,
+    updatedAt: toDateSafe(item.updated_at).toISOString(),
+  }));
 }
 
 // ── Paginated conversations — for the conversations dashboard page ──
