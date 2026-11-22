@@ -10,14 +10,14 @@ import {
   findConversationPage,
   getHumanUnreadConversationIds,
   getLiveOverviewSnapshot,
-  getActiveAdminHandoffPreview,
+  getLiveConversationPreview,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
 import type {
-  AdminHandoffPreview,
   DashboardChartData,
+  LiveConversationPreview,
   LiveOverviewSnapshot,
 } from "@/types/dashboard";
 
@@ -29,11 +29,11 @@ export async function getLiveOverviewSnapshotAction(): Promise<LiveOverviewSnaps
   return getLiveOverviewSnapshot(orgId, timezone);
 }
 
-export async function getActiveAdminHandoffPreviewAction(): Promise<
-  AdminHandoffPreview | null
+export async function getLiveConversationPreviewAction(): Promise<
+  LiveConversationPreview | null
 > {
   const { orgId } = await requireOrg();
-  return getActiveAdminHandoffPreview(orgId);
+  return getLiveConversationPreview(orgId);
 }
 
 export async function getRecentActiveConversationsAction(): Promise<

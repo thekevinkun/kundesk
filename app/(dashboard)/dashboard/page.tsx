@@ -4,7 +4,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import {
   getLiveOverviewSnapshot,
   getRecentActiveConversations,
-  getActiveAdminHandoffPreview,
+  getLiveConversationPreview,
   getDashboardCharts,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     organization,
     initialLiveOverview,
     recentConversations,
-    adminHandoffPreview,
+    liveConversationPreview,
     initialDashboardCharts,
   ] = await Promise.all([
     (await clerkClient()).organizations.getOrganization({
@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     }),
     getLiveOverviewSnapshot(orgId!, timezone),
     getRecentActiveConversations(orgId!),
-    getActiveAdminHandoffPreview(orgId!),
+    getLiveConversationPreview(orgId!),
     getDashboardCharts(orgId!, timezone),
   ]);
 
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
       orgName={organization.name}
       orgImageUrl={organization.imageUrl ?? null}
       initialRecentConversations={recentConversations}
-      initialAdminHandoffPreview={adminHandoffPreview}
+      initialLiveConversationPreview={liveConversationPreview}
       initialDashboardCharts={initialDashboardCharts}
     />
   );

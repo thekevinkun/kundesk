@@ -48,13 +48,14 @@ export interface DashboardChartData {
   currentMonth: number;
 }
 
-export interface AdminHandoffPreview {
+export interface LiveConversationPreview {
   id: number;
   sessionId: string;
   deliveryChannel: string;
+  handoffStatus: "ai" | "pending_handoff" | "human";
   messages: {
     id: number;
-    role: "user" | "human_agent";
+    role: "user" | "assistant" | "human_agent";
     content: string;
     createdAt: string;
   }[];

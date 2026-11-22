@@ -260,3 +260,50 @@ export const operationsBoardQueueVariants: Variants = {
     },
   },
 };
+
+// ── Live conversation workspace — one-shot, Pusher-driven motion only ──
+export const liveWorkspaceKunVariants: Variants = {
+  static: { scale: 1, y: 0 },
+  active: {
+    scale: [1, 1.025, 1],
+    y: [0, -2, 0],
+    transition: {
+      duration: 3.2,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      repeat: Infinity,
+    },
+  },
+};
+
+export const liveWorkspacePacketVariants: Variants = {
+  leftToCenter: {
+    x: [0, 104],
+    opacity: [0, 1, 1, 0],
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+  },
+  centerToLeft: {
+    x: [0, -104],
+    opacity: [0, 1, 1, 0],
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+  },
+  centerToRight: {
+    x: [0, 104],
+    opacity: [0, 1, 1, 0],
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+  },
+  rightToCenter: {
+    x: [0, -104],
+    opacity: [0, 1, 1, 0],
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+  },
+  leftToRight: {
+    x: [0, 208],
+    opacity: [0, 1, 1, 0],
+    transition: { duration: 1.05, ease: [0.22, 1, 0.36, 1] },
+  },
+  rightToLeft: {
+    x: [0, -208],
+    opacity: [0, 1, 1, 0],
+    transition: { duration: 1.05, ease: [0.22, 1, 0.36, 1] },
+  },
+};

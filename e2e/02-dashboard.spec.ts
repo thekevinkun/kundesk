@@ -26,10 +26,10 @@ test.describe("Dashboard", () => {
     // Sidebar should be visible
     await expect(page.getByRole("navigation")).toBeVisible();
 
-    // The overview identity is the business name; the operations board is the
-    // stable, user-facing landmark for the live dashboard workspace.
+    // The overview identity is the business name; the live workspace is the
+    // stable, user-facing landmark for the dashboard's conversation center.
     await expect(
-      page.getByRole("heading", { name: "Kantor Operasional KUN" }),
+      page.getByRole("heading", { name: "Ruang Percakapan Live" }),
     ).toBeVisible({ timeout: 10_000 });
   });
 

@@ -11,22 +11,18 @@ import { getLiveOverviewSnapshotAction } from "@/lib/actions/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
 import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
 import type {
-  AdminHandoffPreview,
   DashboardChartData,
   LiveOverviewSnapshot,
+  LiveConversationPreview,
 } from "@/types/dashboard";
 
 const RecentConversationsPanel = dynamic(
   () => import("@/components/dashboard/RecentConversationsPanel"),
   { loading: () => <div className="min-h-96 rounded-md skeleton" /> },
 );
-const KunOperationsBoard = dynamic(
-  () => import("@/components/dashboard/KunOperationsBoard"),
-  { loading: () => <div className="min-h-56 rounded-md skeleton" /> },
-);
-const AdminHandoffPreviewPanel = dynamic(
-  () => import("@/components/dashboard/AdminHandoffPreviewPanel"),
-  { loading: () => <div className="min-h-56 rounded-md skeleton" /> },
+const LiveConversationWorkspace = dynamic(
+  () => import("@/components/dashboard/LiveConversationWorkspace"),
+  { loading: () => <div className="min-h-[520px] rounded-md skeleton" /> },
 );
 const ActivitySnapshotCard = dynamic(
   () => import("@/components/dashboard/ActivitySnapshotCard"),
@@ -39,7 +35,7 @@ interface DashboardOverviewProps {
   orgName: string;
   orgImageUrl: string | null;
   initialRecentConversations: ConversationRowType[];
-  initialAdminHandoffPreview: AdminHandoffPreview | null;
+  initialLiveConversationPreview: LiveConversationPreview | null;
   initialDashboardCharts: DashboardChartData;
 }
 
@@ -81,7 +77,7 @@ const DashboardOverview = ({
   orgName,
   orgImageUrl,
   initialRecentConversations,
-  initialAdminHandoffPreview,
+  initialLiveConversationPreview,
   initialDashboardCharts,
 }: DashboardOverviewProps) => {
   const { data: overview } = useQuery({
@@ -226,10 +222,10 @@ const DashboardOverview = ({
           />
         </section>
         <section className="order-1 min-w-0 space-y-4 xl:order-2">
-          <KunOperationsBoard bot={bot} queue={overview.queue} />
-          <AdminHandoffPreviewPanel
+          <LiveConversationWorkspace
             orgId={orgId}
-            initialPreview={initialAdminHandoffPreview}
+            bot={bot}
+            initialPreview={initialLiveConversationPreview}
           />
         </section>
         <aside className="order-4 grid content-start gap-4 sm:grid-cols-2 xl:order-3 xl:grid-cols-1">

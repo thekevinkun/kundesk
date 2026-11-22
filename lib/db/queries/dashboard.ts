@@ -18,9 +18,9 @@ import { toDateSafe } from "@/helpers/format";
 import { getOwnerDayBounds } from "@/lib/timezone";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 import type {
-  AdminHandoffPreview,
   DashboardChartData,
   LiveOverviewSnapshot,
+  LiveConversationPreview,
 } from "@/types/dashboard";
 
 // ── Total messages sent to this org's chatbot ──
@@ -498,25 +498,36 @@ export async function getRecentActiveConversations(orgId: string): Promise<
   }));
 }
 
-// ── Current staff-handled conversation preview for the operations overview ──
-// Only a live human takeover belongs here. Pending handoffs remain urgent queue
-// work, but must not be represented as a staff/customer exchange before takeover.
-// A takeover remains relevant until it is explicitly returned to KUN, even if
-// neither participant has written in the last 24 hours.
-export async function getActiveAdminHandoffPreview(
+// ── Newest live conversation preview for the operations workspace ──
+// "Live" is based on the latest real message in the last 24 hours, regardless
+// of whether KUN, a pending handoff, or a human admin is handling the session.
+// This prevents an old, long conversation from remaining selected.
+export async function getLiveConversationPreview(
   orgId: string,
-): Promise<AdminHandoffPreview | null> {
+): Promise<LiveConversationPreview | null> {
   const result = await db.execute<{
     id: number;
     session_id: string;
     delivery_channel: string;
+    handoff_status: "ai" | "pending_handoff" | "human";
   }>(
     sql`
-      SELECT c.id, c.session_id, c.delivery_channel
+      SELECT c.id, c.session_id, c.delivery_channel, c.handoff_status
       FROM ${conversations} c
       WHERE c.org_id = ${orgId}
-        AND c.handoff_status = 'human'
-      ORDER BY c.taken_over_at DESC NULLS LAST, c.created_at DESC
+        AND EXISTS (
+          SELECT 1
+          FROM ${messages} m
+          WHERE m.conversation_id = c.id
+            AND m.org_id = ${orgId}
+            AND m.created_at > NOW() - INTERVAL '24 hours'
+        )
+      ORDER BY (
+        SELECT MAX(m.created_at)
+        FROM ${messages} m
+        WHERE m.conversation_id = c.id
+          AND m.org_id = ${orgId}
+      ) DESC
       LIMIT 1
     `,
   );
@@ -526,7 +537,7 @@ export async function getActiveAdminHandoffPreview(
 
   const messageResult = await db.execute<{
     id: number;
-    role: "user" | "human_agent";
+    role: "user" | "assistant" | "human_agent";
     content: string;
     created_at: Date;
   }>(
@@ -537,7 +548,6 @@ export async function getActiveAdminHandoffPreview(
         FROM ${messages} m
         WHERE m.conversation_id = ${conversation.id}
           AND m.org_id = ${orgId}
-          AND m.role IN ('user', 'human_agent')
         ORDER BY m.created_at DESC
         LIMIT 4
       ) latest_messages
@@ -549,6 +559,7 @@ export async function getActiveAdminHandoffPreview(
     id: conversation.id,
     sessionId: conversation.session_id,
     deliveryChannel: conversation.delivery_channel,
+    handoffStatus: conversation.handoff_status,
     messages: messageResult.rows.map((message) => ({
       id: message.id,
       role: message.role,

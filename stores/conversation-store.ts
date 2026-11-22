@@ -30,6 +30,24 @@ interface ConversationStore {
   prependNotification: (item: NotificationItem) => void;
   markNotificationRead: (id: number) => void;
   markAllRead: () => void;
+
+  // ── Last verified workspace event — drives one-shot live dashboard motion ──
+  // This deliberately carries only Pusher-originated state. It is not presence,
+  // assignment, or simulated traffic.
+  liveWorkspaceEvent: {
+    id: number;
+    type:
+      | "customer-to-kun"
+      | "kun-to-customer"
+      | "customer-to-admin"
+      | "admin-to-customer"
+      | "kun-to-admin"
+      | "admin-to-kun";
+  } | null;
+  setLiveWorkspaceEvent: (
+    type: NonNullable<ConversationStore["liveWorkspaceEvent"]>["type"],
+  ) => void;
+  clearLiveWorkspaceEvent: () => void;
 }
 
 export const useConversationStore = create<ConversationStore>((set) => ({
@@ -76,4 +94,9 @@ export const useConversationStore = create<ConversationStore>((set) => ({
       })),
       unreadCount: 0,
     })),
+
+  liveWorkspaceEvent: null,
+  setLiveWorkspaceEvent: (type) =>
+    set({ liveWorkspaceEvent: { id: Date.now(), type } }),
+  clearLiveWorkspaceEvent: () => set({ liveWorkspaceEvent: null }),
 }));

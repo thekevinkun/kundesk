@@ -4,18 +4,18 @@ const mocks = vi.hoisted(() => ({
   requireOrg: vi.fn(),
   getOwnerTimezone: vi.fn(),
   getLiveOverviewSnapshot: vi.fn(),
-  getActiveAdminHandoffPreview: vi.fn(),
+  getLiveConversationPreview: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ requireOrg: mocks.requireOrg }));
 vi.mock("@/lib/timezone", () => ({ getOwnerTimezone: mocks.getOwnerTimezone }));
 vi.mock("@/lib/db/queries/dashboard", () => ({
   getLiveOverviewSnapshot: mocks.getLiveOverviewSnapshot,
-  getActiveAdminHandoffPreview: mocks.getActiveAdminHandoffPreview,
+  getLiveConversationPreview: mocks.getLiveConversationPreview,
 }));
 
 import {
-  getActiveAdminHandoffPreviewAction,
+  getLiveConversationPreviewAction,
   getLiveOverviewSnapshotAction,
 } from "./dashboard";
 
@@ -47,7 +47,7 @@ describe("getLiveOverviewSnapshotAction", () => {
   });
 });
 
-describe("getActiveAdminHandoffPreviewAction", () => {
+describe("getLiveConversationPreviewAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -55,18 +55,18 @@ describe("getActiveAdminHandoffPreviewAction", () => {
   it("uses only the authenticated org", async () => {
     const preview = { id: 1, sessionId: "session_1", messages: [] };
     mocks.requireOrg.mockResolvedValue({ userId: "user_1", orgId: "org_safe" });
-    mocks.getActiveAdminHandoffPreview.mockResolvedValue(preview);
+    mocks.getLiveConversationPreview.mockResolvedValue(preview);
 
-    await expect(getActiveAdminHandoffPreviewAction()).resolves.toBe(preview);
-    expect(mocks.getActiveAdminHandoffPreview).toHaveBeenCalledWith("org_safe");
+    await expect(getLiveConversationPreviewAction()).resolves.toBe(preview);
+    expect(mocks.getLiveConversationPreview).toHaveBeenCalledWith("org_safe");
   });
 
   it("does not query data when the caller has no active organization", async () => {
     mocks.requireOrg.mockRejectedValue(new Error("No active organization"));
 
-    await expect(getActiveAdminHandoffPreviewAction()).rejects.toThrow(
+    await expect(getLiveConversationPreviewAction()).rejects.toThrow(
       "No active organization",
     );
-    expect(mocks.getActiveAdminHandoffPreview).not.toHaveBeenCalled();
+    expect(mocks.getLiveConversationPreview).not.toHaveBeenCalled();
   });
 });

@@ -22,14 +22,21 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
 
   // Usage state from Zustand — updated via Pusher and used in UsageBar for instant updates
   const setUsage = useConversationStore((s) => s.setUsage);
+  const setLiveWorkspaceEvent = useConversationStore(
+    (s) => s.setLiveWorkspaceEvent,
+  );
 
   // Reset bell and notification state on org change — no localStorage hydration needed
   const clearUnread = useConversationStore((s) => s.clearUnread);
   const setPendingHandoff = useConversationStore((s) => s.setPendingHandoff);
+  const clearLiveWorkspaceEvent = useConversationStore(
+    (s) => s.clearLiveWorkspaceEvent,
+  );
   useEffect(() => {
     clearUnread();
     setPendingHandoff(false);
-  }, [clearUnread, setPendingHandoff, orgId]);
+    clearLiveWorkspaceEvent();
+  }, [clearLiveWorkspaceEvent, clearUnread, setPendingHandoff, orgId]);
 
   // Stable refs for sound functions — avoids recreating callbacks when sound hook re-renders
   const soundRef = useRef({ playNewMessage, playHandoffAlert });
@@ -38,10 +45,20 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
   });
 
   // Stable ref for setUsage and queryClient
-  const stableRef = useRef({ setUsage, queryClient, orgId });
-  useEffect(() => {
-    stableRef.current = { setUsage, queryClient, orgId };
+  const stableRef = useRef({
+    setUsage,
+    setLiveWorkspaceEvent,
+    queryClient,
+    orgId,
   });
+  useEffect(() => {
+    stableRef.current = {
+      setUsage,
+      setLiveWorkspaceEvent,
+      queryClient,
+      orgId,
+    };
+  }, [orgId, queryClient, setLiveWorkspaceEvent, setUsage]);
 
   // Cleanup chart timer on unmount
   useEffect(() => {
@@ -53,26 +70,30 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     };
   }, []);
 
-  const invalidateAdminHandoffPreview = useCallback(() => {
+  const invalidateLiveConversationPreview = useCallback(() => {
     void stableRef.current.queryClient.invalidateQueries({
-      queryKey: ["dashboard", stableRef.current.orgId, "admin-handoff"],
+      queryKey: ["dashboard", stableRef.current.orgId, "live-conversation"],
     });
   }, []);
 
   const handleConversationNew = useCallback(() => {
     soundRef.current.playNewMessage();
+    stableRef.current.setLiveWorkspaceEvent("customer-to-kun");
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
     });
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-    invalidateAdminHandoffPreview();
-  }, [invalidateAdminHandoffPreview]);
+    invalidateLiveConversationPreview();
+  }, [invalidateLiveConversationPreview]);
 
   const handleTakeover = useCallback((payload: TakeoverPayload) => {
     if (payload.handoffStatus === "pending_handoff") {
       soundRef.current.playHandoffAlert();
+      stableRef.current.setLiveWorkspaceEvent("kun-to-admin");
+    } else if (payload.handoffStatus === "human") {
+      stableRef.current.setLiveWorkspaceEvent("customer-to-admin");
     }
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
@@ -83,8 +104,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-    invalidateAdminHandoffPreview();
-  }, [invalidateAdminHandoffPreview]);
+    invalidateLiveConversationPreview();
+  }, [invalidateLiveConversationPreview]);
 
   const handleMessage = useCallback((payload: MessagePayload) => {
     const isHumanMode =
@@ -93,6 +114,17 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     if (isHumanMode && payload.role === "user") {
       soundRef.current.playNewMessage();
     }
+    if (payload.role === "user") {
+      stableRef.current.setLiveWorkspaceEvent(
+        payload.handoffStatus === "human"
+          ? "customer-to-admin"
+          : "customer-to-kun",
+      );
+    } else if (payload.role === "human_agent") {
+      stableRef.current.setLiveWorkspaceEvent("admin-to-customer");
+    } else if (payload.role === "assistant") {
+      stableRef.current.setLiveWorkspaceEvent("kun-to-customer");
+    }
     // Invalidate recent conversations to update last message preview and timestamp
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "recent"],
@@ -104,10 +136,11 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-    invalidateAdminHandoffPreview();
-  }, [invalidateAdminHandoffPreview]);
+    invalidateLiveConversationPreview();
+  }, [invalidateLiveConversationPreview]);
 
   const handleReturn = useCallback(() => {
+    stableRef.current.setLiveWorkspaceEvent("admin-to-kun");
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["conversations", "pending-count"],
     });
@@ -122,8 +155,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-    invalidateAdminHandoffPreview();
-  }, [invalidateAdminHandoffPreview]);
+    invalidateLiveConversationPreview();
+  }, [invalidateLiveConversationPreview]);
 
   const handleDocumentUpdated = useCallback(() => {
     void stableRef.current.queryClient.invalidateQueries({
