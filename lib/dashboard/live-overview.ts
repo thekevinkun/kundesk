@@ -15,6 +15,7 @@ export function createLiveOverviewSnapshot(
       answeredRate: input.answeredRate,
       uniqueVisitors: input.uniqueVisitors,
       avgResponseTime: input.avgResponseTime,
+      totalHandoffCount: input.totalHandoffCount,
     },
     queue: {
       activeConversationCount: input.activeConversationCount,
@@ -27,6 +28,7 @@ export function createLiveOverviewSnapshot(
       slug: "",
       messagesUsed: 0,
       messagesLimit: 100,
+      plan: "free",
     },
   };
 }

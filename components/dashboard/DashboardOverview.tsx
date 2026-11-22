@@ -9,7 +9,12 @@ import { useConversationStore } from "@/stores/conversation-store";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { getLiveOverviewSnapshotAction } from "@/lib/actions/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
-import type { LiveOverviewSnapshot } from "@/types/dashboard";
+import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
+import type {
+  AdminHandoffPreview,
+  DashboardChartData,
+  LiveOverviewSnapshot,
+} from "@/types/dashboard";
 
 const RecentConversationsPanel = dynamic(
   () => import("@/components/dashboard/RecentConversationsPanel"),
@@ -19,6 +24,14 @@ const KunOperationsBoard = dynamic(
   () => import("@/components/dashboard/KunOperationsBoard"),
   { loading: () => <div className="min-h-56 rounded-md skeleton" /> },
 );
+const AdminHandoffPreviewPanel = dynamic(
+  () => import("@/components/dashboard/AdminHandoffPreviewPanel"),
+  { loading: () => <div className="min-h-56 rounded-md skeleton" /> },
+);
+const ActivitySnapshotCard = dynamic(
+  () => import("@/components/dashboard/ActivitySnapshotCard"),
+  { loading: () => <div className="min-h-40 rounded-md skeleton" /> },
+);
 
 interface DashboardOverviewProps {
   orgId: string;
@@ -26,6 +39,8 @@ interface DashboardOverviewProps {
   orgName: string;
   orgImageUrl: string | null;
   initialRecentConversations: ConversationRowType[];
+  initialAdminHandoffPreview: AdminHandoffPreview | null;
+  initialDashboardCharts: DashboardChartData;
 }
 
 const Metric = ({
@@ -66,6 +81,8 @@ const DashboardOverview = ({
   orgName,
   orgImageUrl,
   initialRecentConversations,
+  initialAdminHandoffPreview,
+  initialDashboardCharts,
 }: DashboardOverviewProps) => {
   const { data: overview } = useQuery({
     queryKey: ["dashboard", orgId, "live-overview"],
@@ -83,7 +100,8 @@ const DashboardOverview = ({
     overview.organization.messagesLimit;
   const quotaPct = Math.min((used / (limit || 1)) * 100, 100);
   const bot = overview.bot;
-  const selectedConversation = initialRecentConversations[0] ?? null;
+  const planLabel =
+    PLAN_BADGE[overview.organization.plan]?.label ?? PLAN_BADGE.free!.label;
   const initials = orgName
     .trim()
     .split(/\s+/)
@@ -91,12 +109,6 @@ const DashboardOverview = ({
     .map((word) => word[0])
     .join("")
     .toUpperCase();
-  const healthHref =
-    overview.queue.pendingHandoffCount > 0
-      ? "/dashboard/conversations"
-      : quotaPct >= 70
-        ? "/dashboard/billing"
-        : "/dashboard/chatbot";
   const healthScore = bot?.isActive
     ? Math.round(overview.stats.answeredRate)
     : 0;
@@ -202,45 +214,23 @@ const DashboardOverview = ({
       </header>
 
       <div className="grid gap-5 xl:grid-cols-[270px_minmax(0,1fr)_250px] xl:items-start">
-        <section className="order-3 min-w-0 xl:order-1">
-          <RecentConversationsPanel
-            initialConversations={initialRecentConversations}
+        <section className="order-3 min-w-0 space-y-4 xl:order-1">
+          <div className="xl:h-[480px]">
+            <RecentConversationsPanel
+              initialConversations={initialRecentConversations}
+            />
+          </div>
+          <ActivitySnapshotCard
+            orgId={orgId}
+            initialDashboardCharts={initialDashboardCharts}
           />
         </section>
         <section className="order-1 min-w-0 space-y-4 xl:order-2">
           <KunOperationsBoard bot={bot} queue={overview.queue} />
-          <div className="card-base overflow-hidden border-t-4 border-t-(--color-brand)">
-            <div className="flex items-start justify-between gap-3 px-5 py-4">
-              <div>
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-(--color-text-400)">
-                  Percakapan paling aktif
-                </p>
-                <h2 className="mt-1 text-[15px] font-bold text-(--color-text-900)">
-                  {selectedConversation
-                    ? `#${selectedConversation.sessionId.slice(0, 8)}`
-                    : "Belum ada percakapan"}
-                </h2>
-              </div>
-              {selectedConversation && (
-                <Link
-                  href={`/dashboard/conversations?highlight=${selectedConversation.id}`}
-                  className="rounded-[8px] bg-(--color-brand) px-3 py-2 text-[11px] font-semibold text-white hover:bg-(--color-brand-dark)"
-                >
-                  Buka →
-                </Link>
-              )}
-            </div>
-            <div className="border-t border-(--color-border-sm) bg-(--color-bg-page)/55 px-5 py-4">
-              <p className="text-[12.5px] leading-relaxed text-(--color-text-700)">
-                {selectedConversation?.lastMessage ??
-                  "Pesan pelanggan akan muncul di sini setelah percakapan dimulai."}
-              </p>
-              <p className="mt-2 text-[10.5px] text-(--color-text-400)">
-                Tindakan balas, takeover, dan pengembalian ke KUN tetap
-                dilakukan di ruang Percakapan.
-              </p>
-            </div>
-          </div>
+          <AdminHandoffPreviewPanel
+            orgId={orgId}
+            initialPreview={initialAdminHandoffPreview}
+          />
         </section>
         <aside className="order-4 grid content-start gap-4 sm:grid-cols-2 xl:order-3 xl:grid-cols-1">
           <Link
@@ -288,10 +278,13 @@ const DashboardOverview = ({
                 style={{ width: `${quotaPct}%` }}
               />
             </div>
+            <p className="mt-2 text-[10.5px] font-medium text-(--color-text-500)">
+              {planLabel} plan
+            </p>
           </Link>
-          <Link
-            href={healthHref}
-            className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"
+          <section
+            className="card-base block p-5"
+            aria-labelledby="operational-health-title"
           >
             <div className="flex items-center gap-4">
               <div
@@ -306,12 +299,12 @@ const DashboardOverview = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-[15px] font-bold text-(--color-text-900)">
+                  <h2
+                    id="operational-health-title"
+                    className="text-[15px] font-bold text-(--color-text-900)"
+                  >
                     Kesehatan Operasional
                   </h2>
-                  <span className="text-[10px] font-semibold text-(--color-brand)">
-                    Lihat →
-                  </span>
                 </div>
                 <p className="mt-1 text-[11.5px] leading-snug text-(--color-text-500)">
                   {healthLabel}
@@ -326,9 +319,9 @@ const DashboardOverview = ({
                 </b>
               </span>
               <span className="text-(--color-text-500)">
-                Handoff{" "}
+                Total handoff{" "}
                 <b className="block text-(--color-text-900)">
-                  {overview.queue.pendingHandoffCount}
+                  {overview.stats.totalHandoffCount}
                 </b>
               </span>
               <span className="text-(--color-text-500)">
@@ -338,7 +331,40 @@ const DashboardOverview = ({
                 </b>
               </span>
             </div>
-          </Link>
+          </section>
+          <section
+            className="card-base block p-5"
+            aria-labelledby="current-priority-title"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-(--color-text-400)">
+                  Prioritas Sekarang
+                </p>
+                <h2
+                  id="current-priority-title"
+                  className="mt-1.5 text-[15px] font-bold text-(--color-text-900)"
+                >
+                  {overview.queue.pendingHandoffCount > 0
+                    ? `${overview.queue.pendingHandoffCount} handoff menunggu`
+                    : !bot?.isActive
+                      ? "Aktifkan KUN"
+                      : quotaPct >= 70
+                        ? "Periksa kuota pesan"
+                        : "Tidak ada tindakan mendesak"}
+                </h2>
+              </div>
+            </div>
+            <p className="mt-2 text-[11.5px] leading-relaxed text-(--color-text-500)">
+              {overview.queue.pendingHandoffCount > 0
+                ? "Pelanggan menunggu respons staff di ruang Percakapan."
+                : !bot?.isActive
+                  ? "KUN sedang tidak melayani chat otomatis."
+                  : quotaPct >= 70
+                    ? `${Math.round(quotaPct)}% kuota pesan telah digunakan.`
+                    : "KUN aktif, tidak ada handoff tertunda, dan kuota masih aman."}
+            </p>
+          </section>
         </aside>
       </div>
 

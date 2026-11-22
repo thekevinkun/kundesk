@@ -132,11 +132,10 @@ const RecentConversationsPanel = ({
   const displayed = conversations
     .filter((conversation) =>
       filter === "all" ? true : conversation.handoffStatus === filter,
-    )
-    .slice(0, 5);
+    );
 
   return (
-    <div className="card-base flex h-full min-h-[420px] flex-col overflow-hidden">
+    <div className="card-base flex h-full min-h-[420px] flex-col overflow-hidden xl:min-h-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-(--color-border-sm) flex-shrink-0">
         <div>

@@ -4,15 +4,20 @@ const mocks = vi.hoisted(() => ({
   requireOrg: vi.fn(),
   getOwnerTimezone: vi.fn(),
   getLiveOverviewSnapshot: vi.fn(),
+  getActiveAdminHandoffPreview: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ requireOrg: mocks.requireOrg }));
 vi.mock("@/lib/timezone", () => ({ getOwnerTimezone: mocks.getOwnerTimezone }));
 vi.mock("@/lib/db/queries/dashboard", () => ({
   getLiveOverviewSnapshot: mocks.getLiveOverviewSnapshot,
+  getActiveAdminHandoffPreview: mocks.getActiveAdminHandoffPreview,
 }));
 
-import { getLiveOverviewSnapshotAction } from "./dashboard";
+import {
+  getActiveAdminHandoffPreviewAction,
+  getLiveOverviewSnapshotAction,
+} from "./dashboard";
 
 describe("getLiveOverviewSnapshotAction", () => {
   beforeEach(() => {
@@ -39,5 +44,29 @@ describe("getLiveOverviewSnapshotAction", () => {
       "No active organization",
     );
     expect(mocks.getLiveOverviewSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+describe("getActiveAdminHandoffPreviewAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses only the authenticated org", async () => {
+    const preview = { id: 1, sessionId: "session_1", messages: [] };
+    mocks.requireOrg.mockResolvedValue({ userId: "user_1", orgId: "org_safe" });
+    mocks.getActiveAdminHandoffPreview.mockResolvedValue(preview);
+
+    await expect(getActiveAdminHandoffPreviewAction()).resolves.toBe(preview);
+    expect(mocks.getActiveAdminHandoffPreview).toHaveBeenCalledWith("org_safe");
+  });
+
+  it("does not query data when the caller has no active organization", async () => {
+    mocks.requireOrg.mockRejectedValue(new Error("No active organization"));
+
+    await expect(getActiveAdminHandoffPreviewAction()).rejects.toThrow(
+      "No active organization",
+    );
+    expect(mocks.getActiveAdminHandoffPreview).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ describe("createLiveOverviewSnapshot", () => {
         answeredRate: 0,
         uniqueVisitors: 0,
         avgResponseTime: null,
+        totalHandoffCount: 0,
         activeConversationCount: 0,
         pendingHandoffCount: 0,
         bot: null,
@@ -22,6 +23,7 @@ describe("createLiveOverviewSnapshot", () => {
         answeredRate: 0,
         uniqueVisitors: 0,
         avgResponseTime: null,
+        totalHandoffCount: 0,
       },
       queue: {
         activeConversationCount: 0,
@@ -32,6 +34,7 @@ describe("createLiveOverviewSnapshot", () => {
         slug: "",
         messagesUsed: 0,
         messagesLimit: 100,
+        plan: "free",
       },
     });
   });

@@ -17,7 +17,11 @@ import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
 import { toDateSafe } from "@/helpers/format";
 import { getOwnerDayBounds } from "@/lib/timezone";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
-import type { LiveOverviewSnapshot } from "@/types/dashboard";
+import type {
+  AdminHandoffPreview,
+  DashboardChartData,
+  LiveOverviewSnapshot,
+} from "@/types/dashboard";
 
 // ── Total messages sent to this org's chatbot ──
 // Counts ALL roles (user + assistant + human_agent) — full volume metric
@@ -92,6 +96,23 @@ export async function getActiveConversationSummary(orgId: string): Promise<{
     activeConversationCount: row?.active_conversation_count ?? 0,
     pendingHandoffCount: row?.pending_handoff_count ?? 0,
   };
+}
+
+// ── Total handoffs — permanent analytics truth, not the live pending queue ──
+// wasHandedOff is set when a customer requests a handoff and intentionally stays
+// true after staff takes over, dismisses it, or returns the conversation to KUN.
+export async function getTotalHandoffCount(orgId: string): Promise<number> {
+  const [result] = await db
+    .select({ total: count() })
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.orgId, orgId),
+        eq(conversations.wasHandedOff, true),
+      ),
+    );
+
+  return result?.total ?? 0;
 }
 
 // ── Auto-answer rate — assistant messages / total messages × 100 ──
@@ -263,23 +284,18 @@ export async function getWeeklyMessages(
 export async function getDashboardCharts(
   orgId: string,
   timezone: string,
-): Promise<{
-  dailyTrend: { date: string; count: number }[];
-  monthlyCurrent: number[];
-  monthlyPrevious: number[];
-  weeklyMessages: number[];
-  currentYear: number;
-}> {
+): Promise<DashboardChartData> {
   const [dailyTrend, monthlyComparison, weeklyMessages] = await Promise.all([
     getDailyMessageTrend(orgId, timezone),
     getMonthlyMessageComparison(orgId, timezone),
     getWeeklyMessages(orgId, timezone),
   ]);
 
-  // Derive year in owner's timezone — same logic as dashboard page.tsx
-  const currentYear = new Date(
+  // Derive calendar values in the owner's timezone — never from the browser.
+  const nowInTz = new Date(
     new Date().toLocaleString("en-US", { timeZone: timezone }),
-  ).getFullYear();
+  );
+  const currentYear = nowInTz.getFullYear();
 
   return {
     dailyTrend,
@@ -287,6 +303,7 @@ export async function getDashboardCharts(
     monthlyPrevious: monthlyComparison.previous,
     weeklyMessages,
     currentYear,
+    currentMonth: nowInTz.getMonth(),
   };
 }
 
@@ -479,6 +496,66 @@ export async function getRecentActiveConversations(orgId: string): Promise<
     takenOverBy: row.taken_over_by,
     takenOverAt: row.taken_over_at ? toDateSafe(row.taken_over_at) : null,
   }));
+}
+
+// ── Current staff-handled conversation preview for the operations overview ──
+// Only a live human takeover belongs here. Pending handoffs remain urgent queue
+// work, but must not be represented as a staff/customer exchange before takeover.
+// A takeover remains relevant until it is explicitly returned to KUN, even if
+// neither participant has written in the last 24 hours.
+export async function getActiveAdminHandoffPreview(
+  orgId: string,
+): Promise<AdminHandoffPreview | null> {
+  const result = await db.execute<{
+    id: number;
+    session_id: string;
+    delivery_channel: string;
+  }>(
+    sql`
+      SELECT c.id, c.session_id, c.delivery_channel
+      FROM ${conversations} c
+      WHERE c.org_id = ${orgId}
+        AND c.handoff_status = 'human'
+      ORDER BY c.taken_over_at DESC NULLS LAST, c.created_at DESC
+      LIMIT 1
+    `,
+  );
+
+  const conversation = result.rows[0];
+  if (!conversation) return null;
+
+  const messageResult = await db.execute<{
+    id: number;
+    role: "user" | "human_agent";
+    content: string;
+    created_at: Date;
+  }>(
+    sql`
+      SELECT *
+      FROM (
+        SELECT m.id, m.role, m.content, m.created_at
+        FROM ${messages} m
+        WHERE m.conversation_id = ${conversation.id}
+          AND m.org_id = ${orgId}
+          AND m.role IN ('user', 'human_agent')
+        ORDER BY m.created_at DESC
+        LIMIT 4
+      ) latest_messages
+      ORDER BY created_at ASC
+    `,
+  );
+
+  return {
+    id: conversation.id,
+    sessionId: conversation.session_id,
+    deliveryChannel: conversation.delivery_channel,
+    messages: messageResult.rows.map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      createdAt: toDateSafe(message.created_at).toISOString(),
+    })),
+  };
 }
 
 // ── Paginated conversations — for the conversations dashboard page ──
@@ -720,23 +797,30 @@ export async function getBotStatus(orgId: string): Promise<{
   };
 }
 
-// ── Org data — slug + message usage for bot status panel ──
+// ── Org data — plan + message usage for the live overview ──
 export async function getOrgData(orgId: string): Promise<{
   slug: string;
   messagesUsed: number;
   messagesLimit: number;
+  plan: "free" | "starter" | "pro";
 } | null> {
   const [org] = await db
     .select({
       slug: orgs.slug,
       messagesUsed: orgs.messagesUsed,
       messagesLimit: orgs.messagesLimit,
+      plan: orgs.plan,
     })
     .from(orgs)
     .where(eq(orgs.id, orgId))
     .limit(1);
 
-  return org ?? null;
+  if (!org) return null;
+
+  return {
+    ...org,
+    plan: org.plan === "starter" || org.plan === "pro" ? org.plan : "free",
+  };
 }
 
 // ── Active org count — used on landing page trust strip ──
@@ -826,6 +910,7 @@ export async function getLiveOverviewSnapshot(
     answeredRate,
     uniqueVisitors,
     avgResponseTime,
+    totalHandoffCount,
     queue,
     bot,
     organization,
@@ -835,6 +920,7 @@ export async function getLiveOverviewSnapshot(
     getAnsweredRate(orgId),
     getUniqueVisitors(orgId),
     getAvgResponseTime(orgId),
+    getTotalHandoffCount(orgId),
     getActiveConversationSummary(orgId),
     getBotStatus(orgId),
     getOrgData(orgId),
@@ -846,6 +932,7 @@ export async function getLiveOverviewSnapshot(
     answeredRate,
     uniqueVisitors,
     avgResponseTime,
+    totalHandoffCount,
     ...queue,
     bot,
     organization,

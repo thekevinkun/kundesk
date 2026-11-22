@@ -10,11 +10,16 @@ import {
   findConversationPage,
   getHumanUnreadConversationIds,
   getLiveOverviewSnapshot,
+  getActiveAdminHandoffPreview,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
-import type { LiveOverviewSnapshot } from "@/types/dashboard";
+import type {
+  AdminHandoffPreview,
+  DashboardChartData,
+  LiveOverviewSnapshot,
+} from "@/types/dashboard";
 
 // Snapshot refetch for the dashboard overview. The active org and its timezone
 // come exclusively from the server session; the browser cannot select a tenant.
@@ -22,6 +27,13 @@ export async function getLiveOverviewSnapshotAction(): Promise<LiveOverviewSnaps
   const { orgId } = await requireOrg();
   const timezone = await getOwnerTimezone();
   return getLiveOverviewSnapshot(orgId, timezone);
+}
+
+export async function getActiveAdminHandoffPreviewAction(): Promise<
+  AdminHandoffPreview | null
+> {
+  const { orgId } = await requireOrg();
+  return getActiveAdminHandoffPreview(orgId);
 }
 
 export async function getRecentActiveConversationsAction(): Promise<
@@ -49,13 +61,7 @@ export async function getConversationPageAction(
 
 // ── Chart data server action — called by TanStack Query when usage:updated fires ──
 // Returns all three time-series datasets so charts refresh after each new message
-export async function getDashboardChartData(): Promise<{
-  dailyTrend: { date: string; count: number }[];
-  monthlyCurrent: number[];
-  monthlyPrevious: number[];
-  weeklyMessages: number[];
-  currentYear: number;
-}> {
+export async function getDashboardChartData(): Promise<DashboardChartData> {
   const { orgId } = await requireOrg();
   const timezone = await getOwnerTimezone();
   return getDashboardCharts(orgId, timezone);

@@ -5,6 +5,7 @@ export interface LiveOverviewSnapshot {
     answeredRate: number;
     uniqueVisitors: number;
     avgResponseTime: string | null;
+    totalHandoffCount: number;
   };
   queue: {
     activeConversationCount: number;
@@ -21,6 +22,7 @@ export interface LiveOverviewSnapshot {
     slug: string;
     messagesUsed: number;
     messagesLimit: number;
+    plan: "free" | "starter" | "pro";
   };
 }
 
@@ -30,8 +32,30 @@ export interface LiveOverviewSnapshotInput {
   answeredRate: number;
   uniqueVisitors: number;
   avgResponseTime: string | null;
+  totalHandoffCount: number;
   activeConversationCount: number;
   pendingHandoffCount: number;
   bot: LiveOverviewSnapshot["bot"];
   organization: LiveOverviewSnapshot["organization"] | null;
+}
+
+export interface DashboardChartData {
+  dailyTrend: { date: string; count: number }[];
+  monthlyCurrent: number[];
+  monthlyPrevious: number[];
+  weeklyMessages: number[];
+  currentYear: number;
+  currentMonth: number;
+}
+
+export interface AdminHandoffPreview {
+  id: number;
+  sessionId: string;
+  deliveryChannel: string;
+  messages: {
+    id: number;
+    role: "user" | "human_agent";
+    content: string;
+    createdAt: string;
+  }[];
 }

@@ -53,6 +53,12 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     };
   }, []);
 
+  const invalidateAdminHandoffPreview = useCallback(() => {
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["dashboard", stableRef.current.orgId, "admin-handoff"],
+    });
+  }, []);
+
   const handleConversationNew = useCallback(() => {
     soundRef.current.playNewMessage();
     void stableRef.current.queryClient.invalidateQueries({
@@ -61,7 +67,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-  }, []);
+    invalidateAdminHandoffPreview();
+  }, [invalidateAdminHandoffPreview]);
 
   const handleTakeover = useCallback((payload: TakeoverPayload) => {
     if (payload.handoffStatus === "pending_handoff") {
@@ -76,7 +83,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-  }, []);
+    invalidateAdminHandoffPreview();
+  }, [invalidateAdminHandoffPreview]);
 
   const handleMessage = useCallback((payload: MessagePayload) => {
     const isHumanMode =
@@ -96,7 +104,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-  }, []);
+    invalidateAdminHandoffPreview();
+  }, [invalidateAdminHandoffPreview]);
 
   const handleReturn = useCallback(() => {
     void stableRef.current.queryClient.invalidateQueries({
@@ -113,7 +122,8 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-overview"],
     });
-  }, []);
+    invalidateAdminHandoffPreview();
+  }, [invalidateAdminHandoffPreview]);
 
   const handleDocumentUpdated = useCallback(() => {
     void stableRef.current.queryClient.invalidateQueries({

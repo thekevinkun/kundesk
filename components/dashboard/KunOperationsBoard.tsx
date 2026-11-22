@@ -19,7 +19,7 @@ const KunOperationsBoard = ({ bot, queue }: KunOperationsBoardProps) => {
   const pending = queue.pendingHandoffCount > 0;
   return (
     <section
-      className="card-base overflow-hidden"
+      className="card-base overflow-hidden xl:flex xl:h-[480px] xl:flex-col"
       aria-labelledby="operations-board-title"
     >
       <div className="flex items-start justify-between gap-3 border-b border-(--color-border-sm) px-5 py-4">
@@ -41,7 +41,7 @@ const KunOperationsBoard = ({ bot, queue }: KunOperationsBoardProps) => {
         </span>
       </div>
 
-      <div className="relative min-h-[330px] overflow-hidden bg-[linear-gradient(135deg,var(--color-brand-light),var(--color-bg-page)_58%,var(--color-brand-light))] p-4 sm:min-h-[370px]">
+      <div className="relative min-h-[330px] overflow-hidden bg-[linear-gradient(135deg,var(--color-brand-light),var(--color-bg-page)_58%,var(--color-brand-light))] p-4 sm:min-h-[370px] xl:min-h-0 xl:flex-1">
         <div className="pointer-events-none absolute inset-0 opacity-55 [background-image:linear-gradient(30deg,transparent_48%,var(--color-border)_49%,var(--color-border)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,var(--color-border)_49%,var(--color-border)_51%,transparent_52%)] [background-size:44px_26px]" />
         <div className="pointer-events-none absolute left-1/2 top-[48%] h-[52%] w-[72%] -translate-x-1/2 -translate-y-1/2 rotate-45 border border-dashed border-(--color-brand-mid)" />
         <Link
