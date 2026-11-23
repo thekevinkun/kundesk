@@ -6,6 +6,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { requireOrgAdmin } from "@/lib/auth";
 import { documents, chunks } from "@/lib/db/schema";
+import { deleteFromStorage } from "@/lib/aws/s3";
+import { isMissingObjectError } from "@/helpers/storage-errors";
 import type { ApiResponse } from "@/types/api";
 
 export async function DELETE(
@@ -47,7 +49,24 @@ export async function DELETE(
     );
   }
 
-  // Perform two dependent deletes separately. If the second operation fails, data is left partially deleted.
+  // Delete the stored file FIRST. If storage fails the owner sees an error and retries,
+  // so nothing is half-deleted. A file that is already gone counts as success.
+  try {
+    await deleteFromStorage(document.s3Key);
+  } catch (err) {
+    if (!isMissingObjectError(err)) {
+      console.error(
+        "[documents/delete] Failed to delete file:",
+        err instanceof Error ? err.message : "unknown",
+      );
+      return NextResponse.json<ApiResponse>(
+        { ok: false, error: "Failed to delete file", status: 500 },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Perform two dependent deletes in one transaction so a failure never leaves partial data.
   await db.transaction(async (tx) => {
     // Delete chunks first — FK constraint requires this order
     await tx

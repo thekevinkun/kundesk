@@ -188,6 +188,26 @@ export async function getS3ObjectSize(
   return response.ContentLength;
 }
 
+// Deletes a stored file. A file that is already gone counts as success.
+export async function deleteFromStorage(s3Key: string): Promise<void> {
+  // Mock mode — remove the local file
+  if (env.storageMode === "mock") {
+    const { unlink } = await import("fs/promises");
+    try {
+      await unlink(resolveMockPath(s3Key));
+    } catch (err) {
+      // Already gone is fine; anything else is a real error
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    }
+    return;
+  }
+
+  // Real mode — S3-style delete succeeds even when the key does not exist
+  const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+  const { client, bucket } = await createStorageClient();
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: s3Key }));
+}
+
 // Saves a file to mock local storage — called by the mock upload API route
 export async function saveMockUpload(
   s3Key: string,
