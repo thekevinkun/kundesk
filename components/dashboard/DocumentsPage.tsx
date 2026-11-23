@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDocumentStore } from "@/stores/document-store";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { toast } from "sonner";
+import { useOrganization } from "@clerk/nextjs";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import type { Channel } from "pusher-js";
 import type { DocumentSelect } from "@/types/db";
@@ -27,6 +28,9 @@ interface DocumentsPageProps {
 
 const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
   const queryClient = useQueryClient();
+  // Reactive org id for the query keys (never window.Clerk for render-triggering reads)
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
   const { uploadingFiles } = useDocumentStore();
   const { uploadFile } = useDocumentUpload();
   // The document currently open in the preview dialog (null = closed)
@@ -52,8 +56,10 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
   });
 
   // ── Fetch documents ──
-  const { data, isLoading } = useQuery({
-    queryKey: ["documents"],
+  // isPending (not isLoading) so the skeleton also shows while the org id is unknown
+  const { data, isPending: isLoading } = useQuery({
+    queryKey: ["documents", orgId],
+    enabled: Boolean(orgId),
     queryFn: async () => {
       const res = await fetch("/api/documents");
       const json = (await res.json()) as ApiResponse<DocumentSelect[]>;
@@ -66,7 +72,8 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
   // Separate query/endpoint from the list above — keeps /api/documents
   // untouched for existing consumers, this one is purely for the limit banner
   const { data: usage } = useQuery({
-    queryKey: ["documents", "usage"],
+    queryKey: ["documents", orgId, "usage"],
+    enabled: Boolean(orgId),
     queryFn: async () => {
       const res = await fetch("/api/documents/usage");
       const json = (await res.json()) as ApiResponse<{
