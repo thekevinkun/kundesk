@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDocumentStore } from "@/stores/document-store";
@@ -18,6 +18,7 @@ import {
   DocumentRowSkeleton,
   UploadingRow,
   UploadZone,
+  DocumentPreviewDialog,
 } from "@/components/dashboard/documents";
 
 interface DocumentsPageProps {
@@ -28,6 +29,8 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
   const queryClient = useQueryClient();
   const { uploadingFiles } = useDocumentStore();
   const { uploadFile } = useDocumentUpload();
+  // The document currently open in the preview dialog (null = closed)
+  const [previewDoc, setPreviewDoc] = useState<DocumentSelect | null>(null);
 
   // ── Delete mutation ──
   const deleteMutation = useMutation({
@@ -209,6 +212,7 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
                   key={doc.id}
                   doc={doc}
                   onDelete={(id) => deleteMutation.mutate(id)}
+                  onPreview={setPreviewDoc}
                   isDeleting={
                     deleteMutation.isPending &&
                     deleteMutation.variables === doc.id
@@ -240,13 +244,20 @@ const DocumentsPage = ({ isAdmin }: DocumentsPageProps) => {
             </div>
           )}
 
-          {/* Upload zone */}
           {/* Upload zone — members can't upload at all (Option B: view-only) */}
           {isAdmin && (
             <UploadZone onFiles={handleFiles} disabled={isAtDocumentLimit} />
           )}
         </div>
       </div>
+
+      {/* Preview dialog — mounted only while a document is selected */}
+      {previewDoc && (
+        <DocumentPreviewDialog
+          doc={previewDoc}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
     </motion.div>
   );
 };

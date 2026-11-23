@@ -70,6 +70,7 @@ export const DocumentRowSkeleton = () => {
 interface DocumentRowProps {
   doc: DocumentSelect;
   onDelete: (id: number) => void;
+  onPreview: (doc: DocumentSelect) => void;
   isDeleting: boolean;
   canDelete: boolean;
 }
@@ -77,6 +78,7 @@ interface DocumentRowProps {
 const DocumentRow = ({
   doc,
   onDelete,
+  onPreview,
   isDeleting,
   canDelete,
 }: DocumentRowProps) => {
@@ -93,9 +95,21 @@ const DocumentRow = ({
       <FileIcon filename={doc.name} />
 
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-(--color-text-900) mb-0.5">
-          {doc.name}
-        </div>
+        {/* A document still processing has nothing to preview yet */}
+        {doc.status === "processing" ? (
+          <div className="text-[13px] font-semibold text-(--color-text-900) mb-0.5">
+            {doc.name}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onPreview(doc)}
+            aria-label={`Lihat isi dokumen ${doc.name}`}
+            className="block max-w-full text-left text-[13px] font-semibold text-(--color-text-900) mb-0.5 hover:text-(--color-brand) hover:underline cursor-pointer"
+          >
+            {doc.name}
+          </button>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11.5px] text-(--color-text-400)">
             {doc.status === "ready"

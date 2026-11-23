@@ -130,6 +130,33 @@ export async function downloadFromS3(
   return Buffer.concat(chunks);
 }
 
+// Generates a short-lived signed link so the browser can open or download a stored file.
+// The caller MUST have already checked that the document belongs to the org.
+// Returns null in mock mode — local files have no public link.
+export async function generatePresignedDownloadUrl(
+  s3Key: string,
+  filename: string,
+  disposition: "inline" | "attachment",
+): Promise<string | null> {
+  if (env.storageMode === "mock") return null;
+
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+  const { client, bucket } = await createStorageClient();
+
+  // ASCII-only name in the header — quotes or non-ASCII characters would break it
+  const safeName = sanitizeFilename(filename);
+
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: s3Key,
+    ResponseContentDisposition: `${disposition}; filename="${safeName}"`,
+  });
+
+  // Link lives 60 seconds — long enough to open, too short to share around
+  return getSignedUrl(client, command, { expiresIn: 60 });
+}
+
 // Returns the REAL size in bytes of a stored object WITHOUT downloading it.
 // The size the browser sends at upload time is only a claim, and the presigned URL does not
 // enforce it — so the process route asks the storage itself before it downloads anything.
