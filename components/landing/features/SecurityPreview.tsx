@@ -8,7 +8,7 @@ const SecurityPreview = () => {
         "Rate limiting per IP & per org",
         "Midtrans webhook signature verified",
         "Prompt injection detection aktif",
-        "AWS S3 presigned URLs (5 menit)",
+        "Cloudflare R2 presigned URLs (5 menit)",
       ].map((item) => (
         <div
           key={item}

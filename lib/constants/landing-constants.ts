@@ -105,7 +105,7 @@ export const FEATURES = [
     id: "security",
     icon: "🔒",
     name: "Keamanan Berlapis",
-    desc: "Rate limiting, webhook verification, anti prompt-injection, dan AWS S3 presigned URLs — dirancang untuk melindungi data bisnis kamu.",
+    desc: "Rate limiting, webhook verification, anti prompt-injection, dan presigned URLs — dirancang untuk melindungi data bisnis kamu.",
     preview: "security" as const,
     layout: "card" as const,
     category: "Keamanan",
@@ -189,7 +189,7 @@ export const FAQ_ITEMS: FaqItems[] = [
     id: 5,
     question: "Apakah data bisnis saya aman?",
     answer:
-      "Data setiap bisnis dipisahkan dan hanya bisa diakses oleh bisnis itu sendiri. Dokumen disimpan di AWS S3 dan hanya bisa diakses lewat link berumur pendek. Kami memakai keamanan berlapis, termasuk rate limiting dan verifikasi webhook. Agar KUN bisa menjawab, isi informasi bisnis kamu diproses oleh OpenAI. Foto yang kamu impor hanya dibaca lalu dibuang, tidak kami simpan.",
+      "Data setiap bisnis dipisahkan dan hanya bisa diakses oleh bisnis itu sendiri. Dokumen disimpan di Cloudflare R2 dan hanya bisa diakses lewat link berumur pendek. Kami memakai keamanan berlapis, termasuk rate limiting dan verifikasi webhook. Agar KUN bisa menjawab, isi informasi bisnis kamu diproses oleh OpenAI. Foto yang kamu impor hanya dibaca lalu dibuang, tidak kami simpan.",
     hasPrivacyLink: true,
   },
   {

@@ -101,7 +101,7 @@ This validates the product-market fit signal: Indonesian SMEs recognize the prob
 | Auth & Multi-tenancy | Clerk Organizations |
 | AI | OpenAI `gpt-4o-mini` (chat, plus text and vision extraction for catalog import) + `text-embedding-3-small` (RAG embeddings) |
 | Vector Search | pgvector cosine similarity, HNSW index, scoped per `org_id` |
-| File Storage | AWS S3 (presigned URLs, 5-min expiry) + CloudFront CDN |
+| File Storage | Cloudflare R2 (S3-compatible, presigned URLs, 5-min expiry) |
 | Payments | Midtrans — GoPay, OVO, DANA, BCA VA, QRIS, Credit Card |
 | Real-time | Pusher (private dashboard channels) + SSE (customer chat stream) |
 | Caching & Rate Limiting | Upstash Redis — per-purpose rate limiters (chat, upload, auth, widget, knowledge writes, text and photo import) + cache-aside pattern; the chat path fails open if Redis is down |
@@ -133,8 +133,8 @@ Customer asks KUN a question
 ### Document Processing Pipeline
 ```
 Business owner uploads file
-  → AWS S3 (presigned URL, client uploads directly)
-  → API notified → checks the real object size (HeadObject), downloads from S3
+  → Cloudflare R2 (presigned URL, client uploads directly)
+  → API notified → checks the real object size (HeadObject), downloads from R2
   → verifies the file signature (PDF / DOCX / text) against the real bytes
   → pdf-parse / mammoth / plain text extraction
   → chunked (~500 tokens, 50 token overlap)
@@ -169,7 +169,7 @@ Owner pastes text or picks one photo
 The pasted text and the model's answer are treated as untrusted data: titles are flattened to a single line, and text that looks like an instruction to the AI is flagged, never silently saved.
 
 ### Mock Mode System
-Every external paid service has a `mock` mode — OpenAI, S3, Midtrans, Pusher, Resend. The entire product can be built and tested without spending a cent. Mode switching is a single env variable change per service; the caller never checks the mode directly. Even catalog photo import has a mock mode, so its whole review flow can be built and tested for free.
+Every external paid service has a `mock` mode — OpenAI, R2, Midtrans, Pusher, Resend. The entire product can be built and tested without spending a cent. Mode switching is a single env variable change per service; the caller never checks the mode directly. Even catalog photo import has a mock mode, so its whole review flow can be built and tested for free.
 
 ### Design Decisions (Why We Built It This Way)
 
@@ -183,7 +183,7 @@ Every external paid service has a `mock` mode — OpenAI, S3, Midtrans, Pusher, 
 
 **Clerk Organizations for multi-tenancy:** We could use custom JWT + a `tenant_id` header. Clerk gives us instant org switching, invite workflows, RBAC foundation, and free webhooks for org/user sync. Trade-off: tied to Clerk. We chose the convenience.
 
-**Mock mode for every external service:** Building without spending money on OpenAI, Midtrans, S3 means faster iteration. One env variable changes the entire behavior — the caller never checks the mode. This meant we could build the full payment flow without a live Midtrans account.
+**Mock mode for every external service:** Building without spending money on OpenAI, Midtrans, R2 means faster iteration. One env variable changes the entire behavior — the caller never checks the mode. This meant we could build the full payment flow without a live Midtrans account.
 
 ### Security Model (11 layers)
 `proxy.ts` route guards → `requireOrg()` tenant isolation → Zod input validation (AI-extracted rows are re-validated on the server before saving) → prompt injection detection (chat: 15+ regex patterns; imports: flag and unselect) → Upstash rate limiters → Clerk (Svix) + Midtrans (SHA512) webhook verification → file validation on the real bytes (size, magic bytes) → atomic plan limit enforcement → security headers → slug enumeration protection → Sentry PII scrubbing.
@@ -294,7 +294,7 @@ kundesk/
 │   ├── ai/                   ← Embedding, RAG, text and photo extraction
 │   ├── knowledge/            ← Entry-to-chunk sync layer
 │   ├── billing/              ← Shared payment settlement
-│   ├── aws/                  ← S3 helpers
+│   ├── aws/                  ← Storage helpers (R2)
 │   ├── redis/                ← Upstash client + rate limiters + cache
 │   ├── midtrans/             ← Payment client + subscription helpers
 │   ├── email/                ← Resend client + templates
@@ -404,7 +404,7 @@ UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 ```
 
-> **Why mock mode?** Every external service (OpenAI, S3, Midtrans, Pusher, Resend) has a mock implementation. This means you can run the entire product — upload documents, train RAG, send messages, process payments, receive live updates — without spending money or hitting rate limits. Switch any service to `real` mode when ready. Mock mode is not a hack; it's a deliberate architectural choice that enables fast iteration.
+> **Why mock mode?** Every external service (OpenAI, R2, Midtrans, Pusher, Resend) has a mock implementation. This means you can run the entire product — upload documents, train RAG, send messages, process payments, receive live updates — without spending money or hitting rate limits. Switch any service to `real` mode when ready. Mock mode is not a hack; it's a deliberate architectural choice that enables fast iteration.
 
 **3. Run database migrations**
 ```bash

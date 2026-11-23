@@ -120,9 +120,9 @@ export const THIRD_PARTY_SERVICES = [
     country: "🇮🇩 Indonesia",
   },
   {
-    name: "AWS S3",
+    name: "Cloudflare R2",
     role: "Penyimpanan dokumen",
-    country: "🇸🇬 Singapura (ap-southeast-1)",
+    country: "🌏 Asia-Pasifik",
   },
   {
     name: "Vercel",
@@ -157,7 +157,7 @@ export const THIRD_PARTY_SERVICES = [
 ];
 
 export const SECURITY_ITEMS = [
-  "Enkripsi data saat transit (HTTPS/TLS) dan saat istirahat (disk encryption oleh Neon)",
+  "Enkripsi data saat transit (HTTPS/TLS) dan saat istirahat (disk encryption oleh Neon dan Cloudflare R2)",
   "Isolasi data antar tenant — setiap bisnis hanya bisa mengakses datanya sendiri",
   "Rate limiting untuk mencegah penyalahgunaan",
   "Pemeriksaan ukuran dan isi file yang sebenarnya sebelum dokumen atau foto diproses",
