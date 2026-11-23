@@ -18,6 +18,32 @@ function resolveMockPath(s3Key: string): string {
   return resolved;
 }
 
+// Builds the one storage client every function uses (Cloudflare R2 is S3-compatible)
+// Checksums only "when required" — the SDK's default adds a checksum to presigned PUT URLs
+// (x-amz-checksum-crc32) that R2 can reject
+async function createStorageClient() {
+  if (
+    !env.awsS3Bucket ||
+    !env.awsAccessKeyId ||
+    !env.awsSecretAccessKey ||
+    !env.s3Endpoint
+  ) {
+    throw new Error("AWS credentials required when KUNDESK_STORAGE_MODE=s3");
+  }
+  const { S3Client } = await import("@aws-sdk/client-s3");
+  const client = new S3Client({
+    region: env.awsRegion,
+    endpoint: env.s3Endpoint,
+    credentials: {
+      accessKeyId: env.awsAccessKeyId,
+      secretAccessKey: env.awsSecretAccessKey,
+    },
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
+  return { client, bucket: env.awsS3Bucket };
+}
+
 // Sanitizes a filename — removes special chars that cause S3 path issues
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -49,23 +75,12 @@ export async function generatePresignedUploadUrl(
 
   // Real mode — generate actual S3 presigned PUT URL (5 min expiry)
   // AWS SDK imported dynamically — only loaded when mode=s3
-  const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+  const { PutObjectCommand } = await import("@aws-sdk/client-s3");
   const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
-
-  if (!env.awsS3Bucket || !env.awsAccessKeyId || !env.awsSecretAccessKey) {
-    throw new Error("AWS credentials required when KUNDESK_STORAGE_MODE=s3");
-  }
-
-  const client = new S3Client({
-    region: env.awsRegion,
-    credentials: {
-      accessKeyId: env.awsAccessKeyId,
-      secretAccessKey: env.awsSecretAccessKey,
-    },
-  });
+  const { client, bucket } = await createStorageClient();
 
   const command = new PutObjectCommand({
-    Bucket: env.awsS3Bucket,
+    Bucket: bucket,
     Key: s3Key,
     ContentType: contentType,
   });
@@ -88,23 +103,12 @@ export async function downloadFromS3(
     return readFile(localPath);
   }
 
-  // Real mode — fetch from S3
-  if (!env.awsS3Bucket || !env.awsAccessKeyId || !env.awsSecretAccessKey) {
-    throw new Error("AWS credentials required when KUNDESK_STORAGE_MODE=s3");
-  }
-
-  const { S3Client, GetObjectCommand } = await import("@aws-sdk/client-s3");
-
-  const client = new S3Client({
-    region: env.awsRegion,
-    credentials: {
-      accessKeyId: env.awsAccessKeyId,
-      secretAccessKey: env.awsSecretAccessKey,
-    },
-  });
+  // Real mode — fetch from storage
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+  const { client, bucket } = await createStorageClient();
 
   const command = new GetObjectCommand({
-    Bucket: env.awsS3Bucket,
+    Bucket: bucket,
     Key: s3Key,
   });
 
@@ -141,22 +145,11 @@ export async function getS3ObjectSize(
   }
 
   // Real mode — HeadObject returns the metadata only, no body
-  if (!env.awsS3Bucket || !env.awsAccessKeyId || !env.awsSecretAccessKey) {
-    throw new Error("AWS credentials required when KUNDESK_STORAGE_MODE=s3");
-  }
-
-  const { S3Client, HeadObjectCommand } = await import("@aws-sdk/client-s3");
-
-  const client = new S3Client({
-    region: env.awsRegion,
-    credentials: {
-      accessKeyId: env.awsAccessKeyId,
-      secretAccessKey: env.awsSecretAccessKey,
-    },
-  });
+  const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+  const { client, bucket } = await createStorageClient();
 
   const response = await client.send(
-    new HeadObjectCommand({ Bucket: env.awsS3Bucket, Key: s3Key }),
+    new HeadObjectCommand({ Bucket: bucket, Key: s3Key }),
     // Pass the abort signal only when provided, same as downloadFromS3
     signal ? { abortSignal: signal } : undefined,
   );

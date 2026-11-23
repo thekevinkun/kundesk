@@ -44,7 +44,9 @@ export const env = {
   awsS3Bucket: process.env.AWS_S3_BUCKET,
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  awsRegion: process.env.AWS_REGION ?? "ap-southeast-1",
+  awsRegion: process.env.AWS_REGION ?? "auto",
+  // Custom S3 endpoint — required for Cloudflare R2
+  s3Endpoint: process.env.S3_ENDPOINT,
   cloudfrontUrl: process.env.CLOUDFRONT_URL,
 
   // ── Midtrans — only required when mode=midtrans ──

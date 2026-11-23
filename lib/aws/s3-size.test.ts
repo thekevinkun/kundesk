@@ -8,7 +8,8 @@ const mockEnv = vi.hoisted(() => ({
   awsS3Bucket: "kundesk-bucket" as string | undefined,
   awsAccessKeyId: "key-id" as string | undefined,
   awsSecretAccessKey: "secret" as string | undefined,
-  awsRegion: "ap-southeast-1",
+  awsRegion: "auto",
+  s3Endpoint: "https://example.r2.cloudflarestorage.com" as string | undefined,
 }));
 const send = vi.hoisted(() => vi.fn());
 const headCommand = vi.hoisted(() => vi.fn());
@@ -48,6 +49,7 @@ describe("getS3ObjectSize", () => {
     mockEnv.awsS3Bucket = "kundesk-bucket";
     mockEnv.awsAccessKeyId = "key-id";
     mockEnv.awsSecretAccessKey = "secret";
+    mockEnv.s3Endpoint = "https://example.r2.cloudflarestorage.com";
   });
 
   describe("real mode (S3)", () => {
@@ -99,6 +101,15 @@ describe("getS3ObjectSize", () => {
 
     it("throws when AWS credentials are missing", async () => {
       mockEnv.awsSecretAccessKey = undefined;
+
+      await expect(getS3ObjectSize("k")).rejects.toThrow(
+        "AWS credentials required",
+      );
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("throws when the storage endpoint is missing", async () => {
+      mockEnv.s3Endpoint = undefined;
 
       await expect(getS3ObjectSize("k")).rejects.toThrow(
         "AWS credentials required",
