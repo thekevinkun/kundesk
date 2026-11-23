@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
 import { documents } from "@/lib/db/schema";
 import { generatePresignedDownloadUrl, getS3ObjectSize } from "@/lib/aws/s3";
+import { isMissingObjectError } from "@/helpers/storage-errors";
 import type { ApiResponse } from "@/types/api";
 
 // available=false means the file is gone (old AWS uploads) — not an error
@@ -51,11 +52,23 @@ export async function GET(
   // Check the file really exists before making a link — old AWS files are gone
   try {
     await getS3ObjectSize(document.s3Key);
-  } catch {
-    return NextResponse.json<ApiResponse<FileLinkData>>({
-      ok: true,
-      data: { available: false },
-    });
+  } catch (err) {
+    // Only a confirmed missing object means "not available" (old AWS uploads).
+    // Timeouts, credential errors and storage outages are real errors.
+    if (isMissingObjectError(err)) {
+      return NextResponse.json<ApiResponse<FileLinkData>>({
+        ok: true,
+        data: { available: false },
+      });
+    }
+    console.error(
+      "[documents/file] Failed to check file:",
+      err instanceof Error ? err.message : "unknown",
+    );
+    return NextResponse.json<ApiResponse>(
+      { ok: false, error: "Gagal memeriksa file", status: 500 },
+      { status: 500 },
+    );
   }
 
   try {

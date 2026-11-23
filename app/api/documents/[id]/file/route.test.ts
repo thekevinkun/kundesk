@@ -83,7 +83,9 @@ describe("GET /api/documents/[id]/file", () => {
   });
 
   it("says unavailable when the file no longer exists, without making a link", async () => {
-    m.getS3ObjectSize.mockRejectedValue(new Error("NotFound"));
+    m.getS3ObjectSize.mockRejectedValue(
+      Object.assign(new Error("NotFound"), { name: "NotFound" }),
+    );
     const res = await call("5");
     expect(await res.json()).toEqual({ ok: true, data: { available: false } });
     expect(m.generatePresignedDownloadUrl).not.toHaveBeenCalled();
@@ -100,6 +102,15 @@ describe("GET /api/documents/[id]/file", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await call("5");
     expect(res.status).toBe(500);
+    spy.mockRestore();
+  });
+
+  it("answers 500, not unavailable, when the storage check fails for another reason", async () => {
+    m.getS3ObjectSize.mockRejectedValue(new Error("timeout"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await call("5");
+    expect(res.status).toBe(500);
+    expect(m.generatePresignedDownloadUrl).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 });

@@ -4,7 +4,8 @@
 // "kun"      = the chunks KUN actually learned (works for every format, reads from Neon)
 // "original" = the stored file (PDF inline, other formats download only)
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useOrganization } from "@clerk/nextjs";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -45,10 +46,17 @@ const DocumentPreviewDialog = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadFailed, setDownloadFailed] = useState(false);
   const previewKind = getPreviewKind(doc.name);
+  // Cache keys carry the org so switching org never shows another org's entries
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
+  // The element that opened the dialog — the parent unmounts us on close,
+  // so focus must be handed back from here
+  const openerRef = useRef<HTMLElement | null>(null);
 
   // ── KUN text: 20 chunks per page, "Muat lebih banyak" loads the next page ──
   const chunksQuery = useInfiniteQuery({
-    queryKey: ["documents", doc.id, "chunks"],
+    queryKey: ["documents", orgId, doc.id, "chunks"],
+    enabled: Boolean(orgId),
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
       const res = await fetch(
@@ -64,8 +72,8 @@ const DocumentPreviewDialog = ({
   // ── Original file link: only asked for when that view is open ──
   // staleTime/gcTime 0 — the link lives 60 seconds, so it is never reused
   const fileQuery = useQuery({
-    queryKey: ["documents", doc.id, "file"],
-    enabled: view === "original",
+    queryKey: ["documents", orgId, doc.id, "file"],
+    enabled: Boolean(orgId) && view === "original",
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {
@@ -76,16 +84,43 @@ const DocumentPreviewDialog = ({
     },
   });
 
-  // Asks for a fresh "attachment" link and starts the download
+  // Asks the server for a fresh 60-second link — the one on screen may have expired
+  const fetchFreshLink = async (
+    mode: "inline" | "download",
+  ): Promise<string> => {
+    const res = await fetch(`/api/documents/${doc.id}/file?mode=${mode}`);
+    const json = (await res.json()) as ApiResponse<FileLinkData>;
+    if (!json.ok || !json.data.available) throw new Error("unavailable");
+    return json.data.url;
+  };
+
+  // Starts the download with a fresh "attachment" link
   const handleDownload = async () => {
     setIsDownloading(true);
     setDownloadFailed(false);
     try {
-      const res = await fetch(`/api/documents/${doc.id}/file?mode=download`);
-      const json = (await res.json()) as ApiResponse<FileLinkData>;
-      if (!json.ok || !json.data.available) throw new Error("unavailable");
-      window.location.assign(json.data.url);
+      window.location.assign(await fetchFreshLink("download"));
     } catch {
+      setDownloadFailed(true);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Opens the PDF in a new tab with a fresh link.
+  // The tab is opened first, inside the click, so popup blockers allow it;
+  // it is pointed at the link once the server answers.
+  const handleOpenNewTab = async () => {
+    setIsDownloading(true);
+    setDownloadFailed(false);
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
+    try {
+      const url = await fetchFreshLink("inline");
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch {
+      tab?.close();
       setDownloadFailed(true);
     } finally {
       setIsDownloading(false);
@@ -98,7 +133,20 @@ const DocumentPreviewDialog = ({
   return (
     // Mounted only while open, so onOpenChange only ever means "close"
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] flex flex-col gap-3">
+      <DialogContent
+        className="sm:max-w-3xl w-[95vw] max-h-[90vh] flex flex-col gap-3"
+        onOpenAutoFocus={() => {
+          // Remember what had focus (the document name) before the dialog took it
+          const active = document.activeElement;
+          openerRef.current = active instanceof HTMLElement ? active : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          // No DialogTrigger exists, so hand focus back by hand
+          event.preventDefault();
+          const opener = openerRef.current;
+          if (opener?.isConnected) opener.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="break-words pr-6">{doc.name}</DialogTitle>
           <DialogDescription>
@@ -130,7 +178,7 @@ const DocumentPreviewDialog = ({
           {/* ── View 1: what KUN learned ── */}
           {view === "kun" && (
             <div aria-live="polite">
-              {chunksQuery.isLoading && (
+              {chunksQuery.isPending && (
                 <p className="text-[13px] text-(--color-text-400)">Memuat...</p>
               )}
               {chunksQuery.isError && (
@@ -138,7 +186,7 @@ const DocumentPreviewDialog = ({
                   Gagal memuat teks dokumen. Tutup lalu buka lagi.
                 </p>
               )}
-              {!chunksQuery.isLoading &&
+              {!chunksQuery.isPending &&
                 !chunksQuery.isError &&
                 allChunks.length === 0 && (
                   <p className="text-[13px] text-(--color-text-500)">
@@ -178,7 +226,7 @@ const DocumentPreviewDialog = ({
           {/* ── View 2: the original file ── */}
           {view === "original" && (
             <div aria-live="polite">
-              {fileQuery.isLoading && (
+              {fileQuery.isPending && (
                 <p className="text-[13px] text-(--color-text-400)">Memuat...</p>
               )}
               {fileQuery.isError && (
@@ -200,14 +248,14 @@ const DocumentPreviewDialog = ({
                     className="w-full h-[60vh] rounded-(--radius-sm) border border-(--color-border)"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <a
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => void handleOpenNewTab()}
+                      disabled={isDownloading}
                       className={viewButtonClass(false)}
                     >
                       Buka di tab baru
-                    </a>
+                    </button>
                     <button
                       type="button"
                       onClick={() => void handleDownload()}
@@ -238,7 +286,7 @@ const DocumentPreviewDialog = ({
               )}
               {downloadFailed && (
                 <p className="text-[12.5px] text-(--color-danger) mt-2">
-                  Gagal mengunduh file. Coba lagi.
+                  Gagal membuka file. Coba lagi.
                 </p>
               )}
             </div>
