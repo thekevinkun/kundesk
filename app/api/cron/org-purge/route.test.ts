@@ -15,12 +15,14 @@ const mockDb = vi.hoisted(() => ({
 }));
 const claimSet = vi.hoisted(() => vi.fn());
 const deleteOrganization = vi.hoisted(() => vi.fn());
+const deleteOrgFiles = vi.hoisted(() => vi.fn());
 const txDeleteWhere = vi.hoisted(() => vi.fn());
 const captureException = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/env", () => ({ env: mockEnv }));
 vi.mock("@/lib/db", () => ({ db: mockDb }));
 vi.mock("@sentry/nextjs", () => ({ captureException }));
+vi.mock("@/lib/aws/s3", () => ({ deleteOrgFiles }));
 // clerkClient is async in the route (`await clerkClient()`) — a plain async fn is enough
 vi.mock("@clerk/nextjs/server", () => ({
   clerkClient: async () => ({ organizations: { deleteOrganization } }),
@@ -95,7 +97,8 @@ describe("GET /api/cron/org-purge", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    // Happy defaults: Clerk delete succeeds, DB transaction runs its callback
+    // Happy defaults: file delete and Clerk delete succeed, DB transaction runs its callback
+    deleteOrgFiles.mockResolvedValue(undefined);
     deleteOrganization.mockResolvedValue(undefined);
     txDeleteWhere.mockResolvedValue(undefined);
     mockDb.transaction.mockImplementation(
@@ -143,17 +146,19 @@ describe("GET /api/cron/org-purge", () => {
       expect(body.retriedStale).toBe(0);
       // The claim stamps purgingAt with the current time
       expect(claimSet).toHaveBeenCalledWith({ purgingAt: NOW });
+      expect(deleteOrgFiles).toHaveBeenCalledWith("org_a");
       expect(deleteOrganization).toHaveBeenCalledWith("org_a");
       expect(mockDb.transaction).toHaveBeenCalledTimes(1);
       expect(txDeleteWhere).toHaveBeenCalledTimes(1);
     });
 
-    it("runs in the safe order: claim → Clerk delete → DB delete", async () => {
+    it("runs in the safe order: claim → delete files → Clerk delete → DB delete", async () => {
       mockCandidates(["org_a"]);
       queueClaims([[{ id: "org_a" }]]);
       await run();
       const order = [
         mockDb.update.mock.invocationCallOrder[0],
+        deleteOrgFiles.mock.invocationCallOrder[0],
         deleteOrganization.mock.invocationCallOrder[0],
         mockDb.transaction.mock.invocationCallOrder[0],
       ] as number[];
@@ -248,6 +253,48 @@ describe("GET /api/cron/org-purge", () => {
       const body = await run();
       expect(body.processed).toBe(0);
       expect(mockDb.transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("storage errors", () => {
+    it("a storage failure stops that org: no Clerk delete, no DB delete, claim kept, Sentry with step 'storage'", async () => {
+      mockCandidates(["org_a"]);
+      queueClaims([[{ id: "org_a" }]]);
+      deleteOrgFiles.mockRejectedValueOnce(new Error("r2 down"));
+      const body = await run();
+      expect(body.processed).toBe(0);
+      expect(body.failed).toBe(1);
+      expect(deleteOrganization).not.toHaveBeenCalled();
+      expect(mockDb.transaction).not.toHaveBeenCalled();
+      // Only the claim UPDATE ran — the claim is deliberately not released
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(captureException).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          tags: { cron: "org-purge", step: "storage" },
+          extra: { orgId: "org_a", action: "org-purge" },
+        }),
+      );
+    });
+
+    it("a storage failure on one org does not stop the next", async () => {
+      mockCandidates(["org_a", "org_b"]);
+      queueClaims([[{ id: "org_a" }], [{ id: "org_b" }]]);
+      deleteOrgFiles
+        .mockRejectedValueOnce(new Error("r2 down"))
+        .mockResolvedValueOnce(undefined);
+      const body = await run();
+      expect(body.processed).toBe(1);
+      expect(body.failed).toBe(1);
+      expect(deleteOrganization).toHaveBeenCalledTimes(1);
+      expect(deleteOrganization).toHaveBeenCalledWith("org_b");
+    });
+
+    it("never deletes files of an org whose claim was lost", async () => {
+      mockCandidates(["org_a"]);
+      queueClaims([[]]);
+      await run();
+      expect(deleteOrgFiles).not.toHaveBeenCalled();
     });
   });
 

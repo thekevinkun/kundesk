@@ -1,7 +1,7 @@
 // Daily cron — permanently deletes orgs whose 30-day deletion grace period
 // has expired. Claims each org atomically before acting (purgingAt) so a
 // cancelOrgDeletion() call racing against this cron can never un-cancel an
-// org that's already mid-purge. Deletes Clerk first — an already-missing
+// org that's already mid-purge. Deletes the org's stored files first, then Clerk — an already-missing
 // Clerk org is treated as success. DB deletion runs in a transaction;
 // ON DELETE SET NULL anonymizes payments automatically.
 // A claim older than STALE_CLAIM_HOURS is treated as abandoned (the run that made it
@@ -16,6 +16,7 @@ import * as Sentry from "@sentry/nextjs";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { orgs } from "@/lib/db/schema";
+import { deleteOrgFiles } from "@/lib/aws/s3";
 
 const GRACE_PERIOD_DAYS = 30;
 // A claim older than this is abandoned — far longer than a run takes, shorter than a day
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   for (const candidate of candidateOrgs) {
     // Which step is running — reported to Sentry if the org fails
-    let step: "claim" | "clerk" | "db" = "claim";
+    let step: "claim" | "storage" | "clerk" | "db" = "claim";
 
     try {
       // Atomic claim — only succeeds if the org is still actually eligible
@@ -111,7 +112,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         );
       }
 
-      // Delete Clerk first. If this throws, the claim is KEPT on purpose (releasing it could let
+      // Delete the org's stored files FIRST, while the org row still exists: if this fails the
+      // org stays claimed and the next run retries it. Deleting files after the row was gone
+      // would leave orphaned files with nothing left to retry. Safe to repeat — an org with
+      // no files is a success. A failure keeps the claim, like the Clerk step below.
+      step = "storage";
+      await deleteOrgFiles(candidate.id);
+
+      // Delete Clerk next. If this throws, the claim is KEPT on purpose (releasing it could let
       // cancelOrgDeletion "restore" an org that is already gone from Clerk) — the failure is
       // reported below and the next run takes the claim over once it is stale.
       step = "clerk";

@@ -208,6 +208,65 @@ export async function deleteFromStorage(s3Key: string): Promise<void> {
   await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: s3Key }));
 }
 
+// Plain Clerk org ids only. A blank or odd id would build a prefix that matches other
+// orgs' files, so anything else is refused before storage is touched.
+const ORG_ID_PATTERN = /^org_[A-Za-z0-9]+$/;
+
+// Deletes EVERY stored file of one org (everything under orgs/<orgId>/).
+// Safe to repeat: an org with no files is a success. Used by the org-purge cron.
+export async function deleteOrgFiles(orgId: string): Promise<void> {
+  if (!ORG_ID_PATTERN.test(orgId)) {
+    throw new Error("Invalid org id for file deletion");
+  }
+  const prefix = `orgs/${orgId}/`;
+
+  // Mock mode — remove the org's local folder
+  if (env.storageMode === "mock") {
+    const { rm } = await import("fs/promises");
+    await rm(resolveMockPath(prefix), { recursive: true, force: true });
+    return;
+  }
+
+  // Real mode — list one page of keys (up to 1000), delete them, repeat until done
+  const { ListObjectsV2Command, DeleteObjectsCommand } =
+    await import("@aws-sdk/client-s3");
+  const { client, bucket } = await createStorageClient();
+
+  let continuationToken: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
+      }),
+    );
+
+    const objects = (page.Contents ?? []).flatMap((item) =>
+      item.Key ? [{ Key: item.Key }] : [],
+    );
+
+    if (objects.length > 0) {
+      const result = await client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: { Objects: objects, Quiet: true },
+        }),
+      );
+      // A partial failure must not look like success — the org would be purged with files left
+      if (result.Errors && result.Errors.length > 0) {
+        throw new Error(
+          `Failed to delete ${result.Errors.length} file(s) under ${prefix}`,
+        );
+      }
+    }
+
+    continuationToken = page.IsTruncated
+      ? page.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+}
+
 // Saves a file to mock local storage — called by the mock upload API route
 export async function saveMockUpload(
   s3Key: string,
