@@ -180,7 +180,7 @@ export async function deleteOrg(): Promise<ActionResult> {
         org.ownerEmail,
         org.name,
         purgeDate,
-        `${env.appUrl}/images/logo_kundesk.png`,
+        env.logoUrl,
       );
     } catch {
       console.error("[deleteOrg] Failed to send deletion scheduled email");
