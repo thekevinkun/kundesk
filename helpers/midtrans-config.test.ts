@@ -11,6 +11,7 @@ function config(
   return {
     paymentMode: "midtrans",
     serverKey: "Mid-server-abc123",
+    signatureKey: "Mid-signature-abc123",
     clientKey: "Mid-client-abc123",
     isProduction: false,
     ...overrides,
@@ -24,6 +25,7 @@ describe("validateMidtransConfig", () => {
         config({
           paymentMode: "mock",
           serverKey: undefined,
+          signatureKey: undefined,
           clientKey: undefined,
         }),
       ),
@@ -108,6 +110,41 @@ describe("validateMidtransConfig", () => {
         }),
       ),
     ).toThrow("sandbox keys");
+  });
+
+  it("throws when the signature key is missing", () => {
+    expect(() =>
+      validateMidtransConfig(config({ signatureKey: undefined })),
+    ).toThrow("Missing MIDTRANS_SIGNATURE_KEY");
+    expect(() => validateMidtransConfig(config({ signatureKey: "" }))).toThrow(
+      "Missing MIDTRANS_SIGNATURE_KEY",
+    );
+  });
+
+  it("throws on whitespace around the signature key", () => {
+    expect(() =>
+      validateMidtransConfig(
+        config({ signatureKey: "Mid-signature-abc123\n" }),
+      ),
+    ).toThrow("whitespace");
+  });
+
+  it("throws when production is on but the signature key is a sandbox key", () => {
+    expect(() =>
+      validateMidtransConfig(
+        config({ isProduction: true, signatureKey: "SB-Mid-server-abc123" }),
+      ),
+    ).toThrow("MIDTRANS_SIGNATURE_KEY is a sandbox key");
+  });
+
+  it("never puts the signature key in an error message", () => {
+    let message = "";
+    try {
+      validateMidtransConfig(config({ signatureKey: "SIG-SECRET999\n" }));
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).not.toContain("SECRET999");
   });
 
   it("never puts a key value in an error message", () => {

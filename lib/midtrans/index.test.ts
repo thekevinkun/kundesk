@@ -10,6 +10,7 @@ import { createHash } from "crypto";
 // vi.hoisted makes the object mutable so cancel tests can flip paymentMode.
 const mockEnv = vi.hoisted(() => ({
   midtransServerKey: "test-server-key-12345" as string | undefined,
+  midtransSignatureKey: undefined as string | undefined,
   midtransClientKey: "test-client-key-12345",
   midtransProduction: false,
   paymentMode: "mock" as string,
@@ -166,6 +167,62 @@ describe("verifyMidtransSignature", () => {
       signature_key: proNotification.signature_key,
     };
     expect(verifyMidtransSignature(crossTampered)).toBe(false);
+  });
+});
+
+// ─── verifyMidtransSignature: real mode uses the signature key only ──
+describe("verifyMidtransSignature in real mode", () => {
+  const SIG_KEY = "test-signature-key-67890";
+
+  // Signs a notification with any key — the same SHA512 formula as production
+  function signWith(key: string): MidtransNotification {
+    const n = buildValidNotification();
+    const raw = `${n.order_id}${n.status_code}${n.gross_amount}${key}`;
+    return {
+      ...n,
+      signature_key: createHash("sha512").update(raw).digest("hex"),
+    };
+  }
+
+  beforeEach(() => {
+    mockEnv.paymentMode = "midtrans";
+    mockEnv.midtransSignatureKey = SIG_KEY;
+  });
+
+  afterEach(() => {
+    mockEnv.paymentMode = "mock";
+    mockEnv.midtransSignatureKey = undefined;
+  });
+
+  it("accepts a notification signed with the signature key", () => {
+    expect(verifyMidtransSignature(signWith(SIG_KEY))).toBe(true);
+  });
+
+  it("rejects a notification signed with the server key", () => {
+    expect(verifyMidtransSignature(signWith("test-server-key-12345"))).toBe(
+      false,
+    );
+  });
+
+  it("returns false (no fallback) when the signature key is missing", () => {
+    mockEnv.midtransSignatureKey = undefined;
+    expect(verifyMidtransSignature(signWith("test-server-key-12345"))).toBe(
+      false,
+    );
+  });
+});
+
+describe("verifyMidtransSignature in mock mode", () => {
+  it("prefers the signature key when one is set", () => {
+    mockEnv.midtransSignatureKey = "mock-sig";
+    const n = buildValidNotification();
+    const raw = `${n.order_id}${n.status_code}${n.gross_amount}mock-sig`;
+    const signed = {
+      ...n,
+      signature_key: createHash("sha512").update(raw).digest("hex"),
+    };
+    expect(verifyMidtransSignature(signed)).toBe(true);
+    mockEnv.midtransSignatureKey = undefined;
   });
 });
 

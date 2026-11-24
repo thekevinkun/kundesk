@@ -44,7 +44,7 @@ the three variables at the top:
    ORDER='KUNDESK-org_XXXXXXXX-STARTER-0000000000000'
    AMOUNT='49000.00'
    STATUS='settlement'
-   KEY=$(grep '^MIDTRANS_SERVER_KEY=' .env.local | cut -d= -f2-)
+   KEY=$(grep '^MIDTRANS_SIGNATURE_KEY=' .env.local | cut -d= -f2-)
    SIG=$(printf '%s' "${ORDER}200${AMOUNT}${KEY}" | openssl dgst -sha512 | awk '{print $NF}')
    printf '{"order_id":"%s","status_code":"200","gross_amount":"%s","transaction_status":"%s","fraud_status":"accept","payment_type":"qris","signature_key":"%s"}' "$ORDER" "$AMOUNT" "$STATUS" "$SIG" \
      | curl -s -X POST http://localhost:3000/api/webhooks/midtrans -H 'Content-Type: application/json' --data-binary @-
@@ -63,14 +63,14 @@ Output shape: `{"checked":N,"recovered":N,"flagged":N,"errors":N,"expiredPayment
 
 ## When production keys are approved (do these once, in order)
 
-1.  Put the production keys in Vercel's **Production** scope only. Never in Preview.
+1.  Put the production keys in Vercel's **Production** scope only. Never in Preview. There are three: `MIDTRANS_SERVER_KEY` (API calls), `MIDTRANS_CLIENT_KEY` (Snap), and `MIDTRANS_SIGNATURE_KEY` (the "Signature Secret Key" on the Access Keys page, which verifies payment notifications).
 2.  Set `MIDTRANS_IS_PRODUCTION=true`. A mismatch (production flag with `SB-` keys, swapped
     keys, whitespace, a missing key) now fails the build on purpose.
 3.  Check the keys work against production. Edit nothing — the order id is made up:
 
 ```bash
       KEY=$(grep '^MIDTRANS_SERVER_KEY=' .env.production.local | cut -d= -f2-)
-      printf 'user = "%s:"\n' "$KEY" | curl -s -K - https://api.midtrans.com/v2/KUNDESK-NOPE0000-STARTER-1/status
+      printf 'user = "%s:"\n' "$KEY" | curl -s -K - https://api.midtrans.com/v2/KUNDESK-org_NOPE-STARTER-1/status
       unset KEY
 ```
       **Do not skip this step.** The startup guard cannot tell your sandbox keys from your production keys (neither has a prefix), so this call is the only thing that proves the keys match the production endpoint.

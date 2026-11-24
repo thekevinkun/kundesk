@@ -51,6 +51,8 @@ export const env = {
 
   // ── Midtrans — only required when mode=midtrans ──
   midtransServerKey: process.env.MIDTRANS_SERVER_KEY,
+  // Signs payment notifications — a separate secret from the server key (new Midtrans dashboard)
+  midtransSignatureKey: process.env.MIDTRANS_SIGNATURE_KEY,
   midtransClientKey: process.env.MIDTRANS_CLIENT_KEY,
   midtransProduction: process.env.MIDTRANS_IS_PRODUCTION === "true",
 
@@ -89,6 +91,7 @@ export const env = {
 validateMidtransConfig({
   paymentMode: env.paymentMode,
   serverKey: env.midtransServerKey,
+  signatureKey: env.midtransSignatureKey,
   clientKey: env.midtransClientKey,
   isProduction: env.midtransProduction,
 });

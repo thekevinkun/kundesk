@@ -15,7 +15,7 @@ export function validateMidtransConfig(input: MidtransConfigInput): void {
   // Mock mode never talks to Midtrans — nothing to check
   if (input.paymentMode !== "midtrans") return;
 
-  const { serverKey, clientKey, isProduction } = input;
+  const { serverKey, signatureKey, clientKey, isProduction } = input;
 
   // Both keys are needed the moment real payments are on
   if (!serverKey) {
@@ -29,10 +29,21 @@ export function validateMidtransConfig(input: MidtransConfigInput): void {
     );
   }
 
-  // A pasted newline or space makes every Midtrans call fail with an auth error
-  if (serverKey !== serverKey.trim() || clientKey !== clientKey.trim()) {
+  // The signature key verifies payment notifications — without it every webhook is rejected
+  if (!signatureKey) {
     throw new Error(
-      "MIDTRANS_SERVER_KEY or MIDTRANS_CLIENT_KEY has leading or trailing whitespace",
+      "Missing MIDTRANS_SIGNATURE_KEY (required when KUNDESK_PAYMENT_MODE=midtrans)",
+    );
+  }
+
+  // A pasted newline or space makes every Midtrans call fail with an auth error
+  if (
+    serverKey !== serverKey.trim() ||
+    clientKey !== clientKey.trim() ||
+    signatureKey !== signatureKey.trim()
+  ) {
+    throw new Error(
+      "A Midtrans key (server, client or signature) has leading or trailing whitespace",
     );
   }
 
@@ -55,6 +66,13 @@ export function validateMidtransConfig(input: MidtransConfigInput): void {
   if (isProduction && serverIsSandbox) {
     throw new Error(
       "MIDTRANS_IS_PRODUCTION=true but the Midtrans keys are sandbox keys",
+    );
+  }
+
+  // Same heuristic as above, for the signature key: an SB- key can never be a production key
+  if (isProduction && signatureKey.startsWith(SANDBOX_PREFIX)) {
+    throw new Error(
+      "MIDTRANS_IS_PRODUCTION=true but MIDTRANS_SIGNATURE_KEY is a sandbox key",
     );
   }
 }

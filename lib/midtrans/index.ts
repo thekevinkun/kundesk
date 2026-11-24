@@ -8,6 +8,16 @@ import type { MidtransNotification, PlanName } from "@/types/billing";
 import { PLAN_PRICE } from "@/types/billing";
 import type { MidtransStatusResult } from "@/types/settlement";
 
+// The key that signs payment notifications. Real mode needs MIDTRANS_SIGNATURE_KEY and
+// never falls back to the server key — a silent fallback is what hid this problem.
+// Mock mode falls back so local dev and CI work without the extra variable.
+function getSignatureKey(): string | undefined {
+  if (env.paymentMode === "mock") {
+    return env.midtransSignatureKey ?? env.midtransServerKey;
+  }
+  return env.midtransSignatureKey;
+}
+
 // ⚠️ Critical security: verify Midtrans webhook signature on EVERY notification.
 // Signature = SHA512(order_id + status_code + gross_amount + server_key) — plain SHA-512, NOT an HMAC.
 // Why this matters:
@@ -20,11 +30,12 @@ import type { MidtransStatusResult } from "@/types/settlement";
 export function verifyMidtransSignature(
   notification: MidtransNotification,
 ): boolean {
-  if (!env.midtransServerKey) return false;
+  const signatureKey = getSignatureKey();
+  if (!signatureKey) return false;
 
-  // Signature is a plain SHA-512 hash of the concatenated payload + server key.
+  // Signature is a plain SHA-512 hash of the concatenated payload + signature key.
   // Order of concatenation is critical — must match Midtrans's exact formula.
-  const raw = `${notification.order_id}${notification.status_code}${notification.gross_amount}${env.midtransServerKey}`;
+  const raw = `${notification.order_id}${notification.status_code}${notification.gross_amount}${signatureKey}`;
 
   // Hex digest of our own computation — what Midtrans should have sent
   const expected = Buffer.from(createHash("sha512").update(raw).digest("hex"));
@@ -208,7 +219,7 @@ export async function fireMockWebhook(
   // Generate a valid SHA-512 signature (same plain-hash formula as verifyMidtransSignature).
   // This signature is critical — without it, the webhook handler rejects the notification.
   // Even in mock mode, we must pass this check (forged but valid).
-  const raw = `${notification.order_id}${notification.status_code}${notification.gross_amount}${env.midtransServerKey ?? "mock-server-key"}`;
+  const raw = `${notification.order_id}${notification.status_code}${notification.gross_amount}${getSignatureKey() ?? "mock-server-key"}`;
   const signature_key = createHash("sha512").update(raw).digest("hex");
 
   // Self-POST to our own webhook handler — no external HTTP call, fast and synchronous.
