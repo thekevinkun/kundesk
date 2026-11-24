@@ -28,6 +28,7 @@ import {
 } from "@/types/billing";
 import {
   createPayment,
+  previewPromoCode,
   cancelPendingPaymentAction,
   cancelSubscriptionAction,
 } from "./billing";
@@ -470,6 +471,62 @@ describe("lib/actions/billing", () => {
         expect(mockSendEmail).not.toHaveBeenCalled();
         expect(mockRevalidate).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("previewPromoCode", () => {
+    it("throws for a non-admin and checks nothing", async () => {
+      mockRequireAdmin.mockRejectedValueOnce(new Error("Hanya admin"));
+      await expect(previewPromoCode("HEMAT")).rejects.toThrow("Hanya admin");
+      expect(mockValidatePromo).not.toHaveBeenCalled();
+    });
+
+    it("returns the percent for both plans when the code applies to both", async () => {
+      mockValidatePromo.mockResolvedValue(promo(20));
+      const result = await previewPromoCode("HEMAT");
+      expect(result).toEqual({ starter: 20, pro: 20 });
+      expect(mockValidatePromo).toHaveBeenCalledWith("HEMAT", "starter");
+      expect(mockValidatePromo).toHaveBeenCalledWith("HEMAT", "pro");
+    });
+
+    it("returns null for the plan the code does not apply to", async () => {
+      mockValidatePromo.mockImplementation(async (_code, plan) =>
+        plan === "pro" ? promo(98) : null,
+      );
+      const result = await previewPromoCode("UJIBAYAR2");
+      expect(result).toEqual({ starter: null, pro: 98 });
+    });
+
+    it("returns null for both plans when the code is invalid", async () => {
+      mockValidatePromo.mockResolvedValue(null);
+      const result = await previewPromoCode("NOPE");
+      expect(result).toEqual({ starter: null, pro: null });
+    });
+
+    it("trims the code before checking it", async () => {
+      mockValidatePromo.mockResolvedValue(promo(10));
+      await previewPromoCode("  HEMAT  ");
+      expect(mockValidatePromo).toHaveBeenCalledWith("HEMAT", "starter");
+    });
+
+    it("does no lookup for a blank code", async () => {
+      const result = await previewPromoCode("   ");
+      expect(result).toEqual({ starter: null, pro: null });
+      expect(mockValidatePromo).not.toHaveBeenCalled();
+    });
+
+    it("does no lookup for a code over 50 characters", async () => {
+      const result = await previewPromoCode("x".repeat(51));
+      expect(result).toEqual({ starter: null, pro: null });
+      expect(mockValidatePromo).not.toHaveBeenCalled();
+    });
+
+    it("creates no transaction and no payment row (read-only)", async () => {
+      mockValidatePromo.mockResolvedValue(promo(20));
+      await previewPromoCode("HEMAT");
+      expect(mockCreateTx).not.toHaveBeenCalled();
+      expect(mockInsertPending).not.toHaveBeenCalled();
+      expect(mockRevalidate).not.toHaveBeenCalled();
     });
   });
 

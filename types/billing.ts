@@ -158,3 +158,10 @@ export interface BillingPageData {
   hasActivePromo: boolean;
   pendingPayment: PendingPayment | null;
 }
+
+// What the billing page needs to show a promo on the plan cards:
+// the percent off per plan, or null when the code does not apply to that plan
+export interface PromoPreview {
+  starter: number | null;
+  pro: number | null;
+}

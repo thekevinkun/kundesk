@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CurrentPlanCard,
@@ -12,7 +12,8 @@ import {
   PaymentResultBanner,
 } from "@/components/dashboard/billing";
 import { fadeUp } from "@/lib/animations";
-import type { BillingPageData, PlanName } from "@/types/billing";
+import { previewPromoCode } from "@/lib/actions/billing";
+import type { BillingPageData, PlanName, PromoPreview } from "@/types/billing";
 
 interface BillingPageProps {
   data: BillingPageData;
@@ -21,6 +22,27 @@ interface BillingPageProps {
 
 const BillingPage = ({ data, transactionStatus }: BillingPageProps) => {
   const [promoCode, setPromoCode] = useState<string | null>(null);
+  // Percent off per plan for the entered code (null per plan = does not apply)
+  const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
+  // Counts applies, so a slow answer for an old code can never overwrite a newer one
+  const applyCounter = useRef(0);
+
+  const handleApplyPromo = async (code: string | null) => {
+    const myTurn = ++applyCounter.current;
+    setPromoCode(code);
+    setPromoPreview(null);
+    if (!code) return;
+
+    try {
+      const preview = await previewPromoCode(code);
+      if (myTurn === applyCounter.current) setPromoPreview(preview);
+    } catch {
+      // A failed lookup shows no discount; checkout still validates on the server
+      if (myTurn === applyCounter.current) {
+        setPromoPreview({ starter: null, pro: null });
+      }
+    }
+  };
 
   return (
     <motion.div
@@ -84,7 +106,7 @@ const BillingPage = ({ data, transactionStatus }: BillingPageProps) => {
           </div>
 
           {/* Promo code input — only shown when at least one active promo exists */}
-          {data.hasActivePromo && <PromoCodeInput onApply={setPromoCode} />}
+          {data.hasActivePromo && <PromoCodeInput onApply={handleApplyPromo} />}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {(["free", "starter", "pro"] as PlanName[]).map((plan) => (
@@ -95,6 +117,9 @@ const BillingPage = ({ data, transactionStatus }: BillingPageProps) => {
                 subscriptionStatus={data.subscriptionStatus}
                 hasUsedFirstPurchase={data.hasUsedFirstPurchase}
                 promoCode={promoCode}
+                promoPercent={
+                  plan === "free" ? null : (promoPreview?.[plan] ?? null)
+                }
                 hasPendingPayment={!!data.pendingPayment}
               />
             ))}

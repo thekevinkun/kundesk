@@ -21,7 +21,8 @@ import {
   insertPendingPayment,
   cancelPendingPayment,
 } from "@/lib/db/queries/billing";
-import type { PlanName } from "@/types/billing";
+import { applyPromoDiscount } from "@/helpers/promo-price";
+import type { PlanName, PromoPreview } from "@/types/billing";
 import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 
 // ── Input schema ──
@@ -98,9 +99,7 @@ export async function createPayment(
           "Kode promo tidak valid, sudah habis, atau tidak berlaku untuk plan ini.",
       };
     }
-    finalAmount = Math.floor(
-      PLAN_PRICE[plan] * (1 - promo.discountPercent / 100),
-    );
+    finalAmount = applyPromoDiscount(PLAN_PRICE[plan], promo.discountPercent);
     appliedPromoId = promo.id;
   } else if (!org.hasUsedFirstPurchase) {
     finalAmount = PLAN_FIRST_TIME_PRICE[plan];
@@ -158,6 +157,26 @@ export async function createPayment(
       error: "Gagal membuat transaksi. Coba lagi dalam beberapa saat.",
     };
   }
+}
+
+// Tells the billing page which plans a promo code works for, and how many percent off.
+// Read-only: creates nothing and does not use up the code. Uses the same validatePromoCode
+// as checkout, so the cards and the real charge always agree.
+export async function previewPromoCode(rawCode: string): Promise<PromoPreview> {
+  await requireOrgAdmin();
+
+  const parsed = z.string().trim().min(1).max(50).safeParse(rawCode);
+  if (!parsed.success) return { starter: null, pro: null };
+
+  const [starter, pro] = await Promise.all([
+    validatePromoCode(parsed.data, "starter"),
+    validatePromoCode(parsed.data, "pro"),
+  ]);
+
+  return {
+    starter: starter?.discountPercent ?? null,
+    pro: pro?.discountPercent ?? null,
+  };
 }
 
 // cancelPendingPayment action

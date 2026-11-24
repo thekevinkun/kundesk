@@ -6,8 +6,9 @@ import { Separator } from "@/components/ui/separator";
 
 import { createPayment } from "@/lib/actions/billing";
 
-import { formatRupiah } from "@/helpers/format";
 import { PLAN_CONFIG } from "@/components/dashboard/billing/constants";
+import { formatRupiah } from "@/helpers/format";
+import { applyPromoDiscount } from "@/helpers/promo-price";
 import { PLAN_PRICE, PLAN_FIRST_TIME_PRICE } from "@/types/billing";
 import type { BillingPageData, PlanName } from "@/types/billing";
 
@@ -18,6 +19,8 @@ interface PlanCardProps {
   hasUsedFirstPurchase: boolean;
   // null = no promo entered, string = code to apply at checkout
   promoCode: string | null;
+  // Percent off this plan for the entered code, null when it does not apply (or is still loading)
+  promoPercent: number | null;
   hasPendingPayment: boolean;
 }
 
@@ -27,6 +30,7 @@ const PlanCard = ({
   subscriptionStatus,
   hasUsedFirstPurchase,
   promoCode,
+  promoPercent,
   hasPendingPayment,
 }: PlanCardProps) => {
   const config = PLAN_CONFIG[plan];
@@ -42,15 +46,18 @@ const PlanCard = ({
   // The real deduction is calculated server-side in createPayment
   const isFirstTimeEligible = plan !== "free" && !hasUsedFirstPurchase;
 
-  const hasPromo = plan !== "free" && !!promoCode;
+  // The promo only shows on a plan the server said it applies to
+  const hasPromo = plan !== "free" && promoPercent !== null;
 
-  const displayPrice = hasPromo
-    ? regularPrice // show regular, server will apply promo — we don't know % client-side
-    : isFirstTimeEligible
-      ? PLAN_FIRST_TIME_PRICE[plan as "starter" | "pro"]
-      : regularPrice;
+  const displayPrice =
+    promoPercent !== null && plan !== "free"
+      ? applyPromoDiscount(regularPrice, promoPercent) // same formula as checkout
+      : isFirstTimeEligible
+        ? PLAN_FIRST_TIME_PRICE[plan as "starter" | "pro"]
+        : regularPrice;
 
-  const showOriginalPrice = !hasPromo && isFirstTimeEligible;
+  // The regular price is crossed out for a promo and for the first-time price
+  const showOriginalPrice = hasPromo || isFirstTimeEligible;
 
   const [state, formAction, isPending] = useActionState(createPayment, null);
 
@@ -139,11 +146,11 @@ const PlanCard = ({
             {/* Promo applied indicator — shown when a code is entered */}
             {hasPromo && (
               <span className="badge-base badge-success text-[10px]">
-                🎟 Diskon diterapkan saat checkout
+                🎟 Diskon {promoPercent}% dengan kode promo
               </span>
             )}
             {/* First-time discount badge */}
-            {showOriginalPrice && (
+            {!hasPromo && isFirstTimeEligible && (
               <span className="badge-base badge-success text-[10px]">
                 🎉 Harga perdana
               </span>
