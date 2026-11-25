@@ -157,3 +157,17 @@ export interface SceneQueueState {
 export interface SceneMomentLayerProps extends SceneActorProps {
   moment: SceneMoment | null;
 }
+
+// Look of the KUN robot for one pose — gold when running, steel when off
+export interface KunPalette {
+  // Gradient references for the shell, the darker joints and the visor
+  body: string;
+  dark: string;
+  visor: string;
+  // Thin outline color and the color of the face drawn on the visor
+  edge: string;
+  mark: string;
+  // Tailwind stroke class for the tile under the robot
+  tileClass: string;
+  opacity: number;
+}
