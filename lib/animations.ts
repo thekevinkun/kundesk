@@ -227,20 +227,79 @@ export const chatBubbleIn: Variants = {
   },
 };
 
-// ── Live conversation workspace — one-shot, Pusher-driven motion only ──
-export const liveWorkspaceKunVariants: Variants = {
-  static: { scale: 1, y: 0 },
-  active: {
-    scale: [1, 1.025, 1],
+// ── Live scene — idle life for the avatars; every value is subtle on purpose ──
+// Components switch these on only when motion is allowed (prefers-reduced-motion)
+export const sceneBreathVariants: Variants = {
+  still: { y: 0, scale: 1 },
+  breathe: {
     y: [0, -2, 0],
+    scale: [1, 1.012, 1],
+    transition: { duration: 3.2, ease: "easeInOut", repeat: Infinity },
+  },
+  breatheSlow: {
+    y: [0, -1, 0],
+    scale: [1, 1.006, 1],
+    transition: { duration: 5.5, ease: "easeInOut", repeat: Infinity },
+  },
+};
+
+// Eyes close briefly every few seconds
+export const sceneBlinkVariants: Variants = {
+  open: { scaleY: 1 },
+  blink: {
+    scaleY: [1, 1, 0.1, 1, 1],
     transition: {
-      duration: 3.2,
-      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      duration: 4.2,
+      times: [0, 0.46, 0.5, 0.54, 1],
       repeat: Infinity,
     },
   },
 };
 
+// Customer arm: hanging down, raised, or waving for attention
+export const sceneArmVariants: Variants = {
+  down: { rotate: 0 },
+  raised: { rotate: -150 },
+  wave: {
+    rotate: [-150, -132, -150],
+    transition: { duration: 0.9, ease: "easeInOut", repeat: Infinity },
+  },
+};
+
+// "!" badges and the antenna lamp
+export const scenePulseVariants: Variants = {
+  still: { opacity: 1, scale: 1 },
+  pulse: {
+    opacity: [1, 0.5, 1],
+    scale: [1, 1.12, 1],
+    transition: { duration: 1.4, ease: "easeInOut", repeat: Infinity },
+  },
+};
+
+// Admin hands on the keyboard — custom is the start delay so the two hands alternate
+export const sceneTypingVariants: Variants = {
+  still: { y: 0 },
+  type: (delay: number) => ({
+    y: [0, -2.5, 0],
+    transition: { duration: 0.5, ease: "easeInOut", repeat: Infinity, delay },
+  }),
+};
+
+// Text lines on the admin's screen — custom is the line index
+export const sceneScreenLineVariants: Variants = {
+  still: { opacity: 0.85 },
+  type: (index: number) => ({
+    opacity: [0.35, 0.95, 0.35],
+    transition: {
+      duration: 1.2,
+      ease: "easeInOut",
+      repeat: Infinity,
+      delay: index * 0.25,
+    },
+  }),
+};
+
+// ── Live conversation workspace — one-shot, Pusher-driven motion only ──
 export const liveWorkspacePacketVariants: Variants = {
   leftToCenter: {
     x: [0, 104],

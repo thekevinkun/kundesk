@@ -44,3 +44,53 @@ export interface SceneState {
   adminName: string;
   adminOwnership: AdminOwnership;
 }
+
+// ── Avatar and scene component types ──
+
+// Hair shapes the people avatars can draw
+export type HairStyle = "short" | "long" | "bun";
+
+// Face mood for a person avatar
+export type SceneMood = "calm" | "worried" | "alert";
+
+// Colors and hair shape of a person avatar — derived from a seed, never stored
+export interface AvatarLook {
+  skin: string;
+  hair: string;
+  shirt: string;
+  hairStyle: HairStyle;
+}
+
+// Props shared by every animated scene character
+export interface SceneActorProps {
+  // False under prefers-reduced-motion — poses stay, movement stops
+  animated: boolean;
+}
+
+export interface PersonBustProps extends SceneActorProps {
+  look: AvatarLook;
+  mood: SceneMood;
+}
+
+export interface CustomerAvatarProps extends SceneActorProps {
+  pose: CustomerPose;
+  look: AvatarLook;
+}
+
+export interface AdminAvatarProps extends SceneActorProps {
+  pose: AdminPose;
+  look: AvatarLook;
+}
+
+export interface KunRobotProps extends SceneActorProps {
+  pose: KunPose;
+}
+
+export interface IsoPlatformProps {
+  // Horizontal center of the tile inside the SVG viewBox
+  cx: number;
+  // Y of the tile's top corner
+  top: number;
+  // Tailwind stroke class so each character tints its own tile
+  strokeClass: string;
+}

@@ -1,21 +1,23 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { useConversationStore } from "@/stores/conversation-store";
+import {
+  AdminAvatar,
+  CustomerAvatar,
+  KunRobot,
+} from "@/components/dashboard/live-scene";
+import { getAvatarLook } from "@/helpers/avatar-look";
 import { deriveSceneState } from "@/helpers/live-scene";
 import {
   getConversationPageAction,
   getLiveConversationPreviewAction,
 } from "@/lib/actions/dashboard";
-import {
-  liveWorkspaceKunVariants,
-  liveWorkspacePacketVariants,
-} from "@/lib/animations";
+import { liveWorkspacePacketVariants } from "@/lib/animations";
 import type {
   LiveConversationPreview,
   LiveOverviewSnapshot,
@@ -51,9 +53,6 @@ const eventToPacket: Record<
   "kun-to-admin": { variant: "centerToRight", position: "left-1/2" },
   "admin-to-kun": { variant: "rightToCenter", position: "left-[77%]" },
 };
-
-const sessionInitials = (sessionId: string | undefined) =>
-  sessionId ? sessionId.slice(0, 2).toUpperCase() : "P";
 
 const roleLabel = (
   role: LiveConversationPreview["messages"][number]["role"],
@@ -99,6 +98,26 @@ const LiveConversationWorkspace = ({
   const isManual = scene.mode === "manual";
   const isPending = scene.mode === "pending";
   const stateLabel = scene.statusLabel;
+  // Stable faces: the customer from the session, the admin from whoever owns the desk
+  const customerLook = getAvatarLook(preview?.sessionId);
+  const adminSeed =
+    scene.adminOwnership === "other" ? preview?.takenOverBy : user?.id;
+  const adminLook = getAvatarLook(adminSeed);
+  // Motion is allowed unless the visitor asked for reduced motion
+  const animated = !reduceMotion;
+  // KUN pill text and color follow the robot's pose
+  const kunLabel =
+    scene.kunPose === "off"
+      ? "KUN NONAKTIF"
+      : scene.kunPose === "tired"
+        ? "KUOTA PENUH"
+        : "KUN AKTIF";
+  const kunPillClass =
+    scene.kunPose === "off"
+      ? "bg-(--color-text-400)"
+      : scene.kunPose === "tired"
+        ? "bg-(--color-warning)"
+        : "bg-(--color-brand)";
 
   const openConversation = useCallback(async () => {
     if (!preview) return;
@@ -142,84 +161,109 @@ const LiveConversationWorkspace = ({
         </span>
       </div>
 
-      <div className="relative min-h-[310px] overflow-hidden bg-[linear-gradient(135deg,var(--color-brand-light),var(--color-bg-page)_58%,var(--color-brand-light))] px-4 py-5 sm:min-h-[340px]">
+      <div className="relative overflow-hidden bg-[linear-gradient(135deg,var(--color-brand-light),var(--color-bg-page)_58%,var(--color-brand-light))] px-4 py-5">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:linear-gradient(30deg,transparent_48%,var(--color-border)_49%,var(--color-border)_51%,transparent_52%),linear-gradient(150deg,transparent_48%,var(--color-border)_49%,var(--color-border)_51%,transparent_52%)] [background-size:44px_26px]" />
-        <div className="relative mx-auto h-[270px] max-w-[590px]">
-          <div className="absolute left-[17%] top-[57%] h-px w-[33%] -rotate-[18deg] bg-(--color-brand-mid)" />
-          <div
-            className={`absolute left-1/2 top-[57%] h-px w-[33%] rotate-[18deg] ${isManual || isPending ? "bg-(--color-warning)" : "bg-(--color-border)"}`}
-          />
+        {/* Fixed-ratio stage — characters, threads and labels scale together */}
+        <div className="relative mx-auto aspect-[59/33] w-full max-w-[590px]">
+          {/* Floor threads join the three tiles; the KUN–admin thread turns amber during a handoff */}
+          <svg
+            className="pointer-events-none absolute inset-0 size-full"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <line
+              x1="18%"
+              y1="60.6%"
+              x2="50%"
+              y2="57.1%"
+              className="stroke-(--color-brand-mid)"
+              strokeWidth={2}
+              strokeDasharray="5 6"
+              strokeLinecap="round"
+            />
+            <line
+              x1="50%"
+              y1="57.1%"
+              x2="82%"
+              y2="60.6%"
+              className={
+                isManual || isPending
+                  ? "stroke-(--color-warning)"
+                  : "stroke-(--color-border)"
+              }
+              strokeWidth={2}
+              strokeDasharray="5 6"
+              strokeLinecap="round"
+            />
+          </svg>
           {freshEvent && packet && !reduceMotion && (
             <motion.span
               key={freshEvent.id}
-              className={`absolute top-[56%] z-20 size-2.5 rounded-full bg-(--color-brand) shadow-[0_0_0_5px_var(--color-brand-light)] ${packet.position}`}
+              className={`absolute top-[59%] z-20 size-2.5 rounded-full bg-(--color-brand) shadow-[0_0_0_5px_var(--color-brand-light)] ${packet.position}`}
               variants={liveWorkspacePacketVariants}
               initial={{ opacity: 0 }}
               animate={packet.variant}
             />
           )}
 
-          <div className="absolute left-[18%] top-[51%] flex w-24 -translate-x-1/2 flex-col items-center text-center">
-            <div className="relative flex size-14 items-center justify-center rounded-full border-4 border-(--color-bg-card) bg-(--color-info-bg) text-[13px] font-extrabold text-(--color-info) shadow-lg">
-              {sessionInitials(preview?.sessionId)}
-            </div>
-            <div className="mt-[-7px] size-12 rotate-45 border border-(--color-brand-mid) bg-(--color-bg-card) shadow-sm" />
-            <span className="relative -mt-8 text-[11px] font-bold text-(--color-text-900)">
+          {/* Customer — left */}
+          <div className="absolute left-[18%] top-[14%] z-10 flex w-[23%] -translate-x-1/2 flex-col items-center text-center">
+            <CustomerAvatar
+              pose={scene.customerPose}
+              look={customerLook}
+              animated={animated}
+            />
+            <span className="-mt-1 text-[11px] font-bold text-(--color-text-900)">
               Pelanggan
             </span>
-            <span className="relative mt-0.5 text-[9.5px] text-(--color-text-500)">
-              {preview
-                ? `#${preview.sessionId.slice(0, 8)}`
+            <span className="max-w-full truncate text-[9.5px] text-(--color-text-500)">
+              {scene.channelLabel && scene.sessionLabel
+                ? `${scene.channelLabel} ${scene.sessionLabel}`
                 : "Belum ada chat aktif"}
             </span>
           </div>
 
-          <motion.div
-            className="absolute left-1/2 top-[13%] z-10 flex w-32 -translate-x-1/2 flex-col items-center text-center"
-            variants={liveWorkspaceKunVariants}
-            initial="static"
-            animate={bot?.isActive && !reduceMotion ? "active" : "static"}
-          >
-            <div className="absolute top-14 h-24 w-32 rounded-full bg-(--color-brand-mid)/65 blur-xl" />
-            <div className="relative flex size-24 items-center justify-center rounded-full border-4 border-(--color-bg-card) bg-(--color-brand-light) shadow-xl">
-              <Image
-                src="/images/kun_logo.png"
-                alt="KUN"
-                width={70}
-                height={60}
-                className="h-16 w-auto object-contain"
-                priority
-              />
-            </div>
-            <div className="relative mt-[-8px] size-16 rotate-45 border border-(--color-brand-mid) bg-(--color-bg-card) shadow-md" />
-            <span className="relative -mt-10 rounded-full bg-(--color-brand) px-3 py-1 text-[10.5px] font-bold text-white shadow-sm">
-              KUN {bot?.isActive ? "AKTIF" : "NONAKTIF"}
-            </span>
-          </motion.div>
-
-          <div className="absolute right-[18%] top-[51%] flex w-24 translate-x-1/2 flex-col items-center text-center">
-            <div
-              className={`relative flex size-14 items-center justify-center rounded-full border-4 border-(--color-bg-card) text-[13px] font-extrabold shadow-lg ${isManual ? "bg-(--color-warning-bg) text-(--color-warning)" : "bg-(--color-bg-page) text-(--color-text-400)"}`}
+          {/* KUN — center */}
+          <div className="absolute left-1/2 top-[2%] z-10 flex w-[30%] -translate-x-1/2 flex-col items-center text-center">
+            <KunRobot pose={scene.kunPose} animated={animated} />
+            <span
+              className={`-mt-1 rounded-full px-3 py-1 text-[10.5px] font-bold text-white shadow-sm ${kunPillClass}`}
             >
-              A
-            </div>
-            <div className="mt-[-7px] size-12 rotate-45 border border-(--color-border) bg-(--color-bg-card) shadow-sm" />
-            <span className="relative -mt-8 text-[11px] font-bold text-(--color-text-900)">
-              Admin
-            </span>
-            <span className="relative mt-0.5 text-[9.5px] text-(--color-text-500)">
-              {isManual ? "Menangani sesi" : "Saat takeover"}
+              {kunLabel}
             </span>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 flex justify-center">
-            <span className="rounded-full border border-(--color-border) bg-(--color-bg-card)/90 px-3 py-1.5 text-[10.5px] font-semibold text-(--color-text-700) shadow-sm backdrop-blur">
-              <span
-                className={`mr-1.5 inline-block size-1.5 rounded-full ${isPending ? "bg-(--color-danger)" : isManual ? "bg-(--color-warning)" : "bg-(--color-success)"}`}
-              />
-              {stateLabel}
+          {/* Admin — right */}
+          <div className="absolute left-[82%] top-[14%] z-10 flex w-[23%] -translate-x-1/2 flex-col items-center text-center">
+            <AdminAvatar
+              pose={scene.adminPose}
+              look={adminLook}
+              animated={animated}
+            />
+            <span className="-mt-1 max-w-full truncate text-[11px] font-bold text-(--color-text-900)">
+              {scene.adminName}
+            </span>
+            <span className="text-[9.5px] text-(--color-text-500)">
+              {isPending
+                ? "Menunggu respons"
+                : isManual
+                  ? "Menangani sesi"
+                  : "Saat takeover"}
             </span>
           </div>
+        </div>
+
+        {/* Status line below the stage — announced politely when it changes */}
+        <div className="relative mt-3 flex justify-center">
+          <span
+            role="status"
+            className="rounded-full border border-(--color-border) bg-(--color-bg-card)/90 px-3 py-1.5 text-[10.5px] font-semibold text-(--color-text-700) shadow-sm backdrop-blur"
+          >
+            <span
+              className={`mr-1.5 inline-block size-1.5 rounded-full ${isPending ? "bg-(--color-danger)" : isManual ? "bg-(--color-warning)" : "bg-(--color-success)"}`}
+            />
+            {stateLabel}
+          </span>
         </div>
       </div>
 
