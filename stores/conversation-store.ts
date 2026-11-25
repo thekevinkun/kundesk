@@ -50,6 +50,9 @@ interface ConversationStore {
   clearLiveWorkspaceEvent: () => void;
 }
 
+// Monotonic id for live workspace events — Date.now() collided when two events landed in the same millisecond
+let liveWorkspaceEventSeq = 0;
+
 export const useConversationStore = create<ConversationStore>((set) => ({
   // Bell
   unreadCount: 0,
@@ -97,6 +100,7 @@ export const useConversationStore = create<ConversationStore>((set) => ({
 
   liveWorkspaceEvent: null,
   setLiveWorkspaceEvent: (type) =>
-    set({ liveWorkspaceEvent: { id: Date.now(), type } }),
+    // Counter id — always unique and always increasing within a session
+    set({ liveWorkspaceEvent: { id: ++liveWorkspaceEventSeq, type } }),
   clearLiveWorkspaceEvent: () => set({ liveWorkspaceEvent: null }),
 }));
