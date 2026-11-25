@@ -12,7 +12,7 @@ import {
   KunRobot,
   SceneMomentLayer,
 } from "@/components/dashboard/live-scene";
-import { getAvatarLook } from "@/helpers/avatar-look";
+import { getAvatarLook, getStaffLook } from "@/helpers/avatar-look";
 import { deriveSceneState } from "@/helpers/live-scene";
 import { SCENE_ANCHORS } from "@/helpers/live-scene-moments";
 import { useLiveSceneQueue } from "@/hooks/use-live-scene-queue";
@@ -81,7 +81,7 @@ const LiveConversationWorkspace = ({
   const customerLook = getAvatarLook(preview?.sessionId);
   const adminSeed =
     scene.adminOwnership === "other" ? preview?.takenOverBy : user?.id;
-  const adminLook = getAvatarLook(adminSeed);
+  const adminLook = getStaffLook(adminSeed);
   // Motion is allowed unless the visitor asked for reduced motion
   const animated = !reduceMotion;
   // KUN pill text and color follow the robot's pose

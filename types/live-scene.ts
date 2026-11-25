@@ -50,7 +50,7 @@ export interface SceneState {
 // ── Avatar and scene component types ──
 
 // Hair shapes the people avatars can draw
-export type HairStyle = "short" | "long" | "bun";
+export type HairStyle = "short" | "long" | "bun" | "neutral";
 
 // Face mood for a person avatar
 export type SceneMood = "calm" | "worried" | "alert";

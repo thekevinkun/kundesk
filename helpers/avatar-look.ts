@@ -71,3 +71,9 @@ export function getAvatarLook(seed: string | null | undefined): AvatarLook {
     hairStyle: pick(HAIR_STYLES, hash >>> 12, DEFAULT_LOOK.hairStyle),
   };
 }
+
+// Staff avatars never guess a gender: they have real names, so the hair is always the neutral crop
+// Skin, hair color and shirt still come from the seed, so teammates look different from each other
+export function getStaffLook(seed: string | null | undefined): AvatarLook {
+  return { ...getAvatarLook(seed), hairStyle: "neutral" };
+}

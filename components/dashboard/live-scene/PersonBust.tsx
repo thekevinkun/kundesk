@@ -5,13 +5,24 @@
 
 import { motion } from "framer-motion";
 import { sceneBlinkVariants } from "@/lib/animations";
-import type { PersonBustProps, SceneMood } from "@/types/live-scene";
+import type { HairStyle, PersonBustProps, SceneMood } from "@/types/live-scene";
 
 // Mouth shape per mood
 const MOUTHS: Record<SceneMood, string> = {
   calm: "M55 84 Q60 88 65 84",
   worried: "M55 86 Q60 82 65 86",
   alert: "M57 85 L63 85",
+};
+
+// Hair on top of the head per style — "neutral" is the soft crop staff always wear
+const SHORT_CAP =
+  "M41 72 C41 56 49 51 60 51 C71 51 79 56 79 72 C75 64 69 61 60 61 C51 61 45 64 41 72 Z";
+const HAIR_CAPS: Record<HairStyle, string> = {
+  short: SHORT_CAP,
+  long: SHORT_CAP,
+  bun: SHORT_CAP,
+  neutral:
+    "M40 76 C38 56 48 49 60 49 C72 49 82 56 80 76 C78 68 76 64 72 62 C66 64 56 63 48 58 C45 62 42 68 40 76 Z",
 };
 
 // Eye and mouth ink — fixed, readable on every skin tone
@@ -44,10 +55,7 @@ const PersonBust = ({ look, animated, mood }: PersonBustProps) => (
     {/* Head */}
     <circle cx={60} cy={74} r={18} fill={look.skin} />
     {/* Hair on top of the head */}
-    <path
-      d="M41 72 C41 56 49 51 60 51 C71 51 79 56 79 72 C75 64 69 61 60 61 C51 61 45 64 41 72 Z"
-      fill={look.hair}
-    />
+    <path d={HAIR_CAPS[look.hairStyle]} fill={look.hair} />
     {/* Bun sits above the hair */}
     {look.hairStyle === "bun" && (
       <circle cx={60} cy={48} r={7} fill={look.hair} />
