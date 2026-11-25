@@ -70,6 +70,7 @@ const LiveConversationWorkspace = ({
     quotaLimit,
     viewerUserId: user?.id ?? null,
     viewerName: user?.firstName ?? user?.fullName ?? null,
+    takenOverByName: preview?.takenOverByName ?? null,
   });
   const isManual = scene.mode === "manual";
   const isPending = scene.mode === "pending";

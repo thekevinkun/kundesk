@@ -15,9 +15,10 @@ import {
   knowledgeEntries,
   notifications,
 } from "@/lib/db/schema";
+import { getOwnerDayBounds } from "@/lib/timezone";
+import { getOrgMemberFirstName } from "@/lib/clerk/org-member-name";
 import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
 import { toDateSafe } from "@/helpers/format";
-import { getOwnerDayBounds } from "@/lib/timezone";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 import type {
   DashboardChartData,
@@ -536,6 +537,12 @@ export async function getLiveConversationPreview(
   const conversation = result.rows[0];
   if (!conversation) return null;
 
+  // Name of the staff member handling a manual chat — Clerk checks they belong to THIS org; never throws
+  const takenOverByName =
+    conversation.handoff_status === "human" && conversation.taken_over_by
+      ? await getOrgMemberFirstName(orgId, conversation.taken_over_by)
+      : null;
+
   const messageResult = await db.execute<{
     id: number;
     role: "user" | "assistant" | "human_agent";
@@ -562,6 +569,7 @@ export async function getLiveConversationPreview(
     deliveryChannel: conversation.delivery_channel,
     handoffStatus: conversation.handoff_status,
     takenOverBy: conversation.taken_over_by,
+    takenOverByName,
     messages: messageResult.rows.map((message) => ({
       id: message.id,
       role: message.role,

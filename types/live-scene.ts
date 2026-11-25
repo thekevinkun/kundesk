@@ -29,6 +29,8 @@ export interface SceneInput {
   quotaLimit: number;
   viewerUserId: string | null;
   viewerName: string | null;
+  // First name of another staff member who took over — resolved on the server
+  takenOverByName?: string | null | undefined;
 }
 
 // What the scene draws — derived, never stored

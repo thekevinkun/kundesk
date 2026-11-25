@@ -94,6 +94,7 @@ function getStatusLabel(mode: SceneMode, botActive: boolean): string {
 function getAdmin(
   mode: SceneMode,
   takenOverBy: string | null,
+  takenOverByName: string | null,
   viewerUserId: string | null,
   viewerName: string | null,
 ): { name: string; ownership: AdminOwnership } {
@@ -108,7 +109,8 @@ function getAdmin(
     return { name: `${viewerLabel} (Anda)`, ownership: "viewer" };
   }
   // Someone else took over — never show the viewer's name for their work
-  return { name: "Staf lain", ownership: "other" };
+  // The server resolved who it was — "Staf lain" only when that failed or they left the org
+  return { name: takenOverByName?.trim() || "Staf lain", ownership: "other" };
 }
 
 // Main entry — one pure function from data to everything the scene needs
@@ -126,6 +128,7 @@ export function deriveSceneState(input: SceneInput): SceneState {
   const admin = getAdmin(
     mode,
     preview?.takenOverBy ?? null,
+    input.takenOverByName ?? null,
     viewerUserId,
     viewerName,
   );

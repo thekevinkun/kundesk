@@ -55,6 +55,8 @@ export interface LiveConversationPreview {
   handoffStatus: "ai" | "pending_handoff" | "human";
   // Clerk userId of the staff member who took over — only meaningful in manual mode
   takenOverBy: string | null;
+  // First name of that staff member, resolved on the server from the org's members — null when unknown
+  takenOverByName: string | null;
   messages: {
     id: number;
     role: "user" | "assistant" | "human_agent";
