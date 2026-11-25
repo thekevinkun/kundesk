@@ -24,6 +24,42 @@ export function getQuotaLevel(used: number, limit: number): QuotaLevel {
   return "ok";
 }
 
+// Did the quota just move up a level? Only upward moves play a moment
+// ok → warning = warning, anything → full = full; resets and raised limits stay silent
+export function getQuotaCrossing(
+  previous: { used: number; limit: number },
+  next: { used: number; limit: number },
+): "quota-warning" | "quota-full" | null {
+  const before = getQuotaLevel(previous.used, previous.limit);
+  const after = getQuotaLevel(next.used, next.limit);
+  // Same level — nothing crossed
+  if (before === after) return null;
+  // Reaching the limit always wins
+  if (after === "full") return "quota-full";
+  // Warning only when coming up from ok
+  if (after === "warning" && before === "ok") return "quota-warning";
+  return null;
+}
+
+// Which moment a KUN reply plays — the dashboard hears about AI-mode customer messages only once
+// handoffStatus is the last known status of the live conversation (null when unknown)
+export function getKunReplyKind(input: {
+  customerShownRecently: boolean;
+  handoffStatus: LiveConversationPreview["handoffStatus"] | null;
+}): "kun-reply" | "kun-exchange" {
+  // During staff modes KUN does not answer questions — an "assistant" message is a canned one (e.g. dismiss)
+  if (
+    input.handoffStatus === "pending_handoff" ||
+    input.handoffStatus === "human"
+  ) {
+    return "kun-reply";
+  }
+  // The customer leg was just drawn (first message) — the reply only travels back
+  if (input.customerShownRecently) return "kun-reply";
+  // A later message: draw the whole exchange now
+  return "kun-exchange";
+}
+
 // Customer-facing channel name — unknown values fall back to a neutral label
 export function getChannelLabel(channel: string): string {
   switch (channel) {

@@ -230,6 +230,7 @@ const DashboardOverview = ({
             initialPreview={initialLiveConversationPreview}
             quotaUsed={used}
             quotaLimit={limit}
+            pendingHandoffCount={overview.queue.pendingHandoffCount}
           />
         </section>
         <aside className="order-4 grid content-start gap-4 sm:grid-cols-2 xl:order-3 xl:grid-cols-1">

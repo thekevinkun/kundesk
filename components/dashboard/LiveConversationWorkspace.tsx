@@ -1,23 +1,25 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { useConversationStore } from "@/stores/conversation-store";
 import {
   AdminAvatar,
   CustomerAvatar,
   KunRobot,
+  SceneMomentLayer,
 } from "@/components/dashboard/live-scene";
 import { getAvatarLook } from "@/helpers/avatar-look";
 import { deriveSceneState } from "@/helpers/live-scene";
+import { SCENE_ANCHORS } from "@/helpers/live-scene-moments";
+import { useLiveSceneQueue } from "@/hooks/use-live-scene-queue";
 import {
   getConversationPageAction,
   getLiveConversationPreviewAction,
 } from "@/lib/actions/dashboard";
-import { liveWorkspacePacketVariants } from "@/lib/animations";
 import type {
   LiveConversationPreview,
   LiveOverviewSnapshot,
@@ -30,29 +32,9 @@ interface LiveConversationWorkspaceProps {
   // Live quota numbers from the dashboard — drive KUN's quota pose
   quotaUsed: number;
   quotaLimit: number;
+  // Pending handoffs across the whole org — the live conversation is only one of them
+  pendingHandoffCount: number;
 }
-
-type PacketVariant =
-  | "leftToCenter"
-  | "centerToLeft"
-  | "centerToRight"
-  | "rightToCenter"
-  | "leftToRight"
-  | "rightToLeft";
-
-const eventToPacket: Record<
-  NonNullable<
-    ReturnType<typeof useConversationStore.getState>["liveWorkspaceEvent"]
-  >["type"],
-  { variant: PacketVariant; position: string }
-> = {
-  "customer-to-kun": { variant: "leftToCenter", position: "left-[23%]" },
-  "kun-to-customer": { variant: "centerToLeft", position: "left-1/2" },
-  "customer-to-admin": { variant: "leftToRight", position: "left-[23%]" },
-  "admin-to-customer": { variant: "rightToLeft", position: "left-[77%]" },
-  "kun-to-admin": { variant: "centerToRight", position: "left-1/2" },
-  "admin-to-kun": { variant: "rightToCenter", position: "left-[77%]" },
-};
 
 const roleLabel = (
   role: LiveConversationPreview["messages"][number]["role"],
@@ -64,14 +46,12 @@ const LiveConversationWorkspace = ({
   initialPreview,
   quotaUsed,
   quotaLimit,
+  pendingHandoffCount,
 }: LiveConversationWorkspaceProps) => {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
-  const liveEvent = useConversationStore((s) => s.liveWorkspaceEvent);
-  // Id of the event already in the store at mount — it was played (or missed) before this component existed
-  const [mountedEventId] = useState(
-    () => useConversationStore.getState().liveWorkspaceEvent?.id ?? 0,
-  );
+  // The real event currently playing on stage — comes from Pusher through the store, never invented
+  const activeMoment = useLiveSceneQueue();
   const { data: preview } = useQuery({
     queryKey: ["dashboard", orgId, "live-conversation"],
     queryFn: getLiveConversationPreviewAction,
@@ -80,10 +60,6 @@ const LiveConversationWorkspace = ({
     staleTime: 0,
     refetchOnWindowFocus: false,
   });
-  // Only events that arrived AFTER mount may animate — stops old packets replaying on remount
-  const freshEvent =
-    liveEvent && liveEvent.id > mountedEventId ? liveEvent : null;
-  const packet = freshEvent ? eventToPacket[freshEvent.type] : null;
   // The logged-in user — gives the admin desk a real name
   const { user } = useUser();
   // One derived scene state — poses and labels come from tested rules, not inline ternaries
@@ -98,6 +74,8 @@ const LiveConversationWorkspace = ({
   const isManual = scene.mode === "manual";
   const isPending = scene.mode === "pending";
   const stateLabel = scene.statusLabel;
+  // Handoffs waiting in OTHER conversations — the live one is already on stage
+  const othersPending = Math.max(0, pendingHandoffCount - (isPending ? 1 : 0));
   // Stable faces: the customer from the session, the admin from whoever owns the desk
   const customerLook = getAvatarLook(preview?.sessionId);
   const adminSeed =
@@ -118,6 +96,8 @@ const LiveConversationWorkspace = ({
       : scene.kunPose === "tired"
         ? "bg-(--color-warning)"
         : "bg-(--color-brand)";
+  // Thread ends come from the same anchors the packets travel between
+  const { customer, kun, admin } = SCENE_ANCHORS;
 
   const openConversation = useCallback(async () => {
     if (!preview) return;
@@ -172,20 +152,20 @@ const LiveConversationWorkspace = ({
             focusable="false"
           >
             <line
-              x1="18%"
-              y1="60.6%"
-              x2="50%"
-              y2="57.1%"
+              x1={`${customer.x}%`}
+              y1={`${customer.y}%`}
+              x2={`${kun.x}%`}
+              y2={`${kun.y}%`}
               className="stroke-(--color-brand-mid)"
               strokeWidth={2}
               strokeDasharray="5 6"
               strokeLinecap="round"
             />
             <line
-              x1="50%"
-              y1="57.1%"
-              x2="82%"
-              y2="60.6%"
+              x1={`${kun.x}%`}
+              y1={`${kun.y}%`}
+              x2={`${admin.x}%`}
+              y2={`${admin.y}%`}
               className={
                 isManual || isPending
                   ? "stroke-(--color-warning)"
@@ -196,15 +176,6 @@ const LiveConversationWorkspace = ({
               strokeLinecap="round"
             />
           </svg>
-          {freshEvent && packet && !reduceMotion && (
-            <motion.span
-              key={freshEvent.id}
-              className={`absolute top-[59%] z-20 size-2.5 rounded-full bg-(--color-brand) shadow-[0_0_0_5px_var(--color-brand-light)] ${packet.position}`}
-              variants={liveWorkspacePacketVariants}
-              initial={{ opacity: 0 }}
-              animate={packet.variant}
-            />
-          )}
 
           {/* Customer — left */}
           <div className="absolute left-[18%] top-[14%] z-10 flex w-[23%] -translate-x-1/2 flex-col items-center text-center">
@@ -251,6 +222,19 @@ const LiveConversationWorkspace = ({
                   : "Saat takeover"}
             </span>
           </div>
+
+          {/* Packets, rings and pop-ups for the real event on stage */}
+          <SceneMomentLayer moment={activeMoment} animated={animated} />
+
+          {/* Other conversations waiting for staff — the stage only shows one */}
+          {othersPending > 0 && (
+            <Link
+              href="/dashboard/conversations"
+              className="absolute right-0 top-0 z-30 rounded-full bg-(--color-warning-bg) px-2.5 py-1 text-[10px] font-bold text-(--color-warning) shadow-sm focus:outline-none focus:ring-2 focus:ring-(--color-brand)"
+            >
+              +{othersPending} handoff lain menunggu
+            </Link>
+          )}
         </div>
 
         {/* Status line below the stage — announced politely when it changes */}

@@ -3,6 +3,7 @@
 
 import { create } from "zustand";
 import type { NotificationItem } from "@/hooks/use-pusher-channel";
+import type { SceneEventKind } from "@/types/live-scene";
 
 interface ConversationStore {
   // ── Bell icon counter — notifications only (new convo, takeover, return) ──
@@ -36,17 +37,9 @@ interface ConversationStore {
   // assignment, or simulated traffic.
   liveWorkspaceEvent: {
     id: number;
-    type:
-      | "customer-to-kun"
-      | "kun-to-customer"
-      | "customer-to-admin"
-      | "admin-to-customer"
-      | "kun-to-admin"
-      | "admin-to-kun";
+    type: SceneEventKind;
   } | null;
-  setLiveWorkspaceEvent: (
-    type: NonNullable<ConversationStore["liveWorkspaceEvent"]>["type"],
-  ) => void;
+  setLiveWorkspaceEvent: (type: SceneEventKind) => void;
   clearLiveWorkspaceEvent: () => void;
 }
 

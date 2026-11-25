@@ -94,3 +94,64 @@ export interface IsoPlatformProps {
   // Tailwind stroke class so each character tints its own tile
   strokeClass: string;
 }
+
+// ── Scene moments: what happens on stage when something real happens ──
+
+// Every real event the scene can react to — the store, the queue and the moment table all use this
+export type SceneEventKind =
+  | "customer-message-ai"
+  | "customer-message-admin"
+  | "kun-reply"
+  | "kun-exchange"
+  | "admin-reply"
+  | "handoff-requested"
+  | "takeover"
+  | "returned"
+  | "quota-warning"
+  | "quota-full";
+
+// The three places on stage things travel between
+export type SceneAnchor = "customer" | "kun" | "admin";
+
+// A position on the stage in percent of its width and height
+export interface ScenePoint {
+  x: number;
+  y: number;
+}
+
+// Color family of a packet or pop-up
+export type SceneTone = "brand" | "warning" | "danger" | "signal";
+
+export interface ScenePopupSpec {
+  text: string;
+  anchor: SceneAnchor;
+  tone: SceneTone;
+}
+
+// Recipe for one kind of moment
+export interface SceneMomentSpec {
+  // Anchors the packet visits in order — null means no packet
+  route: readonly SceneAnchor[] | null;
+  tone: SceneTone;
+  popup: ScenePopupSpec | null;
+  // Read aloud by screen readers
+  announce: string;
+  // How long the moment holds the stage before the next one starts
+  durationMs: number;
+}
+
+// One queued or playing moment — id comes from the store's event counter
+export interface SceneMoment {
+  id: number;
+  kind: SceneEventKind;
+}
+
+// Queue state kept by the pure queue helper
+export interface SceneQueueState {
+  queue: SceneMoment[];
+  last: { kind: SceneEventKind; at: number } | null;
+}
+
+export interface SceneMomentLayerProps extends SceneActorProps {
+  moment: SceneMoment | null;
+}

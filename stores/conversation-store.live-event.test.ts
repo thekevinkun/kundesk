@@ -11,9 +11,9 @@ describe("liveWorkspaceEvent", () => {
     const { setLiveWorkspaceEvent } = useConversationStore.getState();
 
     // Two events in the same millisecond used to share an id
-    setLiveWorkspaceEvent("customer-to-kun");
+    setLiveWorkspaceEvent("customer-message-ai");
     const first = useConversationStore.getState().liveWorkspaceEvent;
-    setLiveWorkspaceEvent("kun-to-customer");
+    setLiveWorkspaceEvent("kun-reply");
     const second = useConversationStore.getState().liveWorkspaceEvent;
 
     expect(first?.id).toBeDefined();
@@ -21,21 +21,38 @@ describe("liveWorkspaceEvent", () => {
     expect((second?.id ?? 0) > (first?.id ?? 0)).toBe(true);
   });
 
-  // CHARACTERIZATION: the store has one slot, so a newer event replaces the
-  // older one. PR 3 replaces this with a queue and must update this test.
-  it("keeps only the newest event", () => {
+  // CHARACTERIZATION: the store still has one slot, so a newer event replaces the
+  // older one. The workspace subscribes to every change, so nothing is lost on stage.
+  it("keeps only the newest event in the slot", () => {
     const { setLiveWorkspaceEvent } = useConversationStore.getState();
 
-    setLiveWorkspaceEvent("customer-to-kun");
-    setLiveWorkspaceEvent("kun-to-customer");
+    setLiveWorkspaceEvent("customer-message-ai");
+    setLiveWorkspaceEvent("kun-reply");
 
     expect(useConversationStore.getState().liveWorkspaceEvent?.type).toBe(
-      "kun-to-customer",
+      "kun-reply",
     );
   });
 
+  it("notifies subscribers of every event, even back-to-back ones", () => {
+    const seen: string[] = [];
+    const unsubscribe = useConversationStore.subscribe((state) => {
+      if (state.liveWorkspaceEvent) seen.push(state.liveWorkspaceEvent.type);
+    });
+
+    useConversationStore
+      .getState()
+      .setLiveWorkspaceEvent("customer-message-ai");
+    useConversationStore.getState().setLiveWorkspaceEvent("kun-reply");
+    unsubscribe();
+
+    expect(seen).toEqual(["customer-message-ai", "kun-reply"]);
+  });
+
   it("clears the slot", () => {
-    useConversationStore.getState().setLiveWorkspaceEvent("customer-to-kun");
+    useConversationStore
+      .getState()
+      .setLiveWorkspaceEvent("customer-message-ai");
     useConversationStore.getState().clearLiveWorkspaceEvent();
 
     expect(useConversationStore.getState().liveWorkspaceEvent).toBeNull();

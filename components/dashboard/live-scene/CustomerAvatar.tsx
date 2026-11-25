@@ -3,8 +3,7 @@
 // Customer character: waves with a "!" badge while waiting for staff, ghosted when there is no live chat
 
 import { motion } from "framer-motion";
-import IsoPlatform from "@/components/dashboard/live-scene/IsoPlatform";
-import PersonBust from "@/components/dashboard/live-scene/PersonBust";
+import { IsoPlatform, PersonBust } from "@/components/dashboard/live-scene";
 import { sceneArmVariants, scenePulseVariants } from "@/lib/animations";
 import type { CustomerAvatarProps } from "@/types/live-scene";
 

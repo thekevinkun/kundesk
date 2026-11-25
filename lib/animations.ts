@@ -2,7 +2,7 @@
 // Never define animation variants inline in components
 // Used across: auth pages, dashboard, homepage, chat widget
 
-import type { Variants } from "framer-motion";
+import type { Transition, Variants } from "framer-motion";
 
 // ── Fade up — general purpose entrance animation ──
 // Use on page sections, cards, any element entering from below
@@ -299,36 +299,39 @@ export const sceneScreenLineVariants: Variants = {
   }),
 };
 
-// ── Live conversation workspace — one-shot, Pusher-driven motion only ──
-export const liveWorkspacePacketVariants: Variants = {
-  leftToCenter: {
-    x: [0, 104],
+// ── Live scene moments — packets, landing rings and pop-ups for real events only ──
+
+// Packet transition: left/top follow the route keyframes, opacity fades in and out
+export const scenePacketTransition = (
+  seconds: number,
+  times: number[],
+): Transition => ({
+  left: { duration: seconds, ease: "easeInOut", times },
+  top: { duration: seconds, ease: "easeInOut", times },
+  opacity: { duration: seconds, times: [0, 0.12, 0.88, 1] },
+});
+
+// Ring that expands where a packet lands — custom is the delay before it starts
+export const sceneRingVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.4 },
+  ping: (delay: number) => ({
+    opacity: [0.7, 0],
+    scale: [0.4, 2.2],
+    transition: { duration: 0.7, ease: "easeOut", delay },
+  }),
+};
+
+// Pop-up pill: rises in, holds, fades out — with reduced motion it only fades
+export const scenePopupVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: (config: { animated: boolean; seconds: number }) => ({
     opacity: [0, 1, 1, 0],
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
-  },
-  centerToLeft: {
-    x: [0, -104],
-    opacity: [0, 1, 1, 0],
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
-  },
-  centerToRight: {
-    x: [0, 104],
-    opacity: [0, 1, 1, 0],
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
-  },
-  rightToCenter: {
-    x: [0, -104],
-    opacity: [0, 1, 1, 0],
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
-  },
-  leftToRight: {
-    x: [0, 208],
-    opacity: [0, 1, 1, 0],
-    transition: { duration: 1.05, ease: [0.22, 1, 0.36, 1] },
-  },
-  rightToLeft: {
-    x: [0, -208],
-    opacity: [0, 1, 1, 0],
-    transition: { duration: 1.05, ease: [0.22, 1, 0.36, 1] },
-  },
+    y: config.animated ? [6, 0, 0, -4] : 0,
+    scale: config.animated ? [0.9, 1, 1, 1] : 1,
+    transition: {
+      duration: config.seconds,
+      times: [0, 0.1, 0.85, 1],
+      ease: "easeOut",
+    },
+  }),
 };
