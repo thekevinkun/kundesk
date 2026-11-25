@@ -23,7 +23,8 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams,
 ): Promise<NextResponse> {
-  const { orgId } = await requireOrg();
+  // userId is the staff member replying — recorded as the taker on the first reply
+  const { orgId, userId } = await requireOrg();
 
   const { id } = await params;
 
@@ -124,6 +125,8 @@ export async function POST(
         .set({
           handoffStatus: "human",
           takenOverAt: new Date(), // ← only set on first staff action
+          // Same as the explicit takeover route — without this the dashboard cannot say who is handling the chat
+          takenOverBy: userId,
         })
         .where(
           and(
@@ -222,6 +225,8 @@ export async function POST(
   // fire takeover — the status is already "Human".
   if (result.wasTransitioned) {
     triggerOrgEvent(orgId, "conversation:takeover", {
+      // Same payload shape as the explicit takeover route
+      takenOverBy: userId,
       conversationId,
       handoffStatus: "human",
     }).catch(console.error);
