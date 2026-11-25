@@ -53,6 +53,8 @@ export interface LiveConversationPreview {
   sessionId: string;
   deliveryChannel: string;
   handoffStatus: "ai" | "pending_handoff" | "human";
+  // Clerk userId of the staff member who took over — only meaningful in manual mode
+  takenOverBy: string | null;
   messages: {
     id: number;
     role: "user" | "assistant" | "human_agent";

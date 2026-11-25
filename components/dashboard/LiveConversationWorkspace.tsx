@@ -3,8 +3,11 @@
 import { useCallback, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion, useReducedMotion } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "framer-motion";
+import { useConversationStore } from "@/stores/conversation-store";
+import { deriveSceneState } from "@/helpers/live-scene";
 import {
   getConversationPageAction,
   getLiveConversationPreviewAction,
@@ -13,7 +16,6 @@ import {
   liveWorkspaceKunVariants,
   liveWorkspacePacketVariants,
 } from "@/lib/animations";
-import { useConversationStore } from "@/stores/conversation-store";
 import type {
   LiveConversationPreview,
   LiveOverviewSnapshot,
@@ -23,6 +25,9 @@ interface LiveConversationWorkspaceProps {
   orgId: string;
   bot: LiveOverviewSnapshot["bot"];
   initialPreview: LiveConversationPreview | null;
+  // Live quota numbers from the dashboard — drive KUN's quota pose
+  quotaUsed: number;
+  quotaLimit: number;
 }
 
 type PacketVariant =
@@ -58,6 +63,8 @@ const LiveConversationWorkspace = ({
   orgId,
   bot,
   initialPreview,
+  quotaUsed,
+  quotaLimit,
 }: LiveConversationWorkspaceProps) => {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -78,15 +85,20 @@ const LiveConversationWorkspace = ({
   const freshEvent =
     liveEvent && liveEvent.id > mountedEventId ? liveEvent : null;
   const packet = freshEvent ? eventToPacket[freshEvent.type] : null;
-  const isManual = preview?.handoffStatus === "human";
-  const isPending = preview?.handoffStatus === "pending_handoff";
-  const stateLabel = isPending
-    ? "Menunggu admin mengambil alih"
-    : isManual
-      ? "Admin menangani percakapan"
-      : bot?.isActive
-        ? "KUN menangani percakapan"
-        : "KUN sedang nonaktif";
+  // The logged-in user — gives the admin desk a real name
+  const { user } = useUser();
+  // One derived scene state — poses and labels come from tested rules, not inline ternaries
+  const scene = deriveSceneState({
+    preview: preview ?? null,
+    botActive: bot?.isActive ?? false,
+    quotaUsed,
+    quotaLimit,
+    viewerUserId: user?.id ?? null,
+    viewerName: user?.firstName ?? user?.fullName ?? null,
+  });
+  const isManual = scene.mode === "manual";
+  const isPending = scene.mode === "pending";
+  const stateLabel = scene.statusLabel;
 
   const openConversation = useCallback(async () => {
     if (!preview) return;

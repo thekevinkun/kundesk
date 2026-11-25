@@ -228,6 +228,8 @@ const DashboardOverview = ({
             orgId={orgId}
             bot={bot}
             initialPreview={initialLiveConversationPreview}
+            quotaUsed={used}
+            quotaLimit={limit}
           />
         </section>
         <aside className="order-4 grid content-start gap-4 sm:grid-cols-2 xl:order-3 xl:grid-cols-1">

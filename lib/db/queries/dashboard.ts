@@ -109,10 +109,7 @@ export async function getTotalHandoffCount(orgId: string): Promise<number> {
     .select({ total: count() })
     .from(conversations)
     .where(
-      and(
-        eq(conversations.orgId, orgId),
-        eq(conversations.wasHandedOff, true),
-      ),
+      and(eq(conversations.orgId, orgId), eq(conversations.wasHandedOff, true)),
     );
 
   return result?.total ?? 0;
@@ -513,9 +510,10 @@ export async function getLiveConversationPreview(
     session_id: string;
     delivery_channel: string;
     handoff_status: "ai" | "pending_handoff" | "human";
+    taken_over_by: string | null;
   }>(
     sql`
-      SELECT c.id, c.session_id, c.delivery_channel, c.handoff_status
+      SELECT c.id, c.session_id, c.delivery_channel, c.handoff_status, c.taken_over_by
       FROM ${conversations} c
       WHERE c.org_id = ${orgId}
         AND EXISTS (
@@ -563,6 +561,7 @@ export async function getLiveConversationPreview(
     sessionId: conversation.session_id,
     deliveryChannel: conversation.delivery_channel,
     handoffStatus: conversation.handoff_status,
+    takenOverBy: conversation.taken_over_by,
     messages: messageResult.rows.map((message) => ({
       id: message.id,
       role: message.role,
