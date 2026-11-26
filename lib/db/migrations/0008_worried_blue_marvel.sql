@@ -1,0 +1,1 @@
+ALTER TABLE "conversations" ADD COLUMN "staff_read_at" timestamp;

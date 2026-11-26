@@ -359,6 +359,11 @@ export const conversations = pgTable(
     // handoffStatus is live operational state; wasHandedOff is permanent analytics truth
     wasHandedOff: boolean("was_handed_off").notNull().default(false),
 
+    // When staff last opened or replied to this conversation — null until someone does
+    // Org-wide on purpose: any staff member opening it counts as read for the whole team
+    // Drives "unread" for manual chats only; pending handoffs ignore it and stay flagged
+    staffReadAt: timestamp("staff_read_at"),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
