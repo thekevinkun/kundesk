@@ -1,3 +1,5 @@
+import type { SubscriptionStatus } from "@/types/billing";
+
 export interface LiveOverviewSnapshot {
   stats: {
     totalMessages: number;
@@ -23,6 +25,15 @@ export interface LiveOverviewSnapshot {
     messagesUsed: number;
     messagesLimit: number;
     plan: "free" | "starter" | "pro";
+    // Payment state — drives the "Pembayaran jatuh tempo" priority
+    subscriptionStatus: SubscriptionStatus;
+  };
+  // Counts the knowledge rail and the priority card need — both scoped to this org
+  knowledgeHealth: {
+    // Documents whose processing failed — KUN cannot learn from them
+    failedDocumentCount: number;
+    // Entries whose latest change has not reached KUN yet
+    staleEntryCount: number;
   };
 }
 
@@ -37,6 +48,7 @@ export interface LiveOverviewSnapshotInput {
   pendingHandoffCount: number;
   bot: LiveOverviewSnapshot["bot"];
   organization: LiveOverviewSnapshot["organization"] | null;
+  knowledgeHealth: LiveOverviewSnapshot["knowledgeHealth"];
 }
 
 export interface DashboardChartData {
@@ -105,3 +117,46 @@ export interface ConversationAttention {
 
 // What a queue or table row marks: new for staff, opened but unanswered, or nothing
 export type RowAttention = "unread" | "awaiting" | null;
+
+// ── Prioritas Sekarang ──
+// Colors the item's box: danger needs someone now, warning needs someone soon
+export type PriorityTone = "danger" | "warning";
+
+// One id per kind of item — stable keys for list animation
+export type PriorityId =
+  | "pending-handoff"
+  | "payment-past-due"
+  | "quota-full"
+  | "kun-inactive"
+  | "quota-warning"
+  | "documents-failed"
+  | "knowledge-stale";
+
+export interface PriorityItem {
+  id: PriorityId;
+  tone: PriorityTone;
+  title: string;
+  detail: string;
+  // Where the owner fixes it
+  href: string;
+}
+
+// Everything the rule needs — all of it is already known on the dashboard
+export interface PriorityInput {
+  // Admin-only items stay hidden from members (members handle conversations only)
+  isAdmin: boolean;
+  pendingHandoffCount: number;
+  botActive: boolean;
+  quotaUsed: number;
+  quotaLimit: number;
+  subscriptionStatus: SubscriptionStatus;
+  failedDocumentCount: number;
+  staleEntryCount: number;
+}
+
+export interface PriorityResult {
+  // Most urgent first — the card shows the first three and offers the rest
+  items: PriorityItem[];
+  // Shown when there are no items
+  allClear: { title: string; detail: string };
+}

@@ -15,6 +15,7 @@ describe("createLiveOverviewSnapshot", () => {
         pendingHandoffCount: 0,
         bot: null,
         organization: null,
+        knowledgeHealth: { failedDocumentCount: 0, staleEntryCount: 0 },
       }),
     ).toEqual({
       stats: {
@@ -35,7 +36,37 @@ describe("createLiveOverviewSnapshot", () => {
         messagesUsed: 0,
         messagesLimit: 100,
         plan: "free",
+        subscriptionStatus: "free",
       },
+      knowledgeHealth: { failedDocumentCount: 0, staleEntryCount: 0 },
+    });
+  });
+
+  it("passes the payment status and knowledge health through unchanged", () => {
+    const snapshot = createLiveOverviewSnapshot({
+      totalMessages: 10,
+      messagesToday: 2,
+      answeredRate: 90,
+      uniqueVisitors: 4,
+      avgResponseTime: "1.4s",
+      totalHandoffCount: 1,
+      activeConversationCount: 2,
+      pendingHandoffCount: 1,
+      bot: null,
+      organization: {
+        slug: "warung-paco",
+        messagesUsed: 10,
+        messagesLimit: 100,
+        plan: "pro",
+        subscriptionStatus: "past_due",
+      },
+      knowledgeHealth: { failedDocumentCount: 2, staleEntryCount: 5 },
+    });
+
+    expect(snapshot.organization.subscriptionStatus).toBe("past_due");
+    expect(snapshot.knowledgeHealth).toEqual({
+      failedDocumentCount: 2,
+      staleEntryCount: 5,
     });
   });
 });

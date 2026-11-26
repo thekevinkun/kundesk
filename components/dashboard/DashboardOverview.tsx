@@ -3,13 +3,16 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { PriorityPanel } from "@/components/dashboard";
+import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
 import { useConversationStore } from "@/stores/conversation-store";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { getLiveOverviewSnapshotAction } from "@/lib/actions/dashboard";
+import { deriveDashboardPriorities } from "@/helpers/dashboard-priorities";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
-import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
 import type {
   DashboardChartData,
   LiveOverviewSnapshot,
@@ -123,6 +126,21 @@ const DashboardOverview = ({
         : bot?.isActive
           ? "Operasional berjalan normal"
           : "KUN sedang nonaktif";
+
+  // Admin-only items (billing, KUN settings, knowledge health) stay hidden from members —
+  // the pages enforce permissions anyway; this only keeps the card relevant for the viewer
+  const { orgRole } = useAuth();
+  const priorities = deriveDashboardPriorities({
+    isAdmin: orgRole === "org:admin",
+    pendingHandoffCount: overview.queue.pendingHandoffCount,
+    // No chatbot row at all counts as inactive, like the old card did
+    botActive: bot?.isActive ?? false,
+    quotaUsed: used,
+    quotaLimit: limit,
+    subscriptionStatus: overview.organization.subscriptionStatus,
+    failedDocumentCount: overview.knowledgeHealth.failedDocumentCount,
+    staleEntryCount: overview.knowledgeHealth.staleEntryCount,
+  });
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-5">
@@ -318,39 +336,10 @@ const DashboardOverview = ({
               </span>
             </div>
           </section>
-          <section
-            className="card-base block p-5"
-            aria-labelledby="current-priority-title"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-(--color-text-400)">
-                  Prioritas Sekarang
-                </p>
-                <h2
-                  id="current-priority-title"
-                  className="mt-1.5 text-[15px] font-bold text-(--color-text-900)"
-                >
-                  {overview.queue.pendingHandoffCount > 0
-                    ? `${overview.queue.pendingHandoffCount} handoff menunggu`
-                    : !bot?.isActive
-                      ? "Aktifkan KUN"
-                      : quotaPct >= 70
-                        ? "Periksa kuota pesan"
-                        : "Tidak ada tindakan mendesak"}
-                </h2>
-              </div>
-            </div>
-            <p className="mt-2 text-[11.5px] leading-relaxed text-(--color-text-500)">
-              {overview.queue.pendingHandoffCount > 0
-                ? "Pelanggan menunggu respons staff di ruang Percakapan."
-                : !bot?.isActive
-                  ? "KUN sedang tidak melayani chat otomatis."
-                  : quotaPct >= 70
-                    ? `${Math.round(quotaPct)}% kuota pesan telah digunakan.`
-                    : "KUN aktif, tidak ada handoff tertunda, dan kuota masih aman."}
-            </p>
-          </section>
+          <PriorityPanel
+            items={priorities.items}
+            allClear={priorities.allClear}
+          />
         </aside>
       </div>
 

@@ -18,3 +18,4 @@ export { default as RecentConversationsPanel } from "./RecentConversationsPanel"
 export { default as AccessRestricted } from "./AccessRestricted";
 export { default as QueueAvatar } from "./QueueAvatar";
 export { default as QueueRowItem } from "./QueueRowItem";
+export { default as PriorityPanel } from "./PriorityPanel";

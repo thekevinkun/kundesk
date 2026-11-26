@@ -21,6 +21,7 @@ import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
 import { toDateSafe } from "@/helpers/format";
 import { QUEUE_FETCH_LIMIT } from "@/helpers/conversation-queue";
 import { splitAttention } from "@/helpers/conversation-attention";
+import type { SubscriptionStatus } from "@/types/billing";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 import type {
   ConversationAttentionCandidate,
@@ -897,18 +898,16 @@ export async function getBotStatus(orgId: string): Promise<{
 }
 
 // ── Org data — plan + message usage for the live overview ──
-export async function getOrgData(orgId: string): Promise<{
-  slug: string;
-  messagesUsed: number;
-  messagesLimit: number;
-  plan: "free" | "starter" | "pro";
-} | null> {
+export async function getOrgData(
+  orgId: string,
+): Promise<LiveOverviewSnapshot["organization"] | null> {
   const [org] = await db
     .select({
       slug: orgs.slug,
       messagesUsed: orgs.messagesUsed,
       messagesLimit: orgs.messagesLimit,
       plan: orgs.plan,
+      subscriptionStatus: orgs.subscriptionStatus,
     })
     .from(orgs)
     .where(eq(orgs.id, orgId))
@@ -919,6 +918,8 @@ export async function getOrgData(orgId: string): Promise<{
   return {
     ...org,
     plan: org.plan === "starter" || org.plan === "pro" ? org.plan : "free",
+    // Same cast billing.ts uses — the column is plain text in the database
+    subscriptionStatus: org.subscriptionStatus as SubscriptionStatus,
   };
 }
 
@@ -996,6 +997,34 @@ export async function getAvgResponseTime(
   return `${(avg / 1000).toFixed(1)}s`;
 }
 
+// ── Knowledge problems the owner can fix — shown in "Prioritas Sekarang" ──
+// Failed documents never reach KUN; stale entries are saved edits that have not synced yet
+export async function getKnowledgeHealthCounts(
+  orgId: string,
+): Promise<LiveOverviewSnapshot["knowledgeHealth"]> {
+  const [failedResult, staleResult] = await Promise.all([
+    db
+      .select({ total: count() })
+      .from(documents)
+      .where(and(eq(documents.orgId, orgId), eq(documents.status, "failed"))),
+    db
+      .select({ total: count() })
+      .from(knowledgeEntries)
+      .where(
+        and(
+          eq(knowledgeEntries.orgId, orgId),
+          // Same rule as the knowledge-health cron: anything not "synced" has not reached KUN
+          ne(knowledgeEntries.syncStatus, "synced"),
+        ),
+      ),
+  ]);
+
+  return {
+    failedDocumentCount: failedResult[0]?.total ?? 0,
+    staleEntryCount: staleResult[0]?.total ?? 0,
+  };
+}
+
 // ── Live overview snapshot — shared server seed and protected client refetch ──
 // Each source remains its established tenant-scoped query; this only provides one
 // stable contract for the redesigned overview.
@@ -1013,6 +1042,7 @@ export async function getLiveOverviewSnapshot(
     queue,
     bot,
     organization,
+    knowledgeHealth,
   ] = await Promise.all([
     getTotalMessages(orgId),
     getCustomerMessagesToday(orgId, timezone),
@@ -1023,6 +1053,7 @@ export async function getLiveOverviewSnapshot(
     getActiveConversationSummary(orgId),
     getBotStatus(orgId),
     getOrgData(orgId),
+    getKnowledgeHealthCounts(orgId),
   ]);
 
   return createLiveOverviewSnapshot({
@@ -1035,6 +1066,7 @@ export async function getLiveOverviewSnapshot(
     ...queue,
     bot,
     organization,
+    knowledgeHealth,
   });
 }
 

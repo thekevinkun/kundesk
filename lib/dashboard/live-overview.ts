@@ -22,6 +22,7 @@ export function createLiveOverviewSnapshot(
       pendingHandoffCount: input.pendingHandoffCount,
     },
     bot: input.bot,
+    knowledgeHealth: input.knowledgeHealth,
     // requireOrg() guarantees the organization exists in normal operation. Keep
     // this safe fallback so a partially provisioned tenant never breaks /dashboard.
     organization: input.organization ?? {
@@ -29,6 +30,7 @@ export function createLiveOverviewSnapshot(
       messagesUsed: 0,
       messagesLimit: 100,
       plan: "free",
+      subscriptionStatus: "free",
     },
   };
 }
