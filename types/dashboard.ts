@@ -75,3 +75,15 @@ export interface RecentKnowledgeItem {
   status: string | null;
   updatedAt: string;
 }
+
+// Filter chips of the dashboard conversation queue
+export type QueueFilter = "all" | "pending_handoff" | "ai" | "human";
+
+// How many fetched conversations each chip selects
+export type QueueCounts = Record<QueueFilter, number>;
+
+// How many rows the display cap hides, and how many of those still need staff
+export interface QueueOverflow {
+  hidden: number;
+  hiddenPending: number;
+}

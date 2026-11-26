@@ -16,3 +16,5 @@ export { StatCardSkeleton } from "./StatCard";
 export { default as NotificationPanel } from "./NotificationPanel";
 export { default as RecentConversationsPanel } from "./RecentConversationsPanel";
 export { default as AccessRestricted } from "./AccessRestricted";
+export { default as QueueAvatar } from "./QueueAvatar";
+export { default as QueueRowItem } from "./QueueRowItem";

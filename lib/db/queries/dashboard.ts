@@ -19,6 +19,7 @@ import { getOwnerDayBounds } from "@/lib/timezone";
 import { getOrgMemberFirstName } from "@/lib/clerk/org-member-name";
 import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
 import { toDateSafe } from "@/helpers/format";
+import { QUEUE_FETCH_LIMIT } from "@/helpers/conversation-queue";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 import type {
   DashboardChartData,
@@ -481,7 +482,7 @@ export async function getRecentActiveConversations(orgId: string): Promise<
           ORDER BY m.created_at DESC
           LIMIT 1
         ) DESC
-      LIMIT 10
+      LIMIT ${QUEUE_FETCH_LIMIT}
     `,
   );
 

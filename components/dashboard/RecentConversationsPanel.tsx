@@ -3,67 +3,73 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, useReducedMotion } from "framer-motion";
+import QueueRowItem from "@/components/dashboard/QueueRowItem";
 import {
   getConversationPageAction,
   getRecentActiveConversationsAction,
 } from "@/lib/actions/dashboard";
-import { formatRelativeTime } from "@/helpers/format";
+import {
+  QUEUE_CAP_DESKTOP,
+  QUEUE_CAP_MOBILE,
+  QUEUE_FETCH_LIMIT,
+  countQueue,
+  filterQueue,
+  getQueueOverflow,
+  sortQueue,
+} from "@/helpers/conversation-queue";
 import type { ConversationRow as ConversationRowType } from "@/types/api";
+import type { QueueFilter } from "@/types/dashboard";
 
-// ── Status pill ──
-const StatusPill = ({ status }: { status: string }) => {
-  if (status === "human") {
-    return (
-      <span className="badge-base badge-warning text-[10px] px-1.5 py-0.5">
-        Manual
-      </span>
-    );
-  }
-  if (status === "pending_handoff") {
-    return (
-      <span className="badge-base badge-danger text-[10px] px-1.5 py-0.5">
-        Pending
-      </span>
-    );
-  }
-  return (
-    <span className="badge-base badge-success text-[10px] px-1.5 py-0.5">
-      KUN
-    </span>
-  );
-};
+// Chips in display order — counts come from countQueue
+const FILTERS: { value: QueueFilter; label: string }[] = [
+  { value: "all", label: "Semua" },
+  { value: "pending_handoff", label: "Butuh Admin" },
+  { value: "ai", label: "KUN" },
+  { value: "human", label: "Manual" },
+];
 
-// ── Empty state ──
-const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center h-full py-10 text-center px-4">
-    <div className="text-3xl mb-2">💬</div>
+// ── Empty state — different words when a filter hides everything ──
+const EmptyState = ({ filtered }: { filtered: boolean }) => (
+  <div className="flex h-full flex-col items-center justify-center px-4 py-10 text-center">
+    <div className="mb-2 text-3xl">💬</div>
     <div className="text-[13px] font-semibold text-(--color-text-500)">
-      Belum ada percakapan
+      {filtered ? "Tidak ada percakapan di filter ini" : "Belum ada percakapan"}
     </div>
-    <div className="text-[11.5px] text-(--color-text-400) mt-1 leading-relaxed">
-      Percakapan akan muncul di sini setelah pelanggan mulai chat
+    <div className="mt-1 text-[11.5px] leading-relaxed text-(--color-text-400)">
+      {filtered
+        ? "Pilih filter lain untuk melihat percakapan aktif"
+        : "Percakapan akan muncul di sini setelah pelanggan mulai chat"}
     </div>
   </div>
 );
 
-// ── Sort — pending always first, then by lastMessageAt desc ──
-const sortConversations = (
-  convos: ConversationRowType[],
-): ConversationRowType[] => {
-  return [...convos].sort((a, b) => {
-    const aIsPending = a.handoffStatus === "pending_handoff";
-    const bIsPending = b.handoffStatus === "pending_handoff";
-    if (aIsPending && !bIsPending) return -1;
-    if (!aIsPending && bIsPending) return 1;
-    const aTime = a.lastMessageAt
-      ? new Date(a.lastMessageAt).getTime()
-      : new Date(a.createdAt).getTime();
-    const bTime = b.lastMessageAt
-      ? new Date(b.lastMessageAt).getTime()
-      : new Date(b.createdAt).getTime();
-    return bTime - aTime;
-  });
-};
+// ── Footer shown when the cap hides rows — mobile and desktop have different caps ──
+const OverflowFooter = ({
+  hidden,
+  hiddenPending,
+  onOpen,
+  className,
+}: {
+  hidden: number;
+  hiddenPending: number;
+  onOpen: () => void;
+  className: string;
+}) => (
+  <button
+    type="button"
+    onClick={onOpen}
+    className={`w-full flex-shrink-0 items-center justify-center gap-1 border-t border-(--color-border-sm) px-4 py-2.5 text-[11.5px] font-semibold text-(--color-brand) transition-colors hover:bg-(--color-bg-page) ${className}`}
+  >
+    Lihat {hidden} percakapan lainnya
+    {hiddenPending > 0 && (
+      <span className="text-(--color-danger)">
+        · {hiddenPending} menunggu staff
+      </span>
+    )}
+    <span aria-hidden="true">→</span>
+  </button>
+);
 
 interface RecentConversationsPanelProps {
   initialConversations: ConversationRowType[];
@@ -73,10 +79,9 @@ const RecentConversationsPanel = ({
   initialConversations,
 }: RecentConversationsPanelProps) => {
   const router = useRouter();
+  const reduceMotion = useReducedMotion() ?? false;
   const [now, setNow] = useState(() => Date.now());
-  const [filter, setFilter] = useState<
-    "all" | "pending_handoff" | "ai" | "human"
-  >("all");
+  const [filter, setFilter] = useState<QueueFilter>("all");
 
   // Self-fetching via TanStack Query — PusherProvider invalidates this key
   // on every conversation:new, conversation:message, conversation:takeover, conversation:return
@@ -89,9 +94,21 @@ const RecentConversationsPanel = ({
     refetchOnWindowFocus: false,
   });
 
-  // Sort is derived — no extra state needed, data from query is already sorted by DB
-  // but client-side sort keeps it correct after optimistic updates
-  const conversations = useMemo(() => sortConversations(data ?? []), [data]);
+  // Pending first, then newest — keeps the order right after Pusher updates too
+  const conversations = useMemo(() => sortQueue(data ?? []), [data]);
+  // Chip numbers count every fetched row, not only the visible ones
+  const counts = useMemo(() => countQueue(conversations), [conversations]);
+  // The filter applies BEFORE the cap, so "Butuh Admin" can never look empty by accident
+  const filtered = useMemo(
+    () => filterQueue(conversations, filter),
+    [conversations, filter],
+  );
+  const displayed = useMemo(
+    () => filtered.slice(0, QUEUE_CAP_DESKTOP),
+    [filtered],
+  );
+  const overflowDesktop = getQueueOverflow(filtered, QUEUE_CAP_DESKTOP);
+  const overflowMobile = getQueueOverflow(filtered, QUEUE_CAP_MOBILE);
 
   // Live relative time ticker — aligned to real minute boundaries
   useEffect(() => {
@@ -125,124 +142,116 @@ const RecentConversationsPanel = ({
     [router],
   );
 
-  const pendingCount = conversations.filter(
-    (c) => c.handoffStatus === "pending_handoff",
-  ).length;
+  const openAll = useCallback(() => {
+    router.push("/dashboard/conversations");
+  }, [router]);
 
-  const displayed = conversations
-    .filter((conversation) =>
-      filter === "all" ? true : conversation.handoffStatus === filter,
-    );
+  // The fetch is capped, so a full result means "at least this many"
+  const totalLabel =
+    counts.all >= QUEUE_FETCH_LIMIT
+      ? `${QUEUE_FETCH_LIMIT}+`
+      : String(counts.all);
 
   return (
-    <div className="card-base flex h-full min-h-[420px] flex-col overflow-hidden xl:min-h-0">
+    <div className="card-base flex h-full min-h-[300px] flex-col overflow-hidden xl:min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-(--color-border-sm) flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-(--color-border-sm) px-4 pb-3 pt-4">
         <div>
           <div className="text-[14px] font-bold text-(--color-text-900)">
             Percakapan Perlu Ditangani
           </div>
-          <div className="text-[11px] text-(--color-text-400) mt-0.5">
-            {pendingCount > 0
-              ? `${pendingCount} menunggu staff · ${conversations.length} percakapan aktif`
-              : conversations.length > 0
-                ? `${conversations.length} percakapan aktif`
+          <div
+            className="mt-0.5 text-[11px] text-(--color-text-400)"
+            aria-live="polite"
+          >
+            {counts.pending_handoff > 0
+              ? `${counts.pending_handoff} menunggu staff · ${totalLabel} percakapan aktif`
+              : counts.all > 0
+                ? `${totalLabel} percakapan aktif`
                 : "Semua percakapan tertangani"}
           </div>
         </div>
         <button
-          onClick={() => router.push("/dashboard/conversations")}
-          className="text-[11.5px] font-semibold text-(--color-brand) hover:underline flex-shrink-0"
+          onClick={openAll}
+          className="flex-shrink-0 text-[11.5px] font-semibold text-(--color-brand) hover:underline"
         >
           Lihat semua →
         </button>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-(--color-border-sm) px-4 py-2.5">
-        {[
-          ["all", "Semua"],
-          ["pending_handoff", "Butuh Admin"],
-          ["ai", "KUN"],
-          ["human", "Manual"],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() =>
-              setFilter(value as "all" | "pending_handoff" | "ai" | "human")
-            }
-            className={`shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors ${
-              filter === value
-                ? "bg-(--color-brand) text-white"
-                : "bg-(--color-bg-page) text-(--color-text-500) hover:text-(--color-text-900)"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Filter chips with live counts */}
+      <div className="flex flex-shrink-0 gap-1 overflow-x-auto border-b border-(--color-border-sm) px-4 py-2.5">
+        {FILTERS.map(({ value, label }) => {
+          const selected = filter === value;
+          // A waiting customer should be visible on the chip even when it is not selected
+          const urgent = value === "pending_handoff" && counts[value] > 0;
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setFilter(value)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold transition-colors ${
+                selected
+                  ? "bg-(--color-brand) text-white"
+                  : urgent
+                    ? "bg-(--color-danger-bg) text-(--color-danger)"
+                    : "bg-(--color-bg-page) text-(--color-text-500) hover:text-(--color-text-900)"
+              }`}
+            >
+              {label}
+              <span className="ml-1 tabular-nums opacity-80">
+                {counts[value]}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* List */}
+      {/* List — at most five rows; a scrollbar appears only if rows are taller than expected */}
       <div
-        className="overflow-y-auto flex-1 min-h-0
+        className="min-h-0 flex-1 overflow-y-auto
           [&::-webkit-scrollbar]:w-[4px]
           [&::-webkit-scrollbar-thumb]:bg-(--color-border-sm)
           hover:[&::-webkit-scrollbar-thumb]:bg-(--color-border)"
       >
         {displayed.length === 0 ? (
-          <EmptyState />
+          <EmptyState filtered={conversations.length > 0} />
         ) : (
-          displayed.map((convo) => {
-            const isPending = convo.handoffStatus === "pending_handoff";
-
-            return (
-              <button
-                key={convo.id}
-                onClick={() => void handleClick(convo.id)}
-                className={`w-full text-left px-4 py-3.5 border-b border-(--color-border-sm) last:border-0 transition-colors hover:bg-(--color-bg-page) group ${
-                  isPending ? "bg-(--color-danger-bg)/40" : ""
-                }`}
-                aria-label={`Buka percakapan ${convo.sessionId.slice(0, 8)}`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-mono text-[10.5px] text-(--color-text-400) bg-(--color-bg-page) px-1.5 py-0.5 rounded-[4px] border border-(--color-border) flex-shrink-0">
-                      #{convo.sessionId.slice(0, 8)}
-                    </span>
-                    <span
-                      className="text-[10.5px] text-(--color-text-400) truncate"
-                      suppressHydrationWarning
-                    >
-                      {formatRelativeTime(
-                        convo.lastMessageAt ?? convo.createdAt,
-                        now,
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <StatusPill status={convo.handoffStatus} />
-                  </div>
-                </div>
-
-                <div className="text-[12px] text-(--color-text-700) line-clamp-2 leading-snug group-hover:text-(--color-text-900) transition-colors">
-                  {convo.lastMessage ? (
-                    `"${convo.lastMessage}"`
-                  ) : (
-                    <span className="text-(--color-text-400) italic">
-                      Belum ada pesan
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-1.5 text-[10.5px] text-(--color-text-400)">
-                  {convo.messageCount} pesan aktif
-                </div>
-              </button>
-            );
-          })
+          <ul>
+            <AnimatePresence initial={false}>
+              {displayed.map((convo, index) => (
+                <QueueRowItem
+                  key={convo.id}
+                  convo={convo}
+                  now={now}
+                  onOpen={(id) => void handleClick(id)}
+                  hiddenOnMobile={index >= QUEUE_CAP_MOBILE}
+                  reduceMotion={reduceMotion}
+                />
+              ))}
+            </AnimatePresence>
+          </ul>
         )}
       </div>
 
+      {/* Footers — only one is visible at a time, chosen by breakpoint */}
+      {overflowMobile.hidden > 0 && (
+        <OverflowFooter
+          hidden={overflowMobile.hidden}
+          hiddenPending={overflowMobile.hiddenPending}
+          onOpen={openAll}
+          className="flex xl:hidden"
+        />
+      )}
+      {overflowDesktop.hidden > 0 && (
+        <OverflowFooter
+          hidden={overflowDesktop.hidden}
+          hiddenPending={overflowDesktop.hiddenPending}
+          onOpen={openAll}
+          className="hidden xl:flex"
+        />
+      )}
     </div>
   );
 };
