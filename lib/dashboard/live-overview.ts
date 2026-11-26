@@ -16,6 +16,7 @@ export function createLiveOverviewSnapshot(
       uniqueVisitors: input.uniqueVisitors,
       avgResponseTime: input.avgResponseTime,
       totalHandoffCount: input.totalHandoffCount,
+      totalConversationCount: input.totalConversationCount,
     },
     queue: {
       activeConversationCount: input.activeConversationCount,

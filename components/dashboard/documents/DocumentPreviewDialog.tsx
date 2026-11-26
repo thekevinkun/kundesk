@@ -22,7 +22,8 @@ import type { ChunksPage, FileLinkData } from "@/types/document-preview";
 type View = "kun" | "original";
 
 interface DocumentPreviewDialogProps {
-  doc: DocumentSelect;
+  // The dialog only reads the id and name, so the dashboard can open it without a full row
+  doc: Pick<DocumentSelect, "id" | "name">;
   onClose: () => void;
 }
 

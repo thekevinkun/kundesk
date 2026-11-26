@@ -8,6 +8,8 @@ export interface LiveOverviewSnapshot {
     uniqueVisitors: number;
     avgResponseTime: string | null;
     totalHandoffCount: number;
+    // All conversations ever started — the base for "finished without staff"
+    totalConversationCount: number;
   };
   queue: {
     activeConversationCount: number;
@@ -44,6 +46,7 @@ export interface LiveOverviewSnapshotInput {
   uniqueVisitors: number;
   avgResponseTime: string | null;
   totalHandoffCount: number;
+  totalConversationCount: number;
   activeConversationCount: number;
   pendingHandoffCount: number;
   bot: LiveOverviewSnapshot["bot"];
@@ -159,4 +162,10 @@ export interface PriorityResult {
   items: PriorityItem[];
   // Shown when there are no items
   allClear: { title: string; detail: string };
+}
+
+// What the dashboard hands to the document preview dialog — it only needs these two fields
+export interface DocumentPreviewTarget {
+  id: number;
+  name: string;
 }

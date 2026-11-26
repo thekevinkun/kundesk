@@ -25,7 +25,7 @@ export function getQuotaUsageLevel(
 }
 
 // Whole percent for display text, never above 100
-function quotaPercent(used: number, limit: number): number {
+export function quotaPercent(used: number, limit: number): number {
   if (limit <= 0) return 0;
   return Math.floor((Math.min(used, limit) * 100) / limit);
 }

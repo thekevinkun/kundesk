@@ -11,6 +11,7 @@ describe("createLiveOverviewSnapshot", () => {
         uniqueVisitors: 0,
         avgResponseTime: null,
         totalHandoffCount: 0,
+        totalConversationCount: 0,
         activeConversationCount: 0,
         pendingHandoffCount: 0,
         bot: null,
@@ -25,6 +26,7 @@ describe("createLiveOverviewSnapshot", () => {
         uniqueVisitors: 0,
         avgResponseTime: null,
         totalHandoffCount: 0,
+        totalConversationCount: 0,
       },
       queue: {
         activeConversationCount: 0,
@@ -50,6 +52,7 @@ describe("createLiveOverviewSnapshot", () => {
       uniqueVisitors: 4,
       avgResponseTime: "1.4s",
       totalHandoffCount: 1,
+      totalConversationCount: 12,
       activeConversationCount: 2,
       pendingHandoffCount: 1,
       bot: null,
@@ -64,6 +67,7 @@ describe("createLiveOverviewSnapshot", () => {
     });
 
     expect(snapshot.organization.subscriptionStatus).toBe("past_due");
+    expect(snapshot.stats.totalConversationCount).toBe(12);
     expect(snapshot.knowledgeHealth).toEqual({
       failedDocumentCount: 2,
       staleEntryCount: 5,

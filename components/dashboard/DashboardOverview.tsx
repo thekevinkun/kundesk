@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { PriorityPanel } from "@/components/dashboard";
-import { PLAN_BADGE } from "@/components/dashboard/settings/constants";
+import { QuotaCard, HealthCard, PriorityPanel } from "@/components/dashboard";
 import { useConversationStore } from "@/stores/conversation-store";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { getLiveOverviewSnapshotAction } from "@/lib/actions/dashboard";
@@ -104,10 +103,7 @@ const DashboardOverview = ({
   const limit =
     useConversationStore((s) => s.messagesLimit) ??
     overview.organization.messagesLimit;
-  const quotaPct = Math.min((used / (limit || 1)) * 100, 100);
   const bot = overview.bot;
-  const planLabel =
-    PLAN_BADGE[overview.organization.plan]?.label ?? PLAN_BADGE.free!.label;
   const initials = orgName
     .trim()
     .split(/\s+/)
@@ -115,23 +111,13 @@ const DashboardOverview = ({
     .map((word) => word[0])
     .join("")
     .toUpperCase();
-  const healthScore = bot?.isActive
-    ? Math.round(overview.stats.answeredRate)
-    : 0;
-  const healthLabel =
-    overview.queue.pendingHandoffCount > 0
-      ? "Ada handoff yang perlu ditangani"
-      : quotaPct >= 70
-        ? "Kuota perlu diperhatikan"
-        : bot?.isActive
-          ? "Operasional berjalan normal"
-          : "KUN sedang nonaktif";
 
   // Admin-only items (billing, KUN settings, knowledge health) stay hidden from members —
   // the pages enforce permissions anyway; this only keeps the card relevant for the viewer
   const { orgRole } = useAuth();
+  const isAdmin = orgRole === "org:admin";
   const priorities = deriveDashboardPriorities({
-    isAdmin: orgRole === "org:admin",
+    isAdmin,
     pendingHandoffCount: overview.queue.pendingHandoffCount,
     // No chatbot row at all counts as inactive, like the old card did
     botActive: bot?.isActive ?? false,
@@ -258,84 +244,21 @@ const DashboardOverview = ({
             documentCount={bot?.documentCount ?? 0}
             totalChunks={bot?.totalChunks ?? 0}
           />
-          <Link
-            href="/dashboard/billing"
-            className="card-base card-hover block p-5 focus:outline-none focus:ring-2 focus:ring-(--color-brand)"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-bold text-(--color-text-900)">
-                Kuota Pesan
-              </h2>
-              <span className="text-[11px] font-semibold text-(--color-brand)">
-                Billing →
-              </span>
-            </div>
-            <p className="mt-3 text-[22px] font-extrabold tracking-[-0.04em] text-(--color-text-900)">
-              {used.toLocaleString("id-ID")}{" "}
-              <span className="text-[13px] font-medium text-(--color-text-400)">
-                / {limit.toLocaleString("id-ID")}
-              </span>
-            </p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-(--color-bg-page)">
-              <div
-                className="h-full rounded-full bg-(--color-brand)"
-                style={{ width: `${quotaPct}%` }}
-              />
-            </div>
-            <p className="mt-2 text-[10.5px] font-medium text-(--color-text-500)">
-              {planLabel} plan
-            </p>
-          </Link>
-          <section
-            className="card-base block p-5"
-            aria-labelledby="operational-health-title"
-          >
-            <div className="flex items-center gap-4">
-              <div
-                className="relative flex size-16 shrink-0 items-center justify-center rounded-full"
-                style={{
-                  background: `conic-gradient(var(--color-brand) ${healthScore}%, var(--color-bg-page) 0)`,
-                }}
-              >
-                <div className="flex size-11 items-center justify-center rounded-full bg-(--color-bg-card) text-[12px] font-extrabold text-(--color-text-900)">
-                  {healthScore}%
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h2
-                    id="operational-health-title"
-                    className="text-[15px] font-bold text-(--color-text-900)"
-                  >
-                    Kesehatan Operasional
-                  </h2>
-                </div>
-                <p className="mt-1 text-[11.5px] leading-snug text-(--color-text-500)">
-                  {healthLabel}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-(--color-border-sm) pt-3 text-[10px]">
-              <span className="text-(--color-text-500)">
-                KUN{" "}
-                <b className="block text-(--color-text-900)">
-                  {bot?.isActive ? "Aktif" : "Nonaktif"}
-                </b>
-              </span>
-              <span className="text-(--color-text-500)">
-                Total handoff{" "}
-                <b className="block text-(--color-text-900)">
-                  {overview.stats.totalHandoffCount}
-                </b>
-              </span>
-              <span className="text-(--color-text-500)">
-                Kuota{" "}
-                <b className="block text-(--color-text-900)">
-                  {Math.round(quotaPct)}%
-                </b>
-              </span>
-            </div>
-          </section>
+          <QuotaCard
+            used={used}
+            limit={limit}
+            plan={overview.organization.plan}
+            isAdmin={isAdmin}
+          />
+          <HealthCard
+            botActive={bot?.isActive ?? false}
+            pendingHandoffCount={overview.queue.pendingHandoffCount}
+            quotaUsed={used}
+            quotaLimit={limit}
+            totalConversationCount={overview.stats.totalConversationCount}
+            totalHandoffCount={overview.stats.totalHandoffCount}
+            isAdmin={isAdmin}
+          />
           <PriorityPanel
             items={priorities.items}
             allClear={priorities.allClear}

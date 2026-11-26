@@ -18,4 +18,7 @@ export { default as RecentConversationsPanel } from "./RecentConversationsPanel"
 export { default as AccessRestricted } from "./AccessRestricted";
 export { default as QueueAvatar } from "./QueueAvatar";
 export { default as QueueRowItem } from "./QueueRowItem";
+export { default as QuotaCard } from "./QuotaCard";
+export { default as HealthCard } from "./HealthCard";
 export { default as PriorityPanel } from "./PriorityPanel";
+export { default as KnowledgeRailRow } from "./KnowledgeRailRow";

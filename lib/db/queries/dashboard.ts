@@ -120,6 +120,19 @@ export async function getTotalHandoffCount(orgId: string): Promise<number> {
   return result?.total ?? 0;
 }
 
+// ── All conversations ever started — the base for "finished without staff" ──
+// Same population getTotalHandoffCount counts, so the two numbers compare fairly
+export async function getTotalConversationCount(
+  orgId: string,
+): Promise<number> {
+  const [result] = await db
+    .select({ total: count() })
+    .from(conversations)
+    .where(eq(conversations.orgId, orgId));
+
+  return result?.total ?? 0;
+}
+
 // ── Auto-answer rate — assistant messages / total messages × 100 ──
 // "Terjawab Otomatis" stat — shows how much the AI is handling
 export async function getAnsweredRate(orgId: string): Promise<number> {
@@ -613,7 +626,8 @@ export async function getRecentKnowledgeItems(
           d.created_at AS updated_at
         FROM ${documents} d
         WHERE d.org_id = ${orgId}
-          AND d.status = 'ready'
+        -- every status on purpose: the rail shows "Memproses" and "Gagal" too,
+        -- so a document that finishes learning flips live instead of appearing late
 
         UNION ALL
 
@@ -1039,6 +1053,7 @@ export async function getLiveOverviewSnapshot(
     uniqueVisitors,
     avgResponseTime,
     totalHandoffCount,
+    totalConversationCount,
     queue,
     bot,
     organization,
@@ -1050,6 +1065,7 @@ export async function getLiveOverviewSnapshot(
     getUniqueVisitors(orgId),
     getAvgResponseTime(orgId),
     getTotalHandoffCount(orgId),
+    getTotalConversationCount(orgId),
     getActiveConversationSummary(orgId),
     getBotStatus(orgId),
     getOrgData(orgId),
@@ -1063,6 +1079,7 @@ export async function getLiveOverviewSnapshot(
     uniqueVisitors,
     avgResponseTime,
     totalHandoffCount,
+    totalConversationCount,
     ...queue,
     bot,
     organization,
