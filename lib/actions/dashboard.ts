@@ -4,18 +4,24 @@
 // Same queries as page.tsx but wrapped in a server action for client-side refetch
 // requireOrg() enforces auth — never called without a valid session
 
+import { z } from "zod/v4";
 import { requireOrg } from "@/lib/auth";
 import {
   getRecentActiveConversations,
   findConversationPage,
   getHumanUnreadConversationIds,
+  getAwaitingReplyConversationIds,
+  markConversationRead,
   getLiveOverviewSnapshot,
   getLiveConversationPreview,
   getRecentKnowledgeItems,
 } from "@/lib/db/queries/dashboard";
 import { getOwnerTimezone } from "@/lib/timezone";
 import { getDashboardCharts } from "@/lib/db/queries/dashboard";
-import type { ConversationRow as ConversationRowType } from "@/types/api";
+import type {
+  ActionResult,
+  ConversationRow as ConversationRowType,
+} from "@/types/api";
 import type {
   DashboardChartData,
   LiveConversationPreview,
@@ -31,9 +37,7 @@ export async function getLiveOverviewSnapshotAction(): Promise<LiveOverviewSnaps
   return getLiveOverviewSnapshot(orgId, timezone);
 }
 
-export async function getLiveConversationPreviewAction(): Promise<
-  LiveConversationPreview | null
-> {
+export async function getLiveConversationPreviewAction(): Promise<LiveConversationPreview | null> {
   const { orgId } = await requireOrg();
   return getLiveConversationPreview(orgId);
 }
@@ -81,4 +85,25 @@ export async function getDashboardChartData(): Promise<DashboardChartData> {
 export async function getHumanUnreadConversationIdsAction(): Promise<number[]> {
   const { orgId } = await requireOrg();
   return getHumanUnreadConversationIds(orgId);
+}
+
+// Conversations staff opened but the customer is still waiting on — quiet "Belum dibalas" marker
+export async function getAwaitingReplyConversationIdsAction(): Promise<
+  number[]
+> {
+  const { orgId } = await requireOrg();
+  return getAwaitingReplyConversationIds(orgId);
+}
+
+const markReadSchema = z.number().int().positive();
+
+// Staff opened (or closed) a conversation — the org comes from the session, never from the browser
+export async function markConversationReadAction(
+  rawConversationId: unknown,
+): Promise<ActionResult> {
+  const parsed = markReadSchema.safeParse(rawConversationId);
+  if (!parsed.success) return { success: false, error: "Invalid conversation" };
+  const { orgId } = await requireOrg();
+  await markConversationRead(parsed.data, orgId);
+  return { success: true, data: undefined };
 }

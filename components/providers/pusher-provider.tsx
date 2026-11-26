@@ -80,9 +80,14 @@ export function PusherProvider({ orgId }: PusherProviderProps) {
     };
   }, []);
 
+  // Called by every conversation event handler below — it also refreshes the awaiting-reply
+  // list, because each of those events can change whether a customer is still waiting
   const invalidateLiveConversationPreview = useCallback(() => {
     void stableRef.current.queryClient.invalidateQueries({
       queryKey: ["dashboard", stableRef.current.orgId, "live-conversation"],
+    });
+    void stableRef.current.queryClient.invalidateQueries({
+      queryKey: ["conversations", "awaiting-reply"],
     });
   }, []);
 

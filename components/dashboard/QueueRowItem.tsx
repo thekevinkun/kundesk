@@ -10,6 +10,7 @@ import { queueRowFlashVariants, queueRowVariants } from "@/lib/animations";
 import { getAvatarLook } from "@/helpers/avatar-look";
 import { formatRelativeTime } from "@/helpers/format";
 import type { ConversationRow } from "@/types/api";
+import type { RowAttention } from "@/types/dashboard";
 
 // ── Status pill ──
 const StatusPill = ({ status }: { status: string }) => {
@@ -42,6 +43,8 @@ interface QueueRowItemProps {
   // Rows beyond the phone cap are hidden below the xl breakpoint by CSS only
   hiddenOnMobile: boolean;
   reduceMotion: boolean;
+  // New for staff, opened but unanswered, or nothing — computed by the panel
+  attention: RowAttention;
 }
 
 const QueueRowItem = ({
@@ -50,6 +53,7 @@ const QueueRowItem = ({
   onOpen,
   hiddenOnMobile,
   reduceMotion,
+  attention,
 }: QueueRowItemProps) => {
   const isPending = convo.handoffStatus === "pending_handoff";
   // Changes whenever something visible about the row changes — drives the flash
@@ -131,7 +135,13 @@ const QueueRowItem = ({
                 )}
               </span>
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex flex-shrink-0 items-center gap-1">
+              {/* Same signal as the sidebar count and the topbar dot */}
+              {attention === "unread" && (
+                <span className="rounded-full border border-(--color-brand) bg-(--color-brand)/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-(--color-brand)">
+                  Baru
+                </span>
+              )}
               <StatusPill status={convo.handoffStatus} />
             </div>
           </div>
@@ -148,6 +158,12 @@ const QueueRowItem = ({
 
           <div className="mt-1.5 text-[10.5px] text-(--color-text-400)">
             {convo.messageCount} pesan aktif
+            {/* Opened by staff, customer still waiting — quiet text, no badge */}
+            {attention === "awaiting" && (
+              <span className="ml-1.5 font-semibold text-(--color-warning)">
+                · Belum dibalas
+              </span>
+            )}
           </div>
         </div>
       </button>

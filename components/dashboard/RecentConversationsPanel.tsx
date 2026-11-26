@@ -3,12 +3,16 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useOrganization } from "@clerk/nextjs";
 import { AnimatePresence, useReducedMotion } from "framer-motion";
-import QueueRowItem from "@/components/dashboard/QueueRowItem";
+import { QueueRowItem } from "@/components/dashboard";
+import { useAwaitingReplyIds } from "@/hooks/use-awaiting-reply-ids";
 import {
   getConversationPageAction,
+  getHumanUnreadConversationIdsAction,
   getRecentActiveConversationsAction,
 } from "@/lib/actions/dashboard";
+import { getRowAttention } from "@/helpers/conversation-attention";
 import {
   QUEUE_CAP_DESKTOP,
   QUEUE_CAP_MOBILE,
@@ -93,6 +97,21 @@ const RecentConversationsPanel = ({
     staleTime: 0, // No staleTime — always refetch when invalidated by Pusher
     refetchOnWindowFocus: false,
   });
+
+  // Same query key as the sidebar badge, so the queue, the badge and the topbar always agree
+  const { organization } = useOrganization();
+  const orgId = organization?.id;
+  const { data: unreadIds } = useQuery({
+    queryKey: ["conversations", "human-unread", orgId],
+    queryFn: getHumanUnreadConversationIdsAction,
+    enabled: !!orgId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchInterval: 60_000,
+  });
+  const awaitingIds = useAwaitingReplyIds();
+  const unreadSet = useMemo(() => new Set(unreadIds ?? []), [unreadIds]);
+  const awaitingSet = useMemo(() => new Set(awaitingIds), [awaitingIds]);
 
   // Pending first, then newest — keeps the order right after Pusher updates too
   const conversations = useMemo(() => sortQueue(data ?? []), [data]);
@@ -228,6 +247,12 @@ const RecentConversationsPanel = ({
                   onOpen={(id) => void handleClick(id)}
                   hiddenOnMobile={index >= QUEUE_CAP_MOBILE}
                   reduceMotion={reduceMotion}
+                  attention={getRowAttention(
+                    convo.handoffStatus,
+                    convo.id,
+                    unreadSet,
+                    awaitingSet,
+                  )}
                 />
               ))}
             </AnimatePresence>

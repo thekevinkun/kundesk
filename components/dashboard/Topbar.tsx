@@ -248,7 +248,7 @@ const Topbar = ({ initialAccentColor, isAdmin, timezone }: TopbarProps) => {
                         hasPendingHandoff
                           ? "Ada pelanggan menunggu staff"
                           : unreadHumanCount > 0
-                            ? `${unreadHumanCount} percakapan belum dibalas`
+                            ? `${unreadHumanCount} percakapan dengan pesan baru`
                             : "Pesan pelanggan"
                       }
                     >
@@ -269,7 +269,7 @@ const Topbar = ({ initialAccentColor, isAdmin, timezone }: TopbarProps) => {
                       <div>Ada pelanggan menunggu staff</div>
                     )}
                     {unreadHumanCount > 0 && (
-                      <div>{unreadHumanCount} percakapan belum dibalas</div>
+                      <div>{unreadHumanCount} percakapan dengan pesan baru</div>
                     )}
                   </TooltipContent>
                 </Tooltip>

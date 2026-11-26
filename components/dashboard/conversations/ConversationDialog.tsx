@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { markConversationReadAction } from "@/lib/actions/dashboard";
 import type { ConversationMessage } from "@/types/api";
 
 // Role label and style config
@@ -71,6 +73,36 @@ const ConversationDialog = ({
     (handoffStatus === "human" || handoffStatus === "pending_handoff");
 
   const canReturn = !isExpired && handoffStatus === "human";
+
+  const queryClient = useQueryClient();
+
+  // Staff looking at a manual chat counts as reading it: marked when the dialog opens and again
+  // when it closes, which covers customer messages that arrived while it was open
+  // Pending chats are skipped on purpose — they stay flagged until staff reply, dismiss or return
+  const tracksRead = !isExpired && handoffStatus === "human";
+  useEffect(() => {
+    if (!tracksRead) return;
+    const markRead = () => {
+      void markConversationReadAction(conversationId)
+        .then(() =>
+          // Refresh every list that depends on the read state (prefix match covers org-scoped keys)
+          Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: ["conversations", "human-unread"],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ["conversations", "awaiting-reply"],
+            }),
+          ]),
+        )
+        .catch(() => {
+          // Non-critical — the next refetch shows the true state
+        });
+    };
+    markRead();
+    // Closing or leaving the page marks it read once more
+    return markRead;
+  }, [conversationId, tracksRead, queryClient]);
 
   const handleSend = () => {
     if (!replyContent.trim()) return;

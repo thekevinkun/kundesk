@@ -20,8 +20,10 @@ import { getOrgMemberFirstName } from "@/lib/clerk/org-member-name";
 import { createLiveOverviewSnapshot } from "@/lib/dashboard/live-overview";
 import { toDateSafe } from "@/helpers/format";
 import { QUEUE_FETCH_LIMIT } from "@/helpers/conversation-queue";
+import { splitAttention } from "@/helpers/conversation-attention";
 import type { HandoffStatus, DeliveryChannel } from "@/types/chat";
 import type {
+  ConversationAttentionCandidate,
   DashboardChartData,
   LiveOverviewSnapshot,
   LiveConversationPreview,
@@ -1080,33 +1082,78 @@ export async function findConversationPage(
   return Math.ceil((position + 1) / limit);
 }
 
-// Returns conversation IDs in human mode where the last message is from the customer
-// Drives the chat icon dot — cross-device, no localStorage needed
-export async function getHumanUnreadConversationIds(
+// Manual or pending conversations whose newest message is from the customer, within 24 hours
+// SQL only selects candidates; whether staff already looked at them is decided by
+// helpers/conversation-attention.ts so the rule stays testable
+async function getConversationAttentionCandidates(
   orgId: string,
-): Promise<number[]> {
-  const result = await db.execute<{ id: number }>(
+): Promise<ConversationAttentionCandidate[]> {
+  const result = await db.execute<{
+    id: number;
+    handoff_status: string;
+    staff_read_at: Date | null;
+    last_message_at: Date;
+  }>(
     sql`
-      SELECT c.id
+      SELECT c.id, c.handoff_status, c.staff_read_at, last_msg.created_at AS last_message_at
       FROM ${conversations} c
+      CROSS JOIN LATERAL (
+        SELECT m.role, m.created_at
+        FROM ${messages} m
+        WHERE m.conversation_id = c.id
+          AND m.org_id = ${orgId}
+        -- id breaks ties: messages saved in one transaction share a timestamp
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT 1
+      ) last_msg
       WHERE c.org_id = ${orgId}
         AND c.handoff_status IN ('human', 'pending_handoff')
-        AND (
-          SELECT m.role
-          FROM ${messages} m
-          WHERE m.conversation_id = c.id
-          ORDER BY m.created_at DESC
-          LIMIT 1
-        ) = 'user'
-        AND EXISTS (
-          SELECT 1 FROM ${messages} m
-          WHERE m.conversation_id = c.id
-            AND m.created_at > NOW() - INTERVAL '24 hours'
-        )
+        AND last_msg.role = 'user'
+        AND last_msg.created_at > NOW() - INTERVAL '24 hours'
     `,
   );
 
-  return result.rows.map((r) => r.id);
+  return result.rows.map((row) => ({
+    id: row.id,
+    handoffStatus: row.handoff_status,
+    lastMessageAt: toDateSafe(row.last_message_at),
+    staffReadAt: row.staff_read_at ? toDateSafe(row.staff_read_at) : null,
+  }));
+}
+
+// Conversation ids that are NEW for staff — drives the chat icon dot, sidebar count and "New" pill
+// Pending handoffs always count; manual chats clear once a staff member opens them
+export async function getHumanUnreadConversationIds(
+  orgId: string,
+): Promise<number[]> {
+  return splitAttention(await getConversationAttentionCandidates(orgId))
+    .unreadIds;
+}
+
+// Manual chats staff opened but the customer is still waiting on — shown quietly, never as a badge
+export async function getAwaitingReplyConversationIds(
+  orgId: string,
+): Promise<number[]> {
+  return splitAttention(await getConversationAttentionCandidates(orgId))
+    .awaitingIds;
+}
+
+// Records that staff looked at a conversation — the database clock is used on purpose,
+// so it compares fairly with message timestamps that also come from the database
+export async function markConversationRead(
+  conversationId: number,
+  orgId: string,
+): Promise<void> {
+  await db
+    .update(conversations)
+    .set({ staffReadAt: sql`now()` })
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        // Tenant isolation — a conversation of another org is silently ignored
+        eq(conversations.orgId, orgId),
+      ),
+    );
 }
 
 // Deletes messages older than retentionDays across all orgs

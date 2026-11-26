@@ -87,3 +87,21 @@ export interface QueueOverflow {
   hidden: number;
   hiddenPending: number;
 }
+
+// A manual or pending conversation whose newest message is from the customer (last 24 hours)
+export interface ConversationAttentionCandidate {
+  id: number;
+  handoffStatus: string;
+  lastMessageAt: Date;
+  // When any staff member last opened it — null if nobody ever did
+  staffReadAt: Date | null;
+}
+
+// The candidates split into "new for staff" and "opened but still unanswered"
+export interface ConversationAttention {
+  unreadIds: number[];
+  awaitingIds: number[];
+}
+
+// What a queue or table row marks: new for staff, opened but unanswered, or nothing
+export type RowAttention = "unread" | "awaiting" | null;

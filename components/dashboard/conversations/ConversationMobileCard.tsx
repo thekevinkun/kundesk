@@ -24,6 +24,7 @@ interface ConversationMobileCardProps {
   newMessage: ConversationMessage | null;
   isHighlighted?: boolean;
   hasUnread?: boolean;
+  awaitingReply?: boolean; // Staff opened it, but the customer's last message is still unanswered
 }
 
 const ConversationMobileCard = ({
@@ -35,6 +36,7 @@ const ConversationMobileCard = ({
   newMessage,
   isHighlighted,
   hasUnread,
+  awaitingReply,
 }: ConversationMobileCardProps) => {
   const queryClient = useQueryClient();
 
@@ -159,13 +161,13 @@ const ConversationMobileCard = ({
           isExpired ? "opacity-50" : "hover:bg-(--color-bg-page)"
         } ${isExpanded ? "bg-(--color-bg-page)" : ""}`}
         onClick={() => {
-          // MANUAL mode — remove optimistically from cache on row click (staff read it)
-          // PENDING mode — dot stays until staff actually replies (handled in handleStaffReplied)
-          // Cannot use invalidateQueries here — DB still returns this ID until staff replies
-          // Optimistic removal gives immediate feedback without a DB round trip
+          // MANUAL mode — opening counts as reading: remove from the unread lists right away
+          // (the dialog saves it to the database and refetches, so this is now the true state)
+          // The prefix matches the topbar, the sidebar badge and the dashboard queue keys
+          // PENDING mode — stays flagged until staff actually reply, dismiss or return
           if (!isExpanded && !isExpired && handoffStatus === "human") {
-            queryClient.setQueryData<number[]>(
-              ["conversations", "human-unread"],
+            queryClient.setQueriesData<number[]>(
+              { queryKey: ["conversations", "human-unread"] },
               (prev) => (prev ?? []).filter((id) => id !== convo.id),
             );
           }
@@ -220,6 +222,12 @@ const ConversationMobileCard = ({
                     {formatRelativeTime(
                       convo.lastMessageAt ?? convo.createdAt,
                       now,
+                    )}
+                    {/* Opened by staff, customer still waiting — quiet text, no badge */}
+                    {awaitingReply && !isExpired && (
+                      <span className="ml-1.5 font-semibold text-(--color-warning)">
+                        · Belum dibalas
+                      </span>
                     )}
                   </div>
                 </div>

@@ -16,6 +16,7 @@ import {
 
 import { usePusherChannel } from "@/hooks/use-pusher-channel";
 import { getHumanUnreadConversationIdsAction } from "@/lib/actions/dashboard";
+import { useAwaitingReplyIds } from "@/hooks/use-awaiting-reply-ids";
 import { fadeUp, staggerContainer } from "@/lib/animations";
 import type {
   ConversationRow as ConversationRowType,
@@ -70,6 +71,9 @@ const ConversationsPage = ({
     refetchOnWindowFocus: false,
     refetchInterval: 60_000,
   });
+
+  // Manual chats staff opened but customers are still waiting on — quiet "Belum dibalas" marker
+  const awaitingReplyIds = useAwaitingReplyIds();
 
   useEffect(() => {
     if (highlightId == null) return;
@@ -285,6 +289,7 @@ const ConversationsPage = ({
                     }
                     isHighlighted={highlightId === convo.id}
                     hasUnread={humanUnreadIds.includes(convo.id)}
+                    awaitingReply={awaitingReplyIds.includes(convo.id)}
                   />
                 ))
               )}
@@ -417,6 +422,7 @@ const ConversationsPage = ({
                   }
                   isHighlighted={highlightId === convo.id}
                   hasUnread={humanUnreadIds.includes(convo.id)}
+                  awaitingReply={awaitingReplyIds.includes(convo.id)}
                 />
               ))
             )}
